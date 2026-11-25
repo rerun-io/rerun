@@ -27,7 +27,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `KeypointPair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1KeypointPair.html)
- * 🐍 [Python API docs for `KeypointPair`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.KeypointPair)
+ * 🐍 [Python API docs for `KeypointPair`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.KeypointPair)
  * 🦀 [Rust API docs for `KeypointPair`](https://docs.rs/rerun/latest/rerun/encodings/struct.KeypointPair.html)
 
 

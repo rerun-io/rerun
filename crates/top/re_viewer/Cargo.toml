@@ -41,18 +41,16 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 ignored-paths = ["data/quick_start_guides/*.rs"]
 
 [features]
-default = ["agent_context", "analytics", "default_web"]
+default = ["analytics", "default_web"]
 
 ## The default features of web builds, apart from `analytics`, which each web build opts into separately.
 ##
 ## `scripts/build_web_viewer.py` builds with `--no-default-features --features analytics,default_web`,
 ## so a feature that should be on for the web must be added here.
-default_web = ["audio", "map_view"]
+default_web = ["agent_skills", "audio", "map_view"]
 
-## Embed the Rerun skills and documentation for the agent panel to hand its agent.
-##
-## Costs a couple of megabytes of binary size, and does nothing on the web.
-agent_context = ["re_agent_panel/agent_context"]
+## Embed the Rerun skills for the agent panel to hand its agent.
+agent_skills = ["re_agent_panel/agent_skills"]
 
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = []
@@ -187,6 +185,7 @@ ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
+serde_path_to_error.workspace = true
 strum_macros.workspace = true
 strum.workspace = true
 tap.workspace = true

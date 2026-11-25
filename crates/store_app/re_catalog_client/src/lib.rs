@@ -15,6 +15,7 @@ mod dataset_info;
 mod dataset_selection;
 mod entry;
 mod layer;
+mod manifest;
 mod registration;
 mod segment;
 mod staging;
@@ -30,12 +31,13 @@ pub use re_protos::cloud::v1alpha1::ext::{
 };
 
 pub use self::asset::{
-    Asset, AssetCoverage, AssetLayer, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT,
-    RegisteredAssets, asset_data_source,
+    AssetCoverage, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT, RegisteredAssets,
+    asset_data_source,
 };
 pub use self::blueprint::{BlueprintName, InvalidBlueprintNameError, RegisteredBlueprint};
 pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::dataset_selection::{DatasetSelection, SegmentSelection};
+pub use self::manifest::{ManifestLayer, ManifestSegment};
 pub use self::registration::{RegistrationError, RegistrationHandle, SegmentRegistrationResult};
 pub use self::staging::{StageOpt, StagingError};
 pub use self::write::{WriteError, WriteHandle};

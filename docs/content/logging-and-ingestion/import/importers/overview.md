@@ -4,6 +4,9 @@ order: 50
 description: How importers load files into the Viewer and SDK, and how to write your own
 ---
 
+Importers load files into the Viewer and the SDK.
+This page explains how Rerun picks an importer for a file, and the two ways to add your own for file types Rerun does not support.
+
 Internally, the [`Importer`](https://docs.rs/re_importer/latest/re_importer/trait.Importer.html) trait takes care of loading files into the Viewer and/or SDK.
 
 There are 3 broad kinds of `Importer`s: _builtin_, _external_ and _custom_.
@@ -17,7 +20,7 @@ If, and only if, all importers known to the Viewer/SDK return an `Incompatible` 
 
 In these instances of unsupported files, we expose two ways of implementing and registering your `Importer`s, explained below.
 
-### External importers
+## External importers
 
 The easiest way to create your own `Importer` is by implementing what we call an "external importer": a stand alone executable written in any language that the Rerun SDK ships for. Any executable on your `$PATH` with a name that starts with `rerun-importer-` (or `rerun-loader-` for backwards compatibility) will be treated as an `Importer`.
 
@@ -85,7 +88,7 @@ When the Viewer and/or SDK executes an external importer, it will pass to it a s
 
 Check out our examples for [C++](https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_importer), [Python](https://github.com/rerun-io/rerun/tree/main/examples/python/external_importer) and [Rust](https://github.com/rerun-io/rerun/tree/main/examples/rust/external_importer) that cover every step in detail.
 
-### Custom Rust importers
+## Custom Rust importers
 
 Another Rust-specific approach is to implement the `Importer` trait yourself and register it in the Rerun Viewer/SDK.
 

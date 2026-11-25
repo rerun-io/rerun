@@ -118,6 +118,16 @@ enum WindowDecorationsRequest {
     Custom,
 }
 
+/// The latest stream of a blueprint from a catalog server.
+struct BlueprintStream {
+    source: re_log_channel::LogSource,
+
+    /// Whether the stream has sent all of the blueprint.
+    ///
+    /// A stream that fails part-way ends without this being set.
+    is_complete: bool,
+}
+
 /// The Rerun Viewer as an [`eframe`] application.
 ///
 /// The [`StoreHub`] lives beside [`AppCore`] rather than inside it,
@@ -257,10 +267,18 @@ pub struct AppCore {
 
     pub(crate) table_blueprints: re_dataframe_ui::TableBlueprints,
 
-    /// For each blueprint streamed from a catalog server, the source of its latest stream.
+    /// For each blueprint streamed from a catalog server, its latest stream.
     ///
     /// Only that stream writes to the blueprint's store.
-    latest_blueprint_streams: ahash::HashMap<StoreId, re_log_channel::LogSource>,
+    latest_blueprint_streams: ahash::HashMap<StoreId, BlueprintStream>,
+
+    /// For each app, the dataset blueprint that becomes its active blueprint once the stream of
+    /// that blueprint ends.
+    ///
+    /// The entry of an app is the blueprint that the user picked last, if the viewer is still
+    /// streaming it. The stream of any other blueprint from a catalog server ends without a
+    /// change to the active blueprint.
+    pub(crate) blueprints_to_activate: ahash::HashMap<ApplicationId, StoreId>,
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
@@ -410,6 +428,16 @@ impl App {
         } else {
             AppState::default()
         };
+
+        // Not in tests: the list is shared by every Rerun program on the machine.
+        #[cfg(not(target_arch = "wasm32"))]
+        if startup_options.persist_state
+            && !is_test
+            && let Some(known) = re_redap_client::KnownServers::in_config_dir()
+            && let Err(err) = state.redap_servers.set_known_servers(known)
+        {
+            re_log::warn!("{err}");
+        }
 
         if startup_options.persist_state {
             // Check if the user has recently upgraded Rerun.
@@ -673,6 +701,7 @@ impl App {
             background_tasks: Default::default(),
             table_blueprints: Default::default(),
             latest_blueprint_streams: Default::default(),
+            blueprints_to_activate: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
             viewer_control: Default::default(),
 
@@ -831,6 +860,24 @@ impl AppCore {
     /// Whether the agent panel has ever been shown, which hides the attention dot on its button.
     pub fn agent_panel_ever_opened(&self) -> bool {
         self.state.agent_panel_ever_opened
+    }
+
+    /// Open the agent panel and submit `prompt` to its agent.
+    fn ask_agent(&mut self, prompt: impl Into<String>) {
+        self.state.agent_panel_open = true;
+        self.agent_panel.submit_prompt(prompt.into());
+    }
+
+    /// Open the agent panel and send `prompt` in a new conversation that preselects
+    /// `model_preselect`.
+    fn ask_agent_in_new_conversation(
+        &mut self,
+        model_preselect: re_agent::ModelPreselect,
+        prompt: impl Into<re_agent::Prompt>,
+    ) {
+        self.state.agent_panel_open = true;
+        self.agent_panel
+            .start_conversation_with_model(model_preselect, prompt);
     }
 
     pub fn toggle_agent_panel(&mut self) {
@@ -1835,10 +1882,7 @@ impl AppCore {
             };
             if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
-                    CommandPaletteAction::AskAgent(prompt) => {
-                        self.state.agent_panel_open = true;
-                        self.agent_panel.submit_prompt(prompt);
-                    }
+                    CommandPaletteAction::AskAgent(prompt) => self.ask_agent(prompt),
                     CommandPaletteAction::SetUpAgent => {
                         self.state.agent_panel_open = true;
                     }

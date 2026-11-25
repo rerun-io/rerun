@@ -17,10 +17,10 @@ use agent_client_protocol_schema::v1::{
     ToolCallId, ToolCallStatus, ToolKind,
 };
 
+use re_agent_tools::AgentToolbox;
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use web_time::Instant;
 
-use crate::AgentToolbox;
 use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection, SessionOrigin};
 use crate::elicitation::response_note;
@@ -1817,14 +1817,15 @@ mod tests {
     #[cfg(agent_harness_backend)]
     #[test]
     fn question_answers_and_cancellation_reach_the_agent() {
-        use agent_client_protocol::{Agent, Channel, Client, ConnectionTo};
+        use agent_client_protocol::v1::ConnectionTo;
+        use agent_client_protocol::{Agent, Channel, Client};
         use agent_client_protocol_schema::v1::{ElicitationAcceptAction, ElicitationContentValue};
 
         let (client_channel, agent_channel) = Channel::duplex();
         let (done_tx, done_rx) = futures::channel::oneshot::channel();
         futures::executor::block_on(async {
             let client = Client
-                .builder()
+                .v1()
                 .on_receive_request(
                     async |request: CreateElicitationRequest, acp_responder, cx| {
                         let (responder, task) = crate::agent_harness::forward_answer(acp_responder);
@@ -1856,27 +1857,27 @@ mod tests {
                     done_rx.await.expect("agent finished");
                     Ok::<_, agent_client_protocol::Error>(())
                 });
-            let agent = Agent.builder().connect_with(
-                agent_channel,
-                async move |cx: ConnectionTo<Client>| {
-                    let answer = cx.send_request(form_question()).block_task().await?;
-                    assert_eq!(
-                        serde_json::to_value(answer).expect("response"),
-                        serde_json::json!({
-                            "action": "accept", "content": { "environment": "existing" }
-                        })
-                    );
-                    let mut request = form_question();
-                    request.message = "Cancel this question".to_owned();
-                    let answer = cx.send_request(request).block_task().await?;
-                    assert_eq!(
-                        serde_json::to_value(answer).expect("response"),
-                        serde_json::json!({ "action": "cancel" })
-                    );
-                    done_tx.send(()).expect("client waiting");
-                    Ok::<_, agent_client_protocol::Error>(())
-                },
-            );
+            let agent =
+                Agent
+                    .v1()
+                    .connect_with(agent_channel, async move |cx: ConnectionTo<Client>| {
+                        let answer = cx.send_request(form_question()).block_task().await?;
+                        assert_eq!(
+                            serde_json::to_value(answer).expect("response"),
+                            serde_json::json!({
+                                "action": "accept", "content": { "environment": "existing" }
+                            })
+                        );
+                        let mut request = form_question();
+                        request.message = "Cancel this question".to_owned();
+                        let answer = cx.send_request(request).block_task().await?;
+                        assert_eq!(
+                            serde_json::to_value(answer).expect("response"),
+                            serde_json::json!({ "action": "cancel" })
+                        );
+                        done_tx.send(()).expect("client waiting");
+                        Ok::<_, agent_client_protocol::Error>(())
+                    });
             let (client, agent) = futures::join!(client, agent);
             client.expect("client connection");
             agent.expect("agent connection");
@@ -2333,7 +2334,7 @@ mod tests {
     struct TestToolbox;
 
     impl AgentToolbox for TestToolbox {
-        fn definitions(&self) -> Vec<crate::ToolDefinition> {
+        fn definitions(&self) -> Vec<re_agent_tools::ToolDefinition> {
             Vec::new()
         }
 
@@ -2355,7 +2356,7 @@ mod tests {
             _arguments: serde_json::Map<String, serde_json::Value>,
         ) -> futures::future::BoxFuture<
             'static,
-            Result<Vec<crate::ToolOutput>, Box<dyn std::error::Error + Send + Sync>>,
+            Result<Vec<re_agent_tools::ToolOutput>, Box<dyn std::error::Error + Send + Sync>>,
         > {
             Box::pin(std::future::ready(Ok(Vec::new())))
         }

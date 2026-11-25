@@ -416,6 +416,19 @@ impl StoreHub {
         self.store_bundle.get(store_id)
     }
 
+    /// The segment id of the dataset blueprint that the blueprint `blueprint_id` is a copy of.
+    ///
+    /// Returns `None` if `blueprint_id` isn't a copy of a dataset blueprint.
+    pub fn copied_dataset_blueprint(
+        &self,
+        blueprint_id: &StoreId,
+    ) -> Option<re_types_core::SegmentId> {
+        match self.blueprints.cached_blueprint_source(blueprint_id)? {
+            CachedBlueprintSource::Dataset(segment) => Some(segment),
+            CachedBlueprintSource::Local => None,
+        }
+    }
+
     pub fn data_source_order(&self, data_source: &LogSource) -> u64 {
         self.data_source_order.order_of(data_source)
     }

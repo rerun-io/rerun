@@ -114,7 +114,7 @@ impl LegendWidget {
                     hovered_id = entry.ids.first().copied();
                 }
                 if response.clicked() {
-                    if ui.input(|r| r.modifiers.alt) {
+                    if ui.input(|r| r.modifiers.matches_logically(re_ui::SOLO_MODIFIER)) {
                         focus_label = Some(entry.label.as_str());
                     } else {
                         toggled_labels.insert(entry.label.as_str());

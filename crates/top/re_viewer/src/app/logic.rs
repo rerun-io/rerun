@@ -16,7 +16,7 @@ use crate::app_blueprint::AppBlueprint;
 
 use super::viewer_control::serve_egui_inspect_request;
 
-use super::{AppCore, WindowDecorationsRequest};
+use super::{AppCore, BlueprintStream, WindowDecorationsRequest};
 
 impl AppCore {
     /// Called before each call to `ui`, but ALSO when the app is
@@ -46,6 +46,11 @@ impl AppCore {
                 self.agent_panel.take_viewer_control_calls()
             {
                 self.serve_viewer_control(request, on_done, store_hub, egui_ctx);
+            }
+            // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+            for origin in self.agent_panel.take_changed_catalogs() {
+                self.command_sender
+                    .send_system(SystemCommand::RefreshRedapServer(origin));
             }
             self.receive_fetched_chunks(store_hub);
             self.prefetch_chunks(store_hub);
@@ -190,6 +195,7 @@ impl AppCore {
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }
+                    self.remove_blueprint_to_activate_for_ended_stream(&channel_source);
                     continue;
                 }
             };
@@ -198,7 +204,7 @@ impl AppCore {
             // side effects (like `set_opened(true)` for `OpenAndSelect`) fire regardless of which message type
             // happens to come first.
             let msg_store_id = match &msg {
-                DataSourceMessage::RrdManifest(store_id, _)
+                DataSourceMessage::RrdManifest { store_id, .. }
                 | DataSourceMessage::RrdManifestComplete(store_id) => Some(store_id.clone()),
                 DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
                 DataSourceMessage::DefaultBlueprintRegistration(_)
@@ -223,9 +229,9 @@ impl AppCore {
             }
 
             match msg {
-                DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
+                DataSourceMessage::RrdManifest { store_id, manifest } => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
-                    let store_events = entity_db.add_rrd_manifest_message(rrd_manifest);
+                    let store_events = entity_db.add_rrd_manifest_message(manifest);
 
                     if let Some((entity_db, cache)) =
                         store_hub.entity_db_and_cache(&store_id, &self.registries.view_classes)
@@ -282,7 +288,9 @@ impl AppCore {
     /// the same blueprint has started.
     ///
     /// Each stream of a blueprint starts with a [`LogMsg::SetStoreInfo`], which makes that stream
-    /// the latest one.
+    /// the latest one. A catalog server sends a [`LogMsg::BlueprintActivationCommand`] or a
+    /// [`DefaultBlueprintRegistration`] once it has sent all of a blueprint, which makes the
+    /// latest stream of that blueprint complete.
     fn is_from_latest_blueprint_stream(
         &mut self,
         msg: &DataSourceMessage,
@@ -294,7 +302,7 @@ impl AppCore {
 
         let blueprint_id = match msg {
             DataSourceMessage::LogMsg(log_msg) => log_msg.store_id(),
-            DataSourceMessage::RrdManifest(store_id, _)
+            DataSourceMessage::RrdManifest { store_id, .. }
             | DataSourceMessage::RrdManifestComplete(store_id) => store_id,
             DataSourceMessage::DefaultBlueprintRegistration(registration) => {
                 &registration.blueprint_id
@@ -306,14 +314,31 @@ impl AppCore {
         }
 
         if matches!(msg, DataSourceMessage::LogMsg(LogMsg::SetStoreInfo(_))) {
-            self.latest_blueprint_streams
-                .insert(blueprint_id.clone(), channel_source.clone());
+            self.latest_blueprint_streams.insert(
+                blueprint_id.clone(),
+                BlueprintStream {
+                    source: channel_source.clone(),
+                    is_complete: false,
+                },
+            );
             return true;
         }
 
-        self.latest_blueprint_streams
-            .get(blueprint_id)
-            .is_none_or(|latest| latest == channel_source)
+        let Some(latest) = self.latest_blueprint_streams.get_mut(blueprint_id) else {
+            return true;
+        };
+        if latest.source != *channel_source {
+            return false;
+        }
+
+        if matches!(
+            msg,
+            DataSourceMessage::LogMsg(LogMsg::BlueprintActivationCommand(_))
+                | DataSourceMessage::DefaultBlueprintRegistration(_)
+        ) {
+            latest.is_complete = true;
+        }
+        true
     }
 
     fn receive_default_blueprint_registration(
@@ -451,12 +476,14 @@ impl AppCore {
                                 });
                         }
                         if cmd.make_active {
-                            store_hub
-                                .set_cloned_blueprint_active_for_app(store_id)
-                                .unwrap_or_else(|err| {
-                                    re_log::warn!("Failed to make blueprint active: {err}");
-                                });
+                            self.activate_received_blueprint(store_hub, channel_source, store_id);
+                        }
 
+                        // A blueprint streamed from a catalog server becomes active without a
+                        // change of route.
+                        if cmd.make_active
+                            && !matches!(channel_source, LogSource::RedapGrpcStream { .. })
+                        {
                             // Switch to this app, e.g. on drag-and-drop of a blueprint file
 
                             if self.navigation.routes.current().app_id() != Some(&app_id) {

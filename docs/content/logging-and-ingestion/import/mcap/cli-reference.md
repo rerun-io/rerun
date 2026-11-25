@@ -4,7 +4,8 @@ order: 500
 description: Command-line options for viewing, converting, and decoding MCAP files
 ---
 
-This reference guide covers all command-line options and workflows for working with MCAP files in Rerun.
+This guide covers the common command-line workflows for MCAP files in Rerun.
+For every option, see the [`rerun mcap` reference](../../../reference/cli.md#rerun-mcap).
 
 ## Basic commands
 
@@ -58,43 +59,5 @@ rerun mcap convert input.mcap -d ros2msg -d urdf -o output.rrd
 rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
 ```
 
-### Available decoder options
-
-Decoding:
-- **`raw`**: Preserve original message bytes
-- **`schema`**: Extract metadata and schema information
-- **`stats`**: Compute file and channel statistics into RRD `__mcap_properties`
-- **`metadata`**: Extract metadata records into RRD `__mcap_metadata`, if present
-- **`attachments`**: Extract MCAP attachment records into static data under `__mcap_attachments`
-- **`protobuf`**: Decode protobuf messages using reflection into generic Arrow data without Rerun visualization components
-- **`recording_info`**: Extract recording session metadata into RRD `__mcap_properties`
-- **`urdf`**: Use Rerun's built-in URDF loader when a ROS 2 `/robot_description` topic is present
-
-Semantic:
-- **`foxglove`**: Semantic interpretation of Foxglove Protobuf messages
-- **`ros2msg`**: Semantic interpretation of ROS2 messages
-- **`ros2_reflection`**: Decode ROS 2 messages without a semantic mapping into generic Arrow data via schema reflection
-
-### Default behavior
-
-When no `-d` flags are specified, all available decoders are used:
-
-```bash
-# These commands are equivalent (default uses all decoders):
-
-rerun mcap convert input.mcap -o output.rrd
-
-rerun mcap convert input.mcap \
-    -d raw \
-    -d attachments \
-    -d schema \
-    -d stats \
-    -d metadata \
-    -d protobuf \
-    -d recording_info \
-    -d urdf \
-    -d ros2msg \
-    -d ros2_reflection \
-    -d foxglove \
-    -o output.rrd
-```
+For what each decoder does and which ones run by default, see [MCAP decoders explained](decoders-explained.md).
+For every option of `rerun mcap convert`, see the [CLI reference](../../../reference/cli.md#rerun-mcap-convert).

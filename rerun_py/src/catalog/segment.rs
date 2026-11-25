@@ -92,17 +92,23 @@ impl PySegmentInternal {
             dataset,
             segment_id,
         } = self;
-        let (connection, dataset_id) = {
+        let (connection, dataset_id, asset_dataset_id) = {
             let dataset = dataset.borrow(py);
+            let asset_dataset_id = if include_assets {
+                dataset.asset_dataset_id()
+            } else {
+                None
+            };
             (
                 dataset.client().borrow(py).connection().clone(),
                 dataset.entry_id(),
+                asset_dataset_id,
             )
         };
         let schema = wait_for_future(py, async {
             connection
                 .inner()
-                .get_segment_schema(dataset_id, segment_id.clone(), include_assets)
+                .get_segment_schema(dataset_id, segment_id.clone(), asset_dataset_id)
                 .await
                 .map_err(to_py_err)
         })?;

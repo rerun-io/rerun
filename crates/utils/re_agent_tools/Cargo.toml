@@ -1,0 +1,33 @@
+[package]
+authors.workspace = true
+description = "The interface between an LLM agent and the tools a host offers it."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+include.workspace = true
+name = "re_agent_tools"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_log.workspace = true
+
+ahash.workspace = true
+futures.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[dev-dependencies]
+pollster.workspace = true
+
+[target.'cfg(rerun_workspace_hack)'.dependencies]
+re_workspace_hack.workspace = true

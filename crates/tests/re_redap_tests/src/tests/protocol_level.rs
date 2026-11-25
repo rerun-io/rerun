@@ -14,6 +14,23 @@ use super::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
 };
 
+/// A server advertises its protocol level on `/WhoAmI`. Both servers implement the server part of
+/// every level up to [`ProtocolLevel::CHUNK_SEGMENT_FROM_REQUEST`], and a server that advertises
+/// nothing reads as [`ProtocolLevel::BASELINE`].
+pub async fn who_am_i_advertises_protocol_level(service: impl RerunCloudService) {
+    let response = service
+        .who_am_i(tonic::Request::new(cloud_proto::WhoAmIRequest {}))
+        .await
+        .expect("WhoAmI must succeed")
+        .into_inner();
+
+    let level = ProtocolLevel::from(response.protocol_level);
+    assert!(
+        level >= ProtocolLevel::CHUNK_SEGMENT_FROM_REQUEST,
+        "the server advertises protocol level {level}"
+    );
+}
+
 /// A dataset requires no protocol level until the server raises it, so a client from before
 /// protocol levels existed can read it through every RPC that hands out chunks.
 pub async fn new_dataset_serves_clients_without_protocol_level(service: impl RerunCloudService) {

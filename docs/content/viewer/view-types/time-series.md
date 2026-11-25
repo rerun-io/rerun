@@ -14,7 +14,7 @@ See the [`TimeSeriesView` reference](../../reference/types/views/time_series_vie
 Rerun can plot numerical data as a time series, even data that wasn't logged with Rerun semantics.
 By remapping where a visualizer reads its inputs from, you can separate how you _model_ your data from how you _visualize_ it.
 This is useful for plotting custom messages from MCAPs, or data logged via `AnyValues` and `DynamicArchetype`.
-As a bonus, logging multiple scalars to the same entity can drastically reduce `.rrd` file sizes.
+Logging multiple scalars to the same entity also makes `.rrd` files smaller than logging each scalar to its own entity.
 
 Each visualizer takes components as input and determines their values from various sources.
 By configuring _component mappings_, you can control exactly where each input comes from.
@@ -29,10 +29,8 @@ The supported data types are:
 
 For background on how visualizers resolve component values, see [Customize views](../view-concepts/customize-views.md).
 For styling and axes, see [Customize plots](time-series.md#customize-plots).
-
-### Logging custom data
-
-See [Logging custom data](../../logging-and-ingestion/send-data/custom-data.md#logging-custom-data) for the shared setup and scalar example.
+For how to log the data, see [Logging custom data](../../logging-and-ingestion/send-data/custom-data.md#logging-custom-data).
+[Component mappings](../view-concepts/component-mappings.md) has scalar examples of [selectors for nested data](../view-concepts/component-mappings.md#selectors-for-nested-data) and [default values](../view-concepts/component-mappings.md#providing-default-values).
 
 ### Remapping components
 
@@ -47,17 +45,9 @@ snippet: howto/component_mapping[source_mapping]
 
 #### Add data by dragging components
 
-You can set up this mapping interactively instead of via the blueprint API: drag a component from the streams tree onto a time series view.
+You can set up this mapping interactively instead of via the blueprint API: drag a component from the streams panel onto a time series view.
 If the component has a compatible (numeric) datatype, a new `SeriesLines` visualizer is added that remaps `Scalars:scalars` from it.
 Non-numeric components (e.g. a string) are rejected, as is dropping a component that the view already plots.
-
-### Selectors for nested data
-
-See [Selectors for nested data](../view-concepts/component-mappings.md#selectors-for-nested-data) for the shared setup and scalar example.
-
-### Providing default values
-
-See [Providing default values](../view-concepts/component-mappings.md#providing-default-values) for the shared setup and scalar example.
 
 ### Complete scalar mapping example
 
@@ -126,24 +116,12 @@ See [How `VisibleTimeRange` works](../view-concepts/visible-time-ranges.md#how-v
 
 ### Example syntax
 To create a trailing 5 second window plot, you can specify your `TimeSeriesView` like this:
-```python
-rrb.TimeSeriesView(
-    origin="plot_path",
-    time_ranges=rrb.VisibleTimeRange(
-        timeline="time",
-        start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
-        end=rrb.TimeRangeBoundary.cursor_relative(),
-    ),
-)
-```
+snippet: howto/visualization/blueprint_view_options[fixed_window]
 
 ### Complete fixed-window example
 For a complete working example, you can run the following code:
 
 snippet: tutorials/fixed_window_plot
-
-This should create a plot that only shows the last 5 seconds of data.
-If you select the view, you should see that the time range is configured as expected.
 
 <picture>
   <img src="https://static.rerun.io/fixed_window_example/f76228dc2e1212c148064c2193cdf75ef14bb2b9/full.png" alt="Time series view of a random walk showing only the last 5 seconds, with the visible time range override in the selection panel">
@@ -180,13 +158,7 @@ See [Customize views](../view-concepts/customize-views.md).
 
 Use `ScalarAxis` for the Y axis, and `PlotLegend` for the legend:
 
-```python
-rrb.TimeSeriesView(
-    origin="/sensors",
-    axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), zoom_lock=True),
-    plot_legend=rrb.PlotLegend(visible=False),
-)
-```
+snippet: howto/visualization/blueprint_view_options[axis_and_legend]
 
 The Y axis is always linear.
 There is no logarithmic axis yet: plot `log10` of your values instead.
@@ -209,11 +181,6 @@ For spatial uncertainty, see [2D covariance ellipses](2d.md#covariance-ellipses-
 
 You can plot any numeric component, for example from MCAP files or from `AnyValues`.
 See [Plot any scalar](time-series.md#plot-any-scalar).
-
-## Scrolling plots and the time axis
-
-For the difference between queried data and the visible axis window, see [Time ranges and axis windows](../view-concepts/visible-time-ranges.md#scrolling-plots-and-the-time-axis).
-For a complete plot recipe, see [Visualize fixed-window plots](#visualize-fixed-window-plots).
 
 ## Select visualizers
 

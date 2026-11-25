@@ -319,13 +319,15 @@ fn process_mcap<W: std::io::Write>(
         num_total_msgs += 1;
 
         let log_msg = match res {
-            ImportedData::LogMsg(_, log_msg) => log_msg,
-            ImportedData::Chunk(_, store_id, chunk) => {
+            ImportedData::LogMsg { msg, .. } => msg,
+            ImportedData::Chunk {
+                store_id, chunk, ..
+            } => {
                 topics.insert(chunk.entity_path().clone());
                 let arrow_msg = chunk.to_arrow_msg()?;
                 LogMsg::ArrowMsg(store_id, arrow_msg)
             }
-            ImportedData::ArrowMsg(_, store_id, arrow_msg) => LogMsg::ArrowMsg(store_id, arrow_msg),
+            ImportedData::ArrowMsg { store_id, msg, .. } => LogMsg::ArrowMsg(store_id, msg),
         };
         encoder.append(&log_msg)?;
     }

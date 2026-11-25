@@ -305,7 +305,11 @@ impl CardLayout {
 
                 let mut content_height = 0.0;
                 frame.show(&mut child_ui, |ui| {
-                    ui.set_width((card_width - frame_margin.x).at_most(ui.available_width()));
+                    ui.set_width(
+                        (card_width - frame_margin.x)
+                            .at_most(ui.available_width())
+                            .at_least(0.0),
+                    );
                     show_item(ui, i, pointer_over);
 
                     content_height = ui.min_size().y;
@@ -419,6 +423,18 @@ mod tests {
                 assert_eq!(rects[columns].left(), rects[0].left());
             }
         }
+    }
+
+    #[test]
+    fn card_narrower_than_its_frame_margin_does_not_panic() {
+        Harness::builder()
+            .with_size(egui::vec2(10.0, 100.0))
+            .build_ui(|ui| {
+                CardLayout::uniform(1, 4.0, Frame::new().inner_margin(16)).show(ui, |ui, _, _| {
+                    ui.label("card");
+                });
+            })
+            .run();
     }
 
     #[derive(Default)]

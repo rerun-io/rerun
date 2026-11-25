@@ -14,19 +14,7 @@ See the [`BarChartView` reference](../../reference/types/views/bar_chart_view.md
 Use [`BarChart`](../../reference/types/archetypes/bar_chart.md) with precomputed bins.
 `abscissa` sets the left edge of each bar, and `widths` sets the width of each bin, in X axis units:
 
-```python
-import numpy as np
-import rerun as rr
-
-rr.init("rerun_example_histogram", spawn=True)
-
-samples = np.random.default_rng(0).normal(size=10_000)
-counts, edges = np.histogram(samples, bins=50)
-rr.log(
-    "histogram",
-    rr.BarChart(counts, abscissa=edges[:-1], widths=np.diff(edges)),
-)
-```
+snippet: views/bar_chart_histogram
 
 `values` can be any numeric type.
 

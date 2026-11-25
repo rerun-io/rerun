@@ -8,6 +8,8 @@
 # https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml
 #
 # Run it with `pixi run link-check` (all files) or `pixi run link-check-pr <base>` (lines a branch adds).
+# `pixi run link-check-local` checks only local links and their `#fragments`, offline, in all files.
+# It is fast and deterministic, so every PR must pass it: it catches links broken by moving a page.
 # Both check tracked files only, and skip the ones codegen generates (`linguist-generated=true`):
 # their links point at the docs of each type, which only go live with its release.
 # The nightly checks the generated files on `docs-latest` instead, where every type is released.
@@ -41,14 +43,18 @@ accept = [
 
 # Exclude these filesystem paths from getting checked.
 exclude_path = [
-  # Symlink mirror of `docs/` and `skills/`, which are already checked at their real paths.
+  # Symlink mirror of `skills/`, which is already checked at its real path.
   # Relative links that resolve correctly from the real path break when followed through here.
-  "crates/top/re_viewer/agent_context",
+  "crates/panels/re_agent_panel/agent_context",
 
+  "docs/snippets/all/archetypes/text_document.cpp", # `recording://markdown:Text` does not parse.
+  "docs/snippets/all/archetypes/text_document.py", # Same as above.
+  "docs/snippets/all/archetypes/text_document.rs", # Same as above.
+  "docs/snippets/all/howto/visualization/blueprint_overview.py", # Same as above.
+  "docs/snippets/all/views/text_document.py", # Same as above.
   "docs/speculative_links", # Regexes of links to exclude, not links.
   "lychee.toml", # Contains regex patterns with URL-like strings that aren't actual links.
-  "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
-  "crates/store/re_uri/src/redap_uri.rs", # Same as above.
+  "crates/store/re_uri/src", # Documents URL shapes such as `scheme://hostname:port`, which do not parse.
   "crates/data_flow/re_grpc_server/src/lib.rs", # Contains CORS tests with fake origin URLs
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
   "crates/utils/re_perf_telemetry/src/telemetry.rs", # Contains `parse_rerun_endpoint` docs/tests with fake `rerun://host…` URLs
@@ -81,6 +87,7 @@ exclude = [
   'http://127.0.0.2',
   'http://localhost',
   're_viewer.js', # Build artifact that html is linking to.
+  '^file://.*/(src/main\.ts|main\.js)$', # Entry points of the JS examples, resolved by their bundler.
   'recording:/', # rrd recording link.
   'ws:/',
 
@@ -103,7 +110,9 @@ exclude = [
   '^https://github/$',
   'file:///$', # The `file://` root, in a re_data_source test.
   'file:///C:/.*', # Example paths in re_data_source's `file://` URL docs and tests.
+  'file:///a\.rrd', # Example URL in the `rerun_py` viewer client tests.
   'file:///does/not/exist.rrd',
+  'file:///path/to/?$', # Placeholder in re_redap_browser's source field.
   'file:///path/to/file',
   'file:///tmp/.*', # Example paths in re_data_source's `file://` URL docs and tests.
   'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/hub/bucket-configuration.md, not a real link.

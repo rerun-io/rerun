@@ -26,7 +26,7 @@ UInt32
 
 ## API reference links
  * 🌊 [C++ API docs for `SphericalHarmonicsDegree`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1SphericalHarmonicsDegree.html)
- * 🐍 [Python API docs for `SphericalHarmonicsDegree`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.SphericalHarmonicsDegree)
+ * 🐍 [Python API docs for `SphericalHarmonicsDegree`](https://ref.rerun.io/docs/python/stable/components#rerun.components.SphericalHarmonicsDegree)
  * 🦀 [Rust API docs for `SphericalHarmonicsDegree`](https://docs.rs/rerun/latest/rerun/components/struct.SphericalHarmonicsDegree.html)
 
 

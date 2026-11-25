@@ -8,6 +8,9 @@ Properties are recording-level metadata that relates to an entire segment.
 When you query a [dataset](catalog-object-model.md#datasets), properties appear as columns in the segment table and can be used to filter, sort, and analyze your segments.
 Common use cases for properties include tagging recordings with capture location, data format version, environmental conditions, or any other custom metadata relevant to your workflow.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 ## Understanding properties
 
 Let's use an example to illustrate how properties work and how they can be retrieved and queried using a catalog server.
@@ -20,8 +23,6 @@ In this example, we use `send_property()` to attach metadata to each recording. 
 
 In addition to user-provided properties, Rerun automatically stores built-in properties using the [`RecordingInfo`](../../reference/types/archetypes/recording_info.md) archetype.
 Its `start_time` field is automatically set to the time the recording stream was created, and its `name` field can be set with `send_recording_name()`.
-
-Internally, properties are logged under a reserved `/__properties` entity path and use [static semantics](../../logging-and-ingestion/data-model/static.md) since they apply to the entire recording rather than specific points in time.
 
 ## Displaying the segment table
 
@@ -106,7 +107,7 @@ Output:
 
 Properties are stored under the reserved `/__properties` entity path and are logged as [static data](../../logging-and-ingestion/data-model/static.md), meaning they have no timeline association.
 Logging directly under this entity path is not recommended.
-Use the [`rr.send_property()`](https://ref.rerun.io/docs/python/stable/common/property_functions/#rerun.send_property) or [`RecordingStream.send_property()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream.send_property) API instead.
+Use the [`rr.send_property()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_property) or [`RecordingStream.send_property()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.RecordingStream.send_property) API instead.
 
 ### How are property columns named?
 
@@ -166,6 +167,6 @@ Output:
 ### Can the built-in properties be omitted from recordings?
 
 Yes.
-Both [`rr.init()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) and [`RecordingStream()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream) accept a `send_properties` parameter (default: `True`).
+Both [`rr.init()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.init) and [`RecordingStream()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.RecordingStream) accept a `send_properties` parameter (default: `True`).
 Set it to `False` to prevent the built-in `RecordingInfo` properties from being automatically sent when the recording is created.
 In Rust, `RecordingStreamBuilder::send_properties(false)` does the same.

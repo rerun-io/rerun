@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING
@@ -9,6 +10,7 @@ import rerun_bindings as bindings
 from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentBatch
 from .._spawn import _spawn_viewer
 from ..encodings import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
+from ..error_utils import _send_warning_or_raise
 from ..recording_stream import RecordingStream
 from .archetypes import (
     ActiveVisualizers,
@@ -129,6 +131,16 @@ class View:
         self.properties = properties if properties is not None else {}
         self.defaults = list(defaults) if defaults is not None else []
         self.visualizer_overrides = dict(overrides.items()) if overrides is not None else {}
+
+        for path in self.visualizer_overrides:
+            # An unescaped `*` is a glob, not part of an entity path part's name.
+            if re.search(r"(?<!\\)(?:\\\\)*\*", str(path)):
+                _send_warning_or_raise(
+                    f"Override path '{path}' contains a wildcard, so this override has no effect: "
+                    "override paths do not support glob expressions (see https://github.com/rerun-io/rerun/issues/6673). "
+                    "Use the full path of each entity instead.",
+                    depth_to_user_code=3,
+                )
 
     def blueprint_path(self) -> str:
         """
@@ -759,13 +771,13 @@ class Blueprint:
         make_active:
             Immediately make this the active blueprint for the associated `app_id`.
             Note that setting this to `false` does not mean the blueprint may not still end
-            up becoming active. In particular, if `make_default` is true and there is no other
-            currently active blueprint.
+            up becoming active. In particular, if `make_default` is true and the user has not
+            edited the active blueprint.
         make_default:
             Make this the default blueprint for the `app_id`.
             The default blueprint will be used as the template when the user resets the
-            blueprint for the app. It will also become the active blueprint if no other
-            blueprint is currently active.
+            blueprint for the app. It also replaces the active blueprint, unless the user has
+            edited the active blueprint.
 
         """
         blueprint_stream = RecordingStream._from_native(

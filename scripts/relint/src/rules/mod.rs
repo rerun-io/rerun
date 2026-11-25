@@ -6,6 +6,7 @@
 mod debug_formatted_error;
 mod dyn_any_param;
 mod error_name;
+mod field_count;
 mod inline_conversion;
 mod log_sensitive_inline;
 mod map_err_dropped;
@@ -16,7 +17,6 @@ mod pymethods_str;
 mod result_alias;
 mod snapshot_options_default;
 mod string_error;
-mod thiserror_positional;
 mod todo_message;
 mod tokio_runtime;
 mod vertical_spacing;
@@ -61,15 +61,16 @@ pub const RULES: &[Rule] = &[
     map_err_dropped::RULE,
     map_err_to_string::RULE,
     metric_total_suffix::RULE,
+    field_count::POSITIONAL_RULE,
     pyclass::EQ_RULE,
     pyclass::MODULE_RULE,
     pymethods_str::RULE,
     snapshot_options_default::RULE,
     string_error::RULE,
-    thiserror_positional::RULE,
     todo_message::RULE,
     tokio_runtime::RULE,
     result_alias::TONIC_RULE,
+    field_count::VARIANT_RULE,
     vertical_spacing::RULE,
     zip_chain_method::RULE,
 ];

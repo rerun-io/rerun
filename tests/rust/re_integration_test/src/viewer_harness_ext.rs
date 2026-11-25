@@ -111,6 +111,19 @@ pub trait ViewerHarnessExt {
         timeout: Duration,
     );
 
+    /// Is there any node with `label`?
+    fn has_label(&self, label: &str) -> bool {
+        self.root_node().query_all_by_label(label).next().is_some()
+    }
+
+    /// Is there any node whose label contains `label`?
+    fn has_label_contains(&self, label: &str) -> bool {
+        self.root_node()
+            .query_all_by_label_contains(label)
+            .next()
+            .is_some()
+    }
+
     /// Wait until the viewer is no longer showing any loading indicator.
     #[track_caller]
     fn step_until_no_loading_indicator(&mut self) {

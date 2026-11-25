@@ -280,6 +280,8 @@ pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.svg");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.svg");
 pub const OPEN_RECORDING: Icon = icon_from_path!("../data/icons/open_recording.svg");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
+pub const LAYOUT: Icon = icon_from_path!("../data/icons/layout.svg");
+pub const STAR: Icon = icon_from_path!("../data/icons/star.svg");
 pub const ASSET: Icon = icon_from_path!("../data/icons/asset.svg");
 
 // These link icons have a blue arrow that wouldn't work with the usual tint we do for light/dark,

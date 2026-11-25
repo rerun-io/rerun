@@ -9,6 +9,9 @@ Robotic and sensor data is inherently messy:
 - Data is sparse: not every component has a value at every timestamp
 - Multiple timelines coexist: wall clock time, frame numbers, sensor ticks, etc.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 Machine learning workloads, on the other hand, rely on aligned rows where each row represents one sample, with a consistent schema and a single index.
 
 Dataframe queries are designed to bridge this gap. They allow you to query arbitrary Rerun data and produce a dataframe as output.
@@ -18,7 +21,7 @@ Dataframe queries are designed to bridge this gap. They allow you to query arbit
 Dataframe queries can be used in three contexts:
 
 - **Interactively in the Viewer**: The [dataframe view](../../reference/types/views/dataframe_view.md) displays query results as a table, useful for inspecting raw values and debugging.
-- **Programmatically using the Catalog SDK**: The [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry) object provides API to filter and query datasets and turn them into dataframes.
+- **Programmatically using the Catalog SDK**: The [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry) object provides API to filter and query datasets and turn them into dataframes.
 - **On a single recording, without a server**: [`ChunkStore.reader()`](../../logging-and-ingestion/import/chunk-processing-api.md) runs the same query over a recording loaded from an `.rrd` file.
 
 
@@ -26,7 +29,7 @@ Dataframe queries can be used in three contexts:
 
 Let's use an example to illustrate how dataframe queries work.
 
-Dataframe queries run against datasets stored on a [catalog server](../../getting-started/how-does-rerun-work.md#catalog-server).
+The example below runs the query against a dataset stored on a [catalog server](../../getting-started/how-does-rerun-work.md#catalog-server).
 We can create a demo recording and load it into a temporary local catalog using the following code:
 
 snippet: concepts/query-and-transform/dataframe_query_example[setup]
@@ -65,15 +68,15 @@ This should produce an output similar to:
 ```
 
 Let's unpack what happened here:
-- **Catalog required**: We use `rr.server.Server()` to spin up a temporary local catalog. In production, you might connect to a Rerun Hub deployment instead. We then obtain the dataset to be queried from the catalog.
+- **Catalog server**: We use `rr.server.Server()` to spin up a temporary local catalog. In production, you might connect to a Rerun Hub deployment instead. We then obtain the dataset to be queried from the catalog.
 - **Content filtering**: The `filter_contents()` method restricts the scope of the query to specific entities. This affects which columns are returned, but may also change which rows are returned since rows are only produced where at least one filtered column has data (see [How are rows produced?](#how-are-rows-produced-by-dataframe-queries)).
 - **Reader produces a lazy dataframe**: The `reader(index=…)` method returns a [DataFusion](https://datafusion.apache.org/) dataframe. The `index` parameter specifies which timeline drives row generation: a row is produced for each unique value of this index where data exists. The returned dataframe doesn't execute until it is collected.
 - **Filtering/aggregation/joining/etc.**: The standard suite of dataframe operations is provided by DataFusion. Here we use `filter()` to filter rows based on the data. Again, these are lazy operations that only build a query plan.
 - **Execution**: The `print(df)` implicitly executes the dataframe's query plan and returns the final result. The same would happen when converting to dataframe for other frameworks (Pandas, Polars, PyArrow, etc.).
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/da79987875a81bbabf1ab9f25c869dc7bdc6dc52_d2.svg" alt="Diagram of a dataframe query: a Dataset, optionally filtered into a Dataset view, read into a DataFusion DataFrame, then collected into rows">
-  <img class="d2-light" src="https://static.rerun.io/eb4c2e89434a4a61da75d4bdc0de2d2f08c9d873_d2-light.svg" alt="Diagram of a dataframe query: a Dataset, optionally filtered into a Dataset view, read into a DataFusion DataFrame, then collected into rows">
+  <img class="d2-dark" src="https://static.rerun.io/3a9b017da01ce4fd2b100b1c08aa8aacda1fd967_diagram-dataframe-query-dark.svg" alt="Diagram of a dataframe query: a Dataset, optionally filtered into a Dataset view, read into a DataFusion DataFrame, then collected into rows">
+  <img class="d2-light" src="https://static.rerun.io/44f69e72b9973cda21f25542bd90d970c8cee8d9_diagram-dataframe-query-light.svg" alt="Diagram of a dataframe query: a Dataset, optionally filtered into a Dataset view, read into a DataFusion DataFrame, then collected into rows">
 </div>
 
 
@@ -128,7 +131,8 @@ When querying a dataset with multiple [segments](../catalog/catalog-object-model
 
 ### How is static data queried?
 
-As a reminder, [static data](../../logging-and-ingestion/data-model/timelines.md#static-data) has no associated timeline and represents values that don't change over time. When data is logged as static to a column, it is considered valid for all timelines and for all times, overriding any temporal data otherwise logged to the same column.
+[Static data](../../logging-and-ingestion/data-model/timelines.md#static-data) has no associated timeline and represents values that don't change over time.
+When data is logged as static to a column, it is considered valid for all timelines and for all times, overriding any temporal data otherwise logged to the same column.
 
 The consequence of this is that static data cannot, by itself, generate rows. However, for rows that are generated by other (temporal) data, static data will show up in their respective columns provided they are part of the filtered content.
 
@@ -172,11 +176,11 @@ For a complete example, see the [Time-align data](time_alignment.md) how-to.
 
 ## Additional resources
 
-- [🐍 Python Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/)
-  - [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry)
-  - [`DatasetSelection`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetSelection)
-  - [`reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetSelection.reader)
-  - [`filter_contents()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.filter_contents)
-  - [`filter_segments()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.filter_segments)
+- [🐍 Python Catalog SDK reference](https://ref.rerun.io/docs/python/stable/catalog/)
+  - [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry)
+  - [`DatasetSelection`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetSelection)
+  - [`reader()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetSelection.reader)
+  - [`filter_contents()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.filter_contents)
+  - [`filter_segments()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.filter_segments)
 - [Dataframe view](../../reference/types/views/dataframe_view.md) for visualizing query results in the Viewer
 - [Query semantics & partial updates](../../logging-and-ingestion/data-model/latest-at.md) for understanding latest-at and range queries

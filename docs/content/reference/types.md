@@ -13,6 +13,6 @@ Rerun has 3 levels of types that can be used in all SDK languages:
 
 To get an overview of what the Rerun [Viewer](../viewer/ui/overview.md) can show, start at [**Archetypes**](types/archetypes.md).
 
-For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../logging-and-ingestion/data-model/entity-component.md).
+For more information on the relationship between **archetypes** and **components**, check out the concept pages
+on [Entities and Components](../logging-and-ingestion/data-model/entity-component.md) and [Archetypes](../logging-and-ingestion/data-model/archetypes.md).
 

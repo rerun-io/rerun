@@ -347,7 +347,10 @@ fn decode_and_stream(
             }
         };
 
-        let data = ImportedData::LogMsg(ExternalImporter::name(&ExternalImporter), msg);
+        let data = ImportedData::LogMsg {
+            importer_name: ExternalImporter::name(&ExternalImporter),
+            msg,
+        };
         if re_quota_channel::send_crossbeam(tx, data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }

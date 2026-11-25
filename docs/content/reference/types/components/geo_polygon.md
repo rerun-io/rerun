@@ -28,7 +28,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `GeoPolygon`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GeoPolygon.html)
- * 🐍 [Python API docs for `GeoPolygon`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GeoPolygon)
+ * 🐍 [Python API docs for `GeoPolygon`](https://ref.rerun.io/docs/python/stable/components#rerun.components.GeoPolygon)
  * 🦀 [Rust API docs for `GeoPolygon`](https://docs.rs/rerun/latest/rerun/components/struct.GeoPolygon.html)
 
 

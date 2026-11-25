@@ -22,7 +22,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImageFormat.html)
- * 🐍 [Python API docs for `ImageFormat`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ImageFormat)
+ * 🐍 [Python API docs for `ImageFormat`](https://ref.rerun.io/docs/python/stable/components#rerun.components.ImageFormat)
  * 🦀 [Rust API docs for `ImageFormat`](https://docs.rs/rerun/latest/rerun/components/struct.ImageFormat.html)
 
 

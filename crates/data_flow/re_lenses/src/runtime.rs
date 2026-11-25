@@ -22,6 +22,9 @@ pub fn default_runtime() -> Arc<Runtime> {
                     crate::op::string_prefix(prefix)
                 })
                 .expect("built-in function names must be unique");
+            registry
+                .register("color_for", crate::op::color_for)
+                .expect("built-in function names must be unique");
             Arc::new(Runtime::new(Arc::new(registry)))
         })
         .clone()

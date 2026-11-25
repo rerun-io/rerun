@@ -7,13 +7,13 @@ description: Model spatial relationships with transforms, poses, and coordinate 
 <!-- Figma file for diagrams in this article: https://www.figma.com/board/PTwJKgi9kQOqG7ZgzdhrDL/Transforms-doc-page-graphs?t=fWkOGxxn6mZkkCON-1 -->
 
 Rerun comes with built-in support for modeling spatial relationships between entities.
-This page details how the [different archetypes](https://rerun.io/docs/reference/types/archetypes#transforms) involved interact with each other and explains how transforms are set up in Rerun.
+This page details how the [different archetypes](../../reference/types/archetypes.md#transforms) involved interact with each other and explains how transforms are set up in Rerun.
 
 ## Transforms
 
 ### Entity path transforms
 
-The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
+The [`Transform3D`](../../reference/types/archetypes/transform3d.md) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
 
 The simplest way to use transforms is through [entity path hierarchies](entity-path.md), where each transform describes the relationship between an entity and its parent path.
 Note that by default, all entities are connected via identity transforms.
@@ -37,9 +37,9 @@ your data much closer to how it would be defined when using ROS' [tf2](https://w
 By explicitly specifying transform frames, you can decouple spatial relationships from the entity hierarchy.
 
 Instead of relying on entity path relationships, each entity is first associated with a named transform frame using
-the [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) archetype.
+the [`CoordinateFrame`](../../reference/types/archetypes/coordinate_frame.md) archetype.
 
-The geometric relationship between two transform frames is then determined by logging [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
+The geometric relationship between two transform frames is then determined by logging [`Transform3D`](../../reference/types/archetypes/transform3d.md)
 with `child_frame` and `parent_frame` parameters set to their respective names.
 
 snippet: concepts/transform3d_hierarchy_named_frames
@@ -75,14 +75,7 @@ Since transforms are resolved for a single point in time, `first_parent` and `ch
 
 This structure can make expressing a transform with two natural parents a bit unintuitive. Typically, it is best to invert one of the two relationships instead and use `relation=ChildFromParent`:
 
-```python
-rr.log("tf", rr.Transform3D(parent_frame="first_parent", child_frame="child"))
-# Same values as the `second_parent` to `child` transform, expressed as `child` to `second_parent`:
-rr.log(
-    "tf",
-    rr.Transform3D(parent_frame="child", child_frame="second_parent", relation=rr.TransformRelation.ChildFromParent),
-)
-```
+snippet: concepts/transform_frames[two_parents]
 
 `first_parent` now stays connected and all three frames can be transformed into each other.
 
@@ -104,27 +97,12 @@ have implicit identity relationships.
 #### Example
 
 Given these entities:
-```python
-rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
-rr.log("robot/arm", rr.Transform3D(translation=[0, 1, 0]))
-rr.log("robot/arm/gripper", rr.Points3D([0, 0, 0]))
-```
+
+snippet: concepts/transform_frames[implicit]
 
 Rerun will interpret this _as-if_ it was logged with the named transform frames like so:
 
-```python
-rr.log(
-    "robot",
-    rr.CoordinateFrame("tf#/robot"),
-    rr.Transform3D(translation=[1, 0, 0], child_frame="tf#/robot", parent_frame="tf#/"),
-)
-rr.log(
-    "robot/arm",
-    rr.CoordinateFrame("tf#/robot/arm"),
-    rr.Transform3D(translation=[0, 1, 0], child_frame="tf#/robot/arm", parent_frame="tf#/robot"),
-)
-rr.log("robot/arm/gripper", rr.CoordinateFrame("tf#/robot/arm/gripper"), rr.Points3D([0, 0, 0]))
-```
+snippet: concepts/transform_frames[implicit_as_if]
 
 <picture>
   <img src="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/480w.png" alt="Diagram linking entities /robot, /robot/arm and /robot/arm/gripper to implicit tf# frames chained from child to parent">
@@ -133,18 +111,11 @@ rr.log("robot/arm/gripper", rr.CoordinateFrame("tf#/robot/arm/gripper"), rr.Poin
 #### Mixing named and implicit transform frames
 
 We generally do not recommend mixing named and implicit transform frames since it can get confusing,
-but doing so works seamlessly and can be useful if necessary.
+but it is supported.
 
 Example:
-```python
-rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
-rr.log(
-    "arm",
-    rr.Transform3D(translation=[0, 1, 0], parent_frame="tf#/robot", child_frame="arm_frame"),
-    rr.CoordinateFrame("arm_frame"),
-)
-rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
-```
+
+snippet: concepts/transform_frames[mixed]
 
 <picture>
   <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png" alt="Diagram of /robot linked to implicit frame tf#/robot, with /arm and /gripper both linked to arm_frame, a child of tf#/robot">
@@ -158,14 +129,14 @@ In Rerun, pinhole cameras are not merely another archetype that can be visualize
 they are also treated as spatial relationships that define projections from 3D spaces to 2D subspaces.
 This unified approach allows the Viewer to handle both traditional 3D-to-3D transforms and 3D-to-2D projections.
 
-The [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) archetype defines this projection relationship through its intrinsic matrix (`image_from_camera`) and resolution.
-Both implicit & named coordinate frames are supported, exactly as on [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
+The [`Pinhole`](../../reference/types/archetypes/pinhole.md) archetype defines this projection relationship through its intrinsic matrix (`image_from_camera`) and resolution.
+Both implicit & named coordinate frames are supported, exactly as on [`Transform3D`](../../reference/types/archetypes/transform3d.md).
 
-With the right setup, pinholes allow a bunch of powerful visualizations:
+With the right setup, pinholes enable these visualizations:
 * the pinhole glyph itself in 3D views
 * 2D in 3D: all 2D content that is part of the pinhole's transform subtree
 * 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
-    * Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
+    * Both the [nuscenes](https://github.com/rerun-io/rerun/tree/main/examples/python/nuscenes_dataset) and [arkit](https://github.com/rerun-io/rerun/tree/main/examples/python/arkit_scenes) examples make use of this
 
 A transform frame relationship can have both a `Pinhole` and a regular `Transform3D` (in this context often regarded as the camera extrinsics).
 Both are used: the `Transform3D` places the camera in the parent space, and the `Pinhole` projects from the camera's 3D space onto the 2D image.
@@ -181,12 +152,7 @@ The `Pinhole` archetype has three fields that only change how the camera looks i
 - `color`: the color of the frustum wireframe.
 - `line_width`: the width of the frustum wireframe lines.
 
-```python
-rr.log(
-    "world/camera",
-    rr.Pinhole(focal_length=500, width=640, height=480, image_plane_distance=0.5, color=[255, 128, 0], line_width=0.01),
-)
-```
+snippet: concepts/transform_frames[pinhole_frustum]
 
 You can also set these for all cameras in a view with a [view default](../../viewer/view-concepts/customize-views.md#per-view-component-default), e.g. `rrb.Spatial3DView(defaults=[rr.Pinhole.from_fields(image_plane_distance=0.5)])`.
 
@@ -213,40 +179,40 @@ snippet: archetypes/pinhole_projections
 
 ### View coordinates
 
-[`ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) describes an orientation convention by specifying the directions in which the positive X, Y, and Z axes point.
+[`ViewCoordinates`](../../reference/types/archetypes/view_coordinates.md) describes an orientation convention by specifying the directions in which the positive X, Y, and Z axes point.
 It controls camera and view orientation.
 
-For a 3D view, [`SpatialInformation.axes`](https://rerun.io/docs/reference/types/views/spatial3d_view) controls the eye orientation, navigation, and default grid plane.
+For a 3D view, [`SpatialInformation.axes`](../../reference/types/views/spatial3d_view.md) controls the eye orientation, navigation, and default grid plane.
 A logged `ViewCoordinates` archetype provides the default value for 3D views whose origin is at or below that entity.
 The view uses the value at its origin or the closest ancestor, so logging `rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)` applies to all 3D views unless a view overrides it in its blueprint.
 If no archetype value is found, the view uses `camera_xyz` from the closest ancestor pinhole, followed by `RFU` as the final fallback.
 This orientation does not change logged transforms.
 
-For a [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), `camera_xyz` controls the camera orientation and projection direction.
+For a [`Pinhole`](../../reference/types/archetypes/pinhole.md), `camera_xyz` controls the camera orientation and projection direction.
 The default is `RDF`: +X is right, +Y is down, and +Z is forward.
 Changing `camera_xyz` reorients the camera frustum, projected depth data, and the projection of 3D content into the camera view.
-See the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example for a non-default camera orientation.
+See the [`Pinhole` reference](../../reference/types/archetypes/pinhole.md) for an example with a non-default camera orientation.
 
 For 2D spaces and other entities, view coordinates currently have no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 
 ### Pose transforms
 
-[`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) defines geometric poses relative to an entity's transform frame.
-Unlike with [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), poses do not propagate through the transform hierarchy
+[`InstancePoses3D`](../../reference/types/archetypes/instance_poses3d.md) defines geometric poses relative to an entity's transform frame.
+Unlike with [`Transform3D`](../../reference/types/archetypes/transform3d.md), poses do not propagate through the transform hierarchy
 and can store an arbitrary amount of transforms on the same entity.
 
-For an entity that has both [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
+For an entity that has both [`Transform3D`](../../reference/types/archetypes/transform3d.md)
 (without `child_frame`/`parent_frame`) and `InstancePoses3D`,
-the [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied first
-(affecting the entity and all its children), then [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d)
+the [`Transform3D`](../../reference/types/archetypes/transform3d.md) is applied first
+(affecting the entity and all its children), then [`InstancePoses3D`](../../reference/types/archetypes/instance_poses3d.md)
 is applied only to that specific entity.
 (This is consistent with how entity hierarchy based transforms translate to transform frames.)
 
 #### Instancing
 
-Rerun's [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) archetype is not only used
+Rerun's [`InstancePoses3D`](../../reference/types/archetypes/instance_poses3d.md) archetype is not only used
 to model poses relative to an Entity's frame, but also for repeating (known as "instancing") visualizations on the same entity:
-most visualizations will show once for each transform on [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d)
+most visualizations will show once for each transform on [`InstancePoses3D`](../../reference/types/archetypes/instance_poses3d.md)
 in the respective place.
 
 snippet: archetypes/mesh3d_instancing
@@ -310,8 +276,7 @@ This allows to view the tree structure of the transforms, including potentially 
 The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
 
 > [!NOTE]
-> This UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
-> We are open to making this a dedicated view in the future - let us know if you have any [feedback](https://rerun.io/docs/development)!
+> This UI is a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4" type="video/mp4" />

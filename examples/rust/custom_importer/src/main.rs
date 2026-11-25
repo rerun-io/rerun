@@ -82,7 +82,11 @@ fn hash_and_log(
         .build()?;
 
     let store_id = settings.opened_store_id_or_recommended();
-    let data = ImportedData::Chunk(HashLoader::name(&HashLoader), store_id, chunk);
+    let data = ImportedData::Chunk {
+        importer_name: HashLoader::name(&HashLoader),
+        store_id,
+        chunk,
+    };
     re_quota_channel::send_crossbeam(tx, data).ok();
 
     Ok(())

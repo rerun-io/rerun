@@ -6,10 +6,13 @@ description: Stream Rerun recordings into a PyTorch DataLoader without an export
 
 Train PyTorch models directly from a Rerun server.
 
-The experimental [`dataloader`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/experimental/dataloader) module exposes Rerun recordings as iterable or map-style PyTorch datasets, decoding compressed video (`h264`/`h265`/`av1`), images, and scalars on the fly. Random access, multi-worker prefetching, and [DDP](https://docs.pytorch.org/tutorials/beginner/ddp_series_theory.html) partitioning all work out of the box.
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../hub.md) ([how to switch](../hub.md#run-the-examples-on-hub)).
 
-> [!WARNING]
-> **Experimental.** The API is provisional and will change between releases. For large-scale training, [Rerun Hub](https://rerun.io) offers a higher-performance backend than the OSS catalog.
+The experimental [`dataloader`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/) module exposes Rerun recordings as iterable or map-style PyTorch datasets, decoding compressed video (`h264`/`h265`/`av1`), images, and scalars on the fly. Random access, multi-worker prefetching, and [DDP](https://docs.pytorch.org/tutorials/beginner/ddp_series_theory.html) partitioning all work out of the box.
+
+> [!NOTE]
+> **Experimental.** The API is provisional and will change between releases.
 
 The full code for this guide lives in [`examples/python/dataloader/`](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader), which trains a [LeRobot ACT](https://tonyzhaozh.github.io/aloha/) policy from a HuggingFace dataset.
 
@@ -29,13 +32,13 @@ A [vision-language-action policy](https://en.wikipedia.org/wiki/Vision-language-
   <img src="https://rerun.io/blog/data-layer-tax/vla.jpg" alt="A single training sample for a VLA model with camera, task, state, and action columns aligned at the current row">
 </picture>
 
-The dataloader assembles those samples on demand from the per-recording [chunks](https://rerun.io/docs/logging-and-ingestion/chunks-and-rrd/chunks) in a Rerun [catalog](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
+The dataloader assembles those samples on demand from the per-recording [chunks](../logging-and-ingestion/chunks-and-rrd/chunks.md) in a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
 
 ## How to use it
 
 ### Register data with a catalog
 
-The dataloader reads from a Rerun catalog, so you must first register [RRDs](https://rerun.io/docs/logging-and-ingestion/data-model/recordings/#storage-formats). Start the OSS server in a separate terminal:
+The dataloader reads from a Rerun catalog, so you must first register [RRDs](../logging-and-ingestion/data-model/recordings.md#storage-formats). Start the open-source server in a separate terminal:
 
 ```bash
 rerun server
@@ -51,11 +54,22 @@ The example's [`prepare_dataset.py`](https://github.com/rerun-io/rerun/blob/main
 
 A Rerun dataset is built from three things:
 
-- a `DataSource`: the catalog dataset and an optional segment filter
+- a `DataSource`: the catalog dataset or filtered selection, with an optional curation
 - an `index`: the timeline that defines what "one sample" means (e.g. `"real_time"` or `"frame_index"`)
 - a dict of `Field`s: what each sample should contain
 
 snippet: howto/dataloader[describe_sample]
+
+`DataSource` accepts a dataset or a `DatasetSelection` created by filtering it.
+Plain loading uses either directly; a curation is optional.
+For a whole dataset, a filtered view, or a curation resolved from that view:
+
+snippet: howto/dataloader[data_source]
+
+Resolve segment and interval selections with `Curation.from_source` before saving a training manifest.
+Content filters restrict visible fields without narrowing segment-wide ranges and remain loader configuration, alongside `fields`.
+An empty curation produces an empty loader.
+The loader rejects a curation whose dataset, timeline, or timeline type does not match its source and `index`.
 
 Each `Field.path` is a column name from the dataset's catalog schema.
 The decoder turns that column into a training value:
@@ -66,14 +80,15 @@ The decoder turns that column into a training value:
 
 The dict keys (`"state"`, `"action"`, …) in `fields` become the keys of each sample dict that the dataset yields.
 For timestamp or duration timelines, pass `timeline_sampling=FixedRateSampling(rate_hz=…)` to define the sampling grid.
+Each grid point takes the latest value recorded at or before it.
 For integer timelines, omit `timeline_sampling`.
 The sampling choice must match the timeline type; `shuffle_strategy` controls the order of the resulting samples.
+Dataset construction checks the timeline and requested columns against the source's content-filtered schema without reading segment data.
 
 #### Action chunks and history via `window`
 
 `Field(window=(offset, …))` returns one value per explicit offset relative to the current index, instead of a single value.
-Integer timelines use integral index-step offsets. Timestamp and duration timelines use seconds, which the dataloader converts to nanoseconds internally; callers never need to match the Arrow timestamp storage unit.
-`Field(max_staleness=…)` uses the same convention when limiting the age of the nearest value during manifest generation.
+Integer timelines use integral index-step offsets. Timestamp and duration timelines use seconds.
 
 <picture>
   <img src="https://rerun.io/blog/data-layer-tax/vla-with-history.jpg" alt="Sample with non-uniform history showing the current row plus a windowed slice of preceding rows">
@@ -84,8 +99,6 @@ snippet: howto/dataloader[window]
 The example uses this to feed 50-step action chunks into the ACT policy.
 With `VideoFrameDecoder`, a window returns one decoded frame per explicit offset as a `[T, 3, H, W]` tensor.
 `VideoFrameDecoder(window_storage="view")` collects decoded RGB frames in a common frame buffer and returns views for contiguous windows.
-The decoder fills that buffer as frames are converted to RGB, avoiding a separate stacking allocation for the shared buffer.
-RGB conversion contexts are reused within each thread.
 Overlapping windows share storage, so treat them as read-only until collation.
 For GPU training, `VideoFrameDecoder(output_format="yuv420p", window_storage="view")` instead returns compact YUV planes, shares decoded storage across overlapping windows, and defers RGB conversion until after device transfer.
 With `NumericDecoder`, every resolved numeric-list row in a window must have the same width, producing a `[T, D]` tensor (including `[T, 1]` for a scalar component).
@@ -116,10 +129,8 @@ snippet: howto/dataloader[video_decoder]
 The dataloader handles this transparently by looking up the prior keyframe, fetching the encoded samples from that keyframe through the requested outputs, and decoding them in order.
 The video stream must include the sibling `VideoStream:is_keyframe` component.
 If your recordings do not have it, run [`rerun rrd optimize`](../reference/cli.md#rerun-rrd-optimize) on them before registering, which derives it from the stream.
-During live loading, keyframe discovery starts near each requested window and expands backward only until it finds the nearest preceding keyframe or reaches the recording's start.
-This supports variable GOP lengths without requiring a scan of each recording's entire history for every fetch.
+Variable GOP lengths are supported.
 If no preceding keyframe exists, the video field is unresolved and live iterable loading applies the same `max_consecutive_skipped_samples` policy as other missing values.
-Explicit manifest generation still scans the keyframe history to determine valid samples in advance.
 
 For aligned data with known video keyframes, pass `timeline_sampling=TimeAlignedSampling(keyframe_interval=10)` to the dataset.
 This uses exact-index reads for all fields instead of latest-at filling and calculates video decode starts using the declared interval.
@@ -129,7 +140,7 @@ The data must satisfy:
 2. **Dense, zero-based indices.** Every selected field (scalars, state, actions, video) has one value or frame at each index `0, 1, 2, …`, with no gaps or null values.
 3. **Known video keyframes.** Frames `0, K, 2K, …` are valid decode starting points; for `K=10`, frame 27 decodes from frame 20.
 4. **A shared frame-number reference.** The same index refers to the same physical instant across fields.
-   Every selected video and recording uses the same keyframe interval and origin.
+   Every selected video and segment uses the same keyframe interval and origin.
 5. **Integer field-window offsets.** Windows use whole-frame steps, such as `(-2, -1, 0)`.
 
 Validate these properties when preparing the data; the loader does not scan the dataset to check them.
@@ -137,40 +148,53 @@ It checks each computed decode start's `is_keyframe` marker alongside the reques
 A missing or false marker makes that video field unresolved, so live iterable loading skips the sample under the same `max_consecutive_skipped_samples` policy as other missing values.
 The default `timeline_sampling=None` preserves each field's filling behavior and discovers keyframes from the data.
 
+To validate the keyframes of video imported from MP4 with `rerun.experimental.Mp4Reader` and not transcoded, `Mp4Reader.info()` gives the keyframe frame numbers and GOP sizes from the file's metadata, without decoding it.
+
 To avoid CPU RGB conversion and reduce the size of decoded samples, keep video in YUV420 through collation.
 `Yuv420Collator` is an optional convenience for applications whose other fields can use PyTorch's default collation:
 
-```python
-from torch.utils.data import DataLoader
-
-from rerun.experimental.dataloader import Yuv420Collator
-
-loader = DataLoader(dataset, collate_fn=Yuv420Collator(), pin_memory=True)
-
-for batch in loader:
-    batch["video"] = batch["video"].to_rgb("cuda", non_blocking=True)
-```
+snippet: howto/dataloader_performance[yuv_collator]
 
 Applications can instead compose YUV handling into their own collator with `Yuv420Frame.stack`:
 
-```python
-from rerun.experimental.dataloader import Yuv420Frame
-
-
-def collate(samples):
-    return {
-        "video": Yuv420Frame.stack([sample["video"] for sample in samples]),
-        "state": custom_state_collation(samples),
-    }
-
-
-loader = DataLoader(dataset, collate_fn=collate, pin_memory=True)
-
-for batch in loader:
-    batch["video"] = batch["video"].to_rgb("cuda", non_blocking=True)
-```
+snippet: howto/dataloader_performance[custom_collate]
 
 Call `to_rgb` in the training process rather than inside a `DataLoader` worker when converting on CUDA.
+
+### Train on selected spans
+
+Dataset-level curation chooses segments; span-level curation chooses intervals within them.
+Resolve either selection into a `Curation` before sampling, then save its Arrow coordinates as the training manifest.
+To curate whole segments, pass a dataset selection without an annotation table:
+
+snippet: howto/dataloader[curate_recordings]
+
+SQL can select segments through the catalog's DataFusion context.
+For example, if segments have an `episode.success` property:
+
+snippet: howto/dataloader[curate_sql]
+
+To combine the segment selection with annotated intervals, pass exported span coordinates or another `Curation` as `spans` to `from_source`; see [Select spans for training](../query-and-transform/dataframes/spans.md#select-spans-for-training).
+The resolved intervals are the intersection of the selected segments' ranges and the selected spans.
+Without `spans`, the curation contains the selected segments' full timeline ranges.
+
+Save the resolved output, then reload it against the full same dataset without reconstructing the recording-selection view:
+
+snippet: howto/dataloader[save_curation]
+
+Resolving a curation reads segment metadata, without fetching or validating training fields.
+Intervals select sample anchor times; field windows may read earlier or later data in the same segment.
+Content filters remain loader configuration and are not stored in the manifest.
+Overlapping selections do not duplicate anchors, and video decoding may also read an earlier keyframe.
+For local persistence, use `curation.write_parquet("training.parquet")` and `Curation.from_parquet(dataset_entry, "training.parquet")`.
+Both dataset styles accept `DataSource(dataset_or_selection, curation=curation)` through their normal constructors.
+Their `from_curation()` methods remain convenience wrappers.
+The sampling choice must match the curation's timeline, just as it does for live loading.
+
+The iterable loader computes sample order and rank/worker assignments deterministically from the curation and run settings.
+Reproducing them requires unchanged source data, loader version, sampling and shuffle settings, seed, epoch, and rank/worker counts.
+Use `set_epoch()` to change the shuffle between epochs.
+Keep `DataLoader(persistent_workers=False)` so workers receive the updated epoch when iteration restarts.
 
 ### Iterable vs. Map-style
 
@@ -186,7 +210,7 @@ snippet: howto/dataloader[dataloader]
 For DDP, the iterable dataset partitions the index list across ranks automatically. With the map dataset, swap in `sampler=DistributedSampler(ds)` and call `sampler.set_epoch(epoch)` each epoch.
 
 > [!WARNING]
-> When a finite live `RerunIterableDataset` is consumed to exhaustion under DDP, wrap the training loop in [`DistributedDataParallel.join()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join):
+> When a finite `RerunIterableDataset` is consumed to exhaustion under DDP, wrap the training loop in [`DistributedDataParallel.join()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join):
 >
 > ```python
 > with model.join():
@@ -204,16 +228,16 @@ For DDP, the iterable dataset partitions the index list across ranks automatical
 
 ### Missing values
 
-The live `RerunIterableDataset` drops a sample when any decoder returns `None` and warns once for each missing field.
+`RerunIterableDataset` drops a sample when any decoder returns `None` and warns once for each missing field.
 `None` is the decoder contract for unresolved data; a valid zero-sized tensor is still yielded.
 Null source rows and expected encoded-image or video decode failures are converted to `None`; a corrupt video GOP does not prevent later GOPs in the fetch block from decoding.
 Custom decoders should return `None` for recoverable data errors; exceptions still propagate as decoder failures.
 Set `max_consecutive_skipped_samples` to bound how many such samples each rank and `DataLoader` worker may skip in a row; a valid sample resets the count, and exceeding the limit raises with total and per-field counts.
 The default is 1000; pass `None` to apply no limit.
 
-Live samples are partitioned across workers and DDP ranks before decoding, so uneven missing data can make their yielded sample counts differ.
-Use the DDP `join()` pattern above when consuming the live dataset to exhaustion.
-For deterministic multi-rank training, generate a `Manifest` with the appropriate `required_fields`: invalid samples are removed before sharding, and replay raises if a required field has disappeared or no longer decodes instead of silently changing the frozen epoch.
+Samples are partitioned across workers and DDP ranks before decoding, so uneven missing data can make their yielded sample counts differ.
+Skipping does not replace samples or redistribute them between workers.
+Use the DDP `join()` pattern above when consuming the dataset to exhaustion.
 
 `RerunMapDataset` cannot skip a missing item without changing its stable index mapping, so its sample dictionary may contain `None` for an unresolved field.
 
@@ -222,28 +246,7 @@ For deterministic multi-rank training, generate a `Manifest` with the appropriat
 Each Rerun dataset automatically collects cumulative fetch and decode metrics across its `DataLoader` workers.
 Use the standard PyTorch `DataLoader` and read the report from the dataset when needed.
 
-```python
-from rerun.experimental.dataloader import RerunIterableDataset
-
-
-dataset = RerunIterableDataset(
-    source=source,
-    index="frame_index",
-    fields=fields,
-)
-loader = DataLoader(
-    dataset,
-    batch_size=8,
-    num_workers=4,
-    multiprocessing_context="spawn",
-)
-
-for batch in loader:
-    train_step(batch)
-
-if report_metrics:
-    print(dataset.metrics.summary())
-```
+snippet: howto/dataloader_performance[metrics]
 
 `summary()` returns a flat dictionary containing the available cumulative metrics.
 It is an aggregate of completed worker measurements.
@@ -266,7 +269,7 @@ Fetch wait measures only latency that background lookahead did not hide.
 The merge factor describes only the direct HTTP path; requests per sample combines direct and gRPC chunk fetches and is omitted when neither path issued a request.
 Fetched sample targets are counted when their fetch block completes, so shuffle buffers, DataLoader prefetching, skipped outputs, and early iterator termination do not bias the denominator.
 Video decode amplification counts actual codec output; contiguous block fetching should approach `1.0`, while uniformly sampled positions in a GOP of length 10 average approximately `5.5`.
-Skipped samples are counted once even when multiple fields are unresolved, and manifest replay does not increment the metric because it raises for missing required fields instead of skipping them.
+Skipped samples are counted once even when multiple fields are unresolved.
 
 ### Shuffling and fetch locality
 
@@ -296,14 +299,7 @@ Only `BlockShuffle` accepts a buffer, because it is the only strategy whose fetc
 With `SampleShuffle` the fetch order is already fully random, so re-shuffling it on emission would cost memory without any benefit.
 With `NoShuffle` the buffer would only jumble nearby samples, which typically means reordering within a single segment, nowhere near the cross-segment mixing training needs.
 
-```python
-ds = RerunIterableDataset(
-    source=source,
-    index="frame_index",
-    fields=fields,
-    shuffle_strategy=BlockShuffle(buffer_size=4096),
-)
-```
+snippet: howto/dataloader_performance[block_shuffle]
 
 ### Train
 
@@ -315,13 +311,11 @@ The full [LeRobot ACT example](https://github.com/rerun-io/rerun/tree/main/examp
 
 ## Limitations
 
-The module is **experimental**: expect breaking changes between releases as we iterate on the design.
-
-For large-scale training (hundreds of recordings, multi-node), consider [Rerun Hub](https://rerun.io), which offers a higher-performance backend than the OSS catalog.
+For large-scale training (hundreds of recordings, multi-node), consider [Rerun Hub](../hub.md), which offers a higher-performance backend than the OSS catalog. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ## References
 
 - [LeRobot ACT training example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader)
-- [`rerun.experimental.dataloader`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/experimental/dataloader) module source
+- [`rerun.experimental.dataloader`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/) API reference
 - [The data layer tax in robot learning](https://rerun.io/blog/data-layer-tax) (figures used in this guide)
 - [Export recordings to LeRobot datasets](lerobot_export.md) (inverse: Rerun → LeRobot dataset)

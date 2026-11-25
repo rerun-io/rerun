@@ -16,6 +16,7 @@ from ._send_dataframe import AUTO_INDEX, _AutoIndex
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from datetime import datetime, timedelta
+    from os import PathLike
     from pathlib import Path
     from types import TracebackType
 
@@ -473,9 +474,9 @@ class RecordingStream:
 
             See [`rerun.GrpcSink`][], [`rerun.GrpcServerSink`][], [`rerun.FileSink`][].
         default_blueprint:
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
 
         Example
@@ -516,9 +517,9 @@ class RecordingStream:
 
             The default is `rerun+http://127.0.0.1:9876/proxy`.
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
 
         """
@@ -548,9 +549,9 @@ class RecordingStream:
         path:
             The path to save the data to.
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
         write_footer:
             Whether to emit a complete RRD footer (including a manifest of every chunk) at the
@@ -585,9 +586,9 @@ class RecordingStream:
         Parameters
         ----------
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
         write_footer:
             Whether to emit a complete RRD footer (including a manifest of every chunk) at the
@@ -663,9 +664,9 @@ class RecordingStream:
         grpc_port:
             The port to serve the gRPC server on (defaults to 9876)
         default_blueprint:
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
         server_memory_limit:
             Maximum amount of memory to use for buffering log data for clients that connect late.
@@ -711,13 +712,13 @@ class RecordingStream:
         make_active:
             Immediately make this the active blueprint for the associated `app_id`.
             Note that setting this to `false` does not mean the blueprint may not still end
-            up becoming active. In particular, if `make_default` is true and there is no other
-            currently active blueprint.
+            up becoming active. In particular, if `make_default` is true and the user has not
+            edited the active blueprint.
         make_default:
             Make this the default blueprint for the `app_id`.
             The default blueprint will be used as the template when the user resets the
-            blueprint for the app. It will also become the active blueprint if no other
-            blueprint is currently active.
+            blueprint for the app. It also replaces the active blueprint, unless the user has
+            edited the active blueprint.
 
         """
 
@@ -755,9 +756,9 @@ class RecordingStream:
         detach_process:
             Detach Rerun Viewer process from the application process.
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
 
         """
@@ -1135,25 +1136,23 @@ class RecordingStream:
 
     def log_file_from_path(
         self,
-        file_path: str | Path,
+        file_path: str | PathLike[str] | Iterable[str | PathLike[str]],
         *,
         entity_path_prefix: str | None = None,
         static: bool = False,
     ) -> None:
         r"""
-        Logs the file at the given `path` using all `Importer`s available.
+        Import one or more local files using the available importers.
 
-        A single `path` might be handled by more than one importer.
-
-        This method blocks until either at least one `Importer` starts
-        streaming data in or all of them fail.
+        Pass multiple MCAP paths to import the files into this recording with their original timestamps.
+        For each path, the call waits until an importer starts streaming data or all importers fail.
 
         See <https://www.rerun.io/docs/logging-and-ingestion/import/open-any-file> for more information.
 
         Parameters
         ----------
         file_path:
-            Path to the file to be logged.
+            A path or an iterable of paths to the files to import.
 
         entity_path_prefix:
             What should the logged entity paths be prefixed with?

@@ -7,6 +7,9 @@ description: Align multi-rate sensor data and export it as a LeRobot dataset
 Convert Rerun data into the training dataset version of your choice.
 This guide demonstrates how to use the OSS Rerun server to query recordings, align multi-rate sensor data to a common timeline, and export the result as a [LeRobot](https://github.com/huggingface/lerobot) dataset.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../hub.md) ([how to switch](../hub.md#run-the-examples-on-hub)).
+
 ## Prerequisites
 
 The conversion code lives in the [`rerun-lerobot`](https://github.com/rerun-io/rerun-lerobot) package.
@@ -76,7 +79,7 @@ Note, `root` is where the dataset files will be written, and LeRobot requires th
 
 ### Export the episode
 
-Convert the filtered data into a LeRobot episode. This is the core transformation step.
+Convert the filtered data into a LeRobot episode.
 
 snippet: howto/lerobot_export[export_episode]
 

@@ -85,7 +85,7 @@ These paths are relative to `{workspace}`.
 - `crates/top/re_viewer/src/app/viewer_control/mod.rs` — what the viewer can be asked to do at all.
 - `crates/panels/re_agent_panel/src/preamble.rs` — what every panel session is told up front.
 - `skills/` — the skills the agent reads before answering.
-- `docs/content/` — the documentation it greps.
+- `docs/content/` — the source of the documentation it reads at <https://rerun.io/docs>.
 
 ## What to do
 
@@ -109,16 +109,22 @@ Disclose that you are an LLM in anything you file.\n"
 /// session under review.
 /// Both are named as readable directories and not only as the working directory, because a
 /// developer who set a working directory of their own in the agent settings keeps it: that
-/// setting wins over [`SessionContext::default_cwd`].
+/// setting wins over [`SessionContext::default_cwd`]. `rerun_mcp_server` lets it drive the viewer
+/// like the chat it reviews.
 ///
 /// Nothing is off-limits here. The chat this reviews is kept out of the source tree so that it
 /// answers like a released build would; the review exists to change that source tree.
-pub fn session_context(checkout: &Path, transcript_dir: &Path) -> SessionContext {
+pub fn session_context(
+    checkout: &Path,
+    transcript_dir: &Path,
+    rerun_mcp_server: Option<re_agent::McpStdioServer>,
+) -> SessionContext {
     SessionContext {
         agent_harness_preamble: Some(preamble(checkout)),
         additional_directories: vec![checkout.to_owned(), transcript_dir.to_owned()],
         default_cwd: Some(checkout.to_owned()),
         off_limits_directories: Vec::new(),
+        rerun_mcp_server,
         ..Default::default()
     }
 }
@@ -182,7 +188,7 @@ mod tests {
     fn the_reviewing_agent_may_edit_the_checkout_the_reviewed_one_was_kept_out_of() {
         let workspace = Path::new("/src/rerun");
         let transcripts = Path::new("/tmp/review");
-        let context = session_context(workspace, transcripts);
+        let context = session_context(workspace, transcripts, None);
 
         assert_eq!(context.default_cwd.as_deref(), Some(workspace));
         // Readable even when the developer's own working directory overrides `default_cwd`:
@@ -249,7 +255,7 @@ mod tests {
             Some(checkout.as_path())
         );
 
-        let context = session_context(&checkout, Path::new("/tmp/review"));
+        let context = session_context(&checkout, Path::new("/tmp/review"), None);
         assert_eq!(context.default_cwd.as_deref(), Some(checkout.as_path()));
         assert!(context.additional_directories.contains(&checkout));
         assert!(
@@ -272,7 +278,7 @@ mod tests {
 
         assert_eq!(rerun_checkout(dir.path()).as_deref(), Some(dir.path()));
 
-        let context = session_context(dir.path(), Path::new("/tmp/review"));
+        let context = session_context(dir.path(), Path::new("/tmp/review"), None);
         assert_eq!(context.default_cwd.as_deref(), Some(dir.path()));
     }
 

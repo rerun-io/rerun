@@ -267,6 +267,10 @@ fn set_hidden(item: &NSMenuItem, hidden: bool) {
     }
 }
 
+#[expect(
+    clippy::disallowed_fields,
+    reason = "Maps each raw modifier flag to its AppKit flag"
+)]
 fn key_equivalent(shortcut: KeyboardShortcut) -> (String, NSEventModifierFlags) {
     let key = match shortcut.logical_key {
         Key::ArrowUp => function_key(NSUpArrowFunctionKey),

@@ -317,6 +317,18 @@ mod tests {
     }
 
     #[test]
+    fn markdown_field_counts() {
+        assert_eq!(
+            lint_md("```rust\nstruct A(u32, String);\n```\n"),
+            vec!["2: positional_fields"]
+        );
+        assert_eq!(
+            lint_md("```rust\nenum E {\n    A { a: u8, b: u8, c: u8, d: u8, e: u8 },\n}\n```\n"),
+            vec!["3: variant_fields"]
+        );
+    }
+
+    #[test]
     fn markdown_markers() {
         let md = "```rust\ntodo!() // relint: allow(todo_message): example\nlet rt = tokio::runtime::Runtime::new();\n```\n";
         assert_eq!(

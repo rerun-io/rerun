@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 use std::{collections::BTreeSet, iter::repeat_n};
 
 use arrow::array::{
-    Array as _, ArrayData, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+    Array as ArrowArray, ArrayData, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
     MutableArrayData, PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch,
     RecordBatchOptions, make_array,
 };
@@ -84,8 +84,9 @@ const BULK_MIN_RUN: usize = 4;
 /// One step in the deferred-replay finalizer inside [`QueryHandle::next_n_rows_in_store`].
 ///
 /// Each output column accumulates a list of [`ColumnExtend`] entries during the
-/// row-resolution loop and replays them via `MutableArrayData` once the batch is
-/// fully sized, allowing single-row pushes to coalesce into long abutting runs.
+/// row-resolution loop and replays them once the batch is fully sized, by slicing
+/// each run out of its source and concatenating the slices, allowing single-row
+/// pushes to coalesce into long abutting runs.
 #[derive(Debug, Clone, Copy)]
 enum ColumnExtend {
     /// Append a contiguous row run by copying `rows` from one of the column's
@@ -110,8 +111,8 @@ enum ColumnExtend {
 /// Per-output-column emission state used by [`QueryHandle::next_n_rows_in_store`].
 ///
 /// `Source` columns accumulate [`ColumnExtend`] entries that reference shared
-/// source arrays (deduplicated by chunk pointer), then replay them through
-/// `MutableArrayData` once the batch is fully sized. `Time` columns push i64
+/// source arrays (deduplicated by chunk pointer), then replay them as a
+/// concatenation of slices once the batch is fully sized. `Time` columns push i64
 /// values + a validity mask directly.
 enum SelectedEmitter {
     Source {
@@ -122,7 +123,7 @@ enum SelectedEmitter {
         /// `source_bytes_per_row[i]` is the estimated bytes-per-row for `sources[i]`, computed
         /// as `get_array_memory_size() / len()` at registration time. Cheap (one
         /// division per distinct source per batch) and lets the walk amortize the byte
-        /// budget without inspecting `MutableArrayData` until freeze.
+        /// budget without materializing anything until the batch is finalized.
         source_bytes_per_row: Vec<usize>,
 
         extends: Vec<ColumnExtend>,
@@ -1706,8 +1707,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Append up to `max_rows` rows of data into freshly allocated per-column arrays.
     ///
     /// Throughput-oriented sibling of [`Self::next_row`]: shares the streaming-join machinery but
-    /// amortizes per-row allocation by batching `MutableArrayData` extends and only finalizing
-    /// to `ArrayRef` once per call.
+    /// amortizes per-row allocation by batching row runs per column and only concatenating
+    /// them into an `ArrayRef` once per call.
     ///
     /// The returned [`NextNRowsOutput::columns`] strictly follows the schema specified by
     /// [`Self::schema`], with `num_rows == 0` signalling exhaustion.
@@ -2058,19 +2059,44 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         }
                     } else {
                         re_tracing::profile_scope!("SelectedEmitter::Source slow-path");
-                        let src_refs: Vec<&ArrayData> = sources.iter().collect();
-                        let mut mutable = MutableArrayData::new(src_refs, true, num_rows);
 
-                        for ext in &extends {
-                            match ext {
+                        // Each extend is a zero-copy slice (or a null array); concatenation then
+                        // allocates exact-capacity buffers once and copies each run with one
+                        // memcpy, and only builds a validity bitmap if some piece has nulls.
+                        let pieces: Vec<ArrowArrayRef> = extends
+                            .iter()
+                            .map(|ext| match *ext {
                                 ColumnExtend::Range { source_idx, rows } => {
-                                    mutable.extend(*source_idx, rows.start, rows.end());
+                                    make_array(sources[source_idx].slice(rows.start, rows.len))
                                 }
-                                ColumnExtend::Nulls { len } => mutable.extend_nulls(*len),
+                                ColumnExtend::Nulls { len } => {
+                                    arrow::array::new_null_array(datatype, len)
+                                }
+                            })
+                            .collect();
+                        let piece_refs: Vec<&dyn ArrowArray> =
+                            pieces.iter().map(|piece| piece.as_ref()).collect();
+
+                        match re_arrow_util::concat_arrays(&piece_refs) {
+                            Ok(column) => columns.push(column),
+                            Err(err) => {
+                                // Only reachable if a source's datatype disagrees with the schema's.
+                                debug_panic!(
+                                    "failed to concatenate column pieces for {datatype:?}: {err}"
+                                );
+                                let src_refs: Vec<&ArrayData> = sources.iter().collect();
+                                let mut mutable = MutableArrayData::new(src_refs, true, num_rows);
+                                for ext in &extends {
+                                    match ext {
+                                        ColumnExtend::Range { source_idx, rows } => {
+                                            mutable.extend(*source_idx, rows.start, rows.end());
+                                        }
+                                        ColumnExtend::Nulls { len } => mutable.extend_nulls(*len),
+                                    }
+                                }
+                                columns.push(make_array(mutable.freeze()));
                             }
                         }
-
-                        columns.push(make_array(mutable.freeze()));
                     }
                 }
                 SelectedEmitter::Time { values, valid } => {

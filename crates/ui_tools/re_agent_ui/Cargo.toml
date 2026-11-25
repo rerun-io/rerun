@@ -26,6 +26,7 @@ testing = ["re_agent/testing"]
 
 [dependencies]
 re_agent.workspace = true
+re_agent_tools.workspace = true
 re_async.workspace = true
 re_error.workspace = true
 re_format.workspace = true

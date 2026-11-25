@@ -106,7 +106,6 @@ impl<T: Send + 'static, E: std::fmt::Debug + Send + 'static> RequestedObject<T, 
         egui_ctx: &egui::Context,
         fetch: impl FnOnce() -> F,
     ) where
-        T: std::fmt::Debug,
         F: std::future::Future<Output = Result<T, E>> + WasmNotSend + 'static,
     {
         if matches!(self, Self::NotYetRequested { .. }) {
@@ -119,7 +118,8 @@ impl<T: Send + 'static, E: std::fmt::Debug + Send + 'static> RequestedObject<T, 
             runtime.spawn_future(async move {
                 //TODO(#9836): implement cancellation using another channel (see `make_future_send`)
                 let result = fetch.await;
-                re_quota_channel::send_crossbeam(&tx, result).ok();
+                // This task is the only sender and the channel has room for its one result.
+                tx.try_send(result).ok();
                 egui_ctx.request_repaint();
             });
         }
@@ -134,7 +134,7 @@ impl<T: Send + 'static, E: std::fmt::Debug + Send + 'static> RequestedObject<T, 
     ) -> ServerValue<T, E>
     where
         F: std::future::Future<Output = Result<T, E>> + WasmNotSend + 'static,
-        T: std::fmt::Debug + Clone,
+        T: Clone,
         E: Clone,
     {
         self.request(runtime, egui_ctx, fetch);

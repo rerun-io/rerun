@@ -232,11 +232,5 @@ pub fn new_store_info(
 ) -> re_log_msg::StoreInfo {
     let store_id = StoreId::random(StoreKind::Recording, application_id.into());
 
-    re_log_msg::StoreInfo::new(
-        store_id,
-        re_log_msg::StoreSource::RustSdk {
-            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-        },
-    )
+    re_log_msg::StoreInfo::new(store_id, re_log_msg::StoreSource::RustSdk)
 }

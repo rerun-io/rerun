@@ -37,6 +37,10 @@ const RRD_APP_ID: &str = "test_app";
 const RRD_FILE_NAME: &str = "internal_catalog_test.rrd";
 const RBL_FILE_NAME: &str = "internal_catalog_test.rbl";
 
+/// What the blueprint dropdown in the top bar shows for the blueprint of [`test_blueprint`],
+/// which is registered without a name.
+const BLUEPRINT_DROPDOWN_LABEL: &str = "<unnamed>";
+
 fn test_blueprint() -> Blueprint {
     Blueprint::new(
         Spatial2DView::new("points")
@@ -388,14 +392,17 @@ async fn internal_catalog_load_rrd() {
                         .is_some()
                 },
             );
+
+            // The top bar only shows the blueprint dropdown once the dataset entry has arrived,
+            // which the viewer asks for after the recording is open and its dataset is listed.
+            viewer_test_utils::step_until("blueprint dropdown shown", &mut harness, |harness| {
+                harness.has_label_contains(BLUEPRINT_DROPDOWN_LABEL)
+            });
         }
 
         let loading_rrd_toast = format!("Loading {rrd_path:?}…");
         viewer_test_utils::step_until("loading toast gone", &mut harness, |harness| {
-            harness
-                .query_all_by_label_contains(&loading_rrd_toast)
-                .next()
-                .is_none()
+            !harness.has_label_contains(&loading_rrd_toast)
         });
 
         harness.set_time_panel_opened(false);

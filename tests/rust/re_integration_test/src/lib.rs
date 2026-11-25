@@ -47,10 +47,10 @@ impl TestServer {
             .expect("Can't create server");
 
         Self {
+            port,
             server_handle: Some(server_handle),
             runtime: re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
                 .expect("test runtime is running"),
-            port,
         }
     }
 

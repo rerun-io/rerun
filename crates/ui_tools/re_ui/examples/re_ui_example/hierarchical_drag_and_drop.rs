@@ -334,7 +334,10 @@ impl HierarchicalDragAndDrop {
         //
 
         if response.clicked() {
-            if ui.input(|i| i.modifiers.command) {
+            if ui.input(|i| {
+                i.modifiers
+                    .matches_logically(re_ui::SELECTION_TOGGLE_MODIFIER)
+            }) {
                 self.send_command(Command::ToggleSelected(item_id));
             } else {
                 self.send_command(Command::SetSelection(item_id));

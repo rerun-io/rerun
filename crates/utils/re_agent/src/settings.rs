@@ -6,22 +6,10 @@ use std::path::PathBuf;
 use agent_client_protocol_schema::v1::{
     SessionConfigId, SessionConfigOptionValue, SessionConfigValueId, SessionId,
 };
+use re_agent_tools::ModelPreselect;
 
-use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
+use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId, McpStdioServer};
 use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
-
-/// Fast models to select, best first, unless the user has picked a model for the profile.
-///
-/// The agent panel should feel fast, and flagship models are often too slow for that.
-pub static DEFAULT_MODEL_PREFERENCES: std::sync::LazyLock<Vec<crate::ModelPreference>> =
-    std::sync::LazyLock::new(|| {
-        vec![
-            crate::ModelPreference::new(&["sonnet"]), // Anthropic: Claude
-            crate::ModelPreference::new(&["terra"]),  // OpenAI: Codex
-            crate::ModelPreference::new(&["gemini", "flash"]), // Google: Gemini
-            crate::ModelPreference::new(&["gpt", "mini"]), // OpenAI: older GPT models
-        ]
-    });
 
 /// An MCP server the agent should connect to, spawned by the agent over stdio.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -62,6 +50,9 @@ impl McpServerConfig {
 /// Not persisted: it describes the host, not the user's choices.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SessionContext {
+    /// Which model the session selects before its first prompt.
+    pub model_preselect: ModelPreselect,
+
     /// Markdown sent to an agent harness together with its first prompt,
     /// e.g. "You are running inside the Rerun Viewer. …".
     ///
@@ -89,6 +80,14 @@ pub struct SessionContext {
     /// [`crate::TurnReport::off_limits_paths`] so that the host can tell whether the agent
     /// honored the request.
     pub off_limits_directories: Vec<PathBuf>,
+
+    /// The host's own MCP server, e.g. `rerun mcp` pointed at this viewer.
+    ///
+    /// An agent harness gets it before [`AgentSettings::mcp_servers`], unless
+    /// [`AgentSettings::rerun_mcp_enabled`] is off, and with `--catalog-read-only` when the user
+    /// took away the agent's catalog write access. Not a setting, since only the host knows how
+    /// to start it, e.g. on which port.
+    pub rerun_mcp_server: Option<McpStdioServer>,
 }
 
 /// A conversation with an agent harness, kept so that it can be continued after a restart.
@@ -131,8 +130,12 @@ pub struct AgentSettings {
     /// e.g. `CLAUDE_CONFIG_DIR=~/.claude-work` to pick a profile.
     pub env_vars: String,
 
-    /// MCP servers handed to the agent when a session starts.
+    /// The user's own MCP servers, handed to the agent when a session starts.
     pub mcp_servers: Vec<McpServerConfig>,
+
+    /// Whether to hand the agent the host's own MCP server, see
+    /// [`SessionContext::rerun_mcp_server`].
+    pub rerun_mcp_enabled: bool,
 
     /// Show the agent's reasoning in the transcript, not just its answers.
     pub show_thoughts: bool,
@@ -142,6 +145,11 @@ pub struct AgentSettings {
 
     /// The tools a model-API agent's provider runs for it on its own servers.
     pub model_api_hosted_tools: HostedTools,
+
+    /// What the agent may do with a catalog server.
+    ///
+    /// An agent harness reads this when its session starts, a model-API agent on every call.
+    pub catalog_access: re_agent_tools::CatalogAccess,
 
     /// What the user last picked in the chat footer, per agent profile.
     pub preferences: BTreeMap<AgentProfileId, AgentPreferences>,
@@ -329,22 +337,28 @@ impl AgentSettings {
         let api_key = self
             .api_key(provider)
             .ok_or_else(|| AgentLaunchError::missing_api_key(provider))?;
-        let model = self
-            .preferences(&self.profile_id)
-            .and_then(|preferences| preferences.model())
-            .map_or_else(
-                || provider.default_model().to_owned(),
-                |model| model.0.to_string(),
-            );
+        let (model, effort) = match context.model_preselect {
+            ModelPreselect::Previous => {
+                let preferences = self.preferences(&self.profile_id);
+                let model = preferences
+                    .and_then(|preferences| preferences.model())
+                    .map_or_else(
+                        || provider.default_model().to_owned(),
+                        |model| model.0.to_string(),
+                    );
+                let effort = preferences
+                    .and_then(|preferences| preferences.get("effort"))
+                    .and_then(SessionConfigOptionValue::as_value_id)
+                    .map(Effort::from);
+                (model, effort)
+            }
+            ModelPreselect::Category(category) => (provider.model(category).to_owned(), None),
+        };
         Ok(AgentLaunch::ModelApi(ModelApiConfig {
             provider,
             api_key,
             model,
-            effort: self
-                .preferences(&self.profile_id)
-                .and_then(|preferences| preferences.get("effort"))
-                .and_then(SessionConfigOptionValue::as_value_id)
-                .map(Effort::from),
+            effort,
             system_prompt: context.model_api_preamble.clone(),
             hosted_tools: self.model_api_hosted_tools,
             toolbox: None,
@@ -385,9 +399,11 @@ impl Default for AgentSettings {
             cwd: String::new(),
             env_vars: String::new(),
             mcp_servers: Vec::new(),
+            rerun_mcp_enabled: true,
             show_thoughts: true,
             log_protocol: false,
             model_api_hosted_tools: HostedTools::default(),
+            catalog_access: re_agent_tools::CatalogAccess::ReadWrite,
             preferences: BTreeMap::new(),
             share_redacted_prompts: false,
             setup_done: false,
@@ -410,6 +426,10 @@ mod tests {
             panic!("empty settings should deserialize");
         };
         assert!(!settings.share_redacted_prompts);
+        assert_eq!(
+            settings.catalog_access,
+            re_agent_tools::CatalogAccess::ReadWrite
+        );
         assert_eq!(settings.model_api_hosted_tools, HostedTools::default());
         assert!(settings.preferences.is_empty());
     }

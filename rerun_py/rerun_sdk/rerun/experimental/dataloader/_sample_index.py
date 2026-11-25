@@ -15,6 +15,8 @@ from ._config import FixedRateSampling, TimeAlignedSampling
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from rerun.experimental.spans import Curation
+
     from ._config import DataSource, Field
 
 IndexValue: TypeAlias = int | np.datetime64 | np.timedelta64
@@ -54,14 +56,14 @@ def _index_value_to_int(value: IndexValue) -> int:
 
 @dataclass(frozen=True)
 class SegmentMetadata:
-    """Per-segment metadata for sampling."""
+    """One contiguous eligible grid range within a segment."""
 
     segment_id: str
     index_start: int
     index_end: int
     num_samples: int
     index_min: int | None = None
-    """Untrimmed timeline minimum; preceding keyframes may lie before `index_start`."""
+    """Untrimmed recording minimum, or `None` when selected spans do not provide it."""
 
 
 class SampleIndex:
@@ -97,12 +99,14 @@ class SampleIndex:
         self._ns_per_sample = ns_per_sample
         self._ns_dtype = ns_dtype
 
+        if sum(s.num_samples for s in segments) > np.iinfo(np.int64).max:
+            raise OverflowError("The candidate sample count exceeds int64 capacity")
         seg_sizes = np.array([s.num_samples for s in segments], dtype=np.int64)
         self._cumulative_sizes = np.concatenate([[0], np.cumsum(seg_sizes)])
 
     @property
     def segments(self) -> list[SegmentMetadata]:
-        """Per-segment metadata list."""
+        """Eligible ranges; a segment may have several disjoint ranges."""
         return self._segments
 
     @property
@@ -227,6 +231,31 @@ class SampleIndex:
         """
         return _build(source, index, fields, timeline_sampling=timeline_sampling)
 
+    @staticmethod
+    def from_curation(
+        curation: Curation,
+        fields: dict[str, Field],
+        *,
+        timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
+    ) -> SampleIndex:
+        """
+        Derive candidates from selected inclusive intervals without reading training fields.
+
+        Intervals select anchor timestamps; field windows may read outside them.
+        Overlapping selections do not duplicate anchors.
+        """
+        curation = curation.materialize()
+        table = curation.to_arrow()
+        return _from_bounds(
+            segment_ids=table["segment_id"].to_pylist(),
+            starts=table["start"].cast(pa.int64()).to_pylist(),
+            ends=table["end"].cast(pa.int64()).to_pylist(),
+            index_type=curation.index_type,
+            fields=fields,
+            timeline_sampling=timeline_sampling,
+            trim_windows=False,
+        )
+
 
 def _ns_per_sample(rate_hz: float) -> int:
     return round(1e9 / rate_hz)
@@ -235,7 +264,7 @@ def _ns_per_sample(rate_hz: float) -> int:
 def _validate_timeline_sampling(
     timeline_sampling: TimeAlignedSampling | FixedRateSampling | None, sample_index: SampleIndex
 ) -> None:
-    """Require an explicit sampling mode to match the recorded sample grid."""
+    """Require an explicit sampling mode to match the index timeline and grid."""
     if timeline_sampling is None:
         return
     if isinstance(timeline_sampling, TimeAlignedSampling):
@@ -245,19 +274,9 @@ def _validate_timeline_sampling(
         if sample_index.ns_dtype is None or sample_index.ns_per_sample is None:
             raise ValueError("FixedRateSampling requires a timestamp or duration timeline")
         if _ns_per_sample(timeline_sampling.rate_hz) != sample_index.ns_per_sample:
-            raise ValueError("The sampling rate must match the manifest's recorded sample grid")
+            raise ValueError("The sampling rate must match the sample index's grid")
     else:
         raise TypeError("timeline_sampling must be TimeAlignedSampling, FixedRateSampling, or None")
-
-
-@dataclass(frozen=True)
-class _RangesCtx:
-    """Parameters shared across the per-segment build loop."""
-
-    fields: dict[str, Field]
-    ranges_table: pa.Table
-    start_col: str
-    end_col: str
 
 
 class EmptyTableError(Exception):
@@ -272,6 +291,9 @@ def _find_range_columns(column_names: list[str], index: str) -> tuple[str, str]:
     `start`/`min` (low end) or `end`/`max` (high end). Raises
     if either side is missing or ambiguous.
     """
+    exact = (f"{index}:start", f"{index}:end")
+    if all(name in column_names for name in exact):
+        return exact
     candidates = [n for n in column_names if n != "rerun_segment_id" and index in n]
 
     def pick(keywords: tuple[str, ...], side: str) -> str:
@@ -309,14 +331,27 @@ def _build(
     *,
     timeline_sampling: TimeAlignedSampling | FixedRateSampling | None,
 ) -> SampleIndex:
-    """Build a SampleIndex from a DataSource."""
-    dataset = source.dataset
+    """Build a SampleIndex from recording metadata or resolved curated intervals."""
+    if source.curation is not None:
+        from rerun.experimental.spans import Curation
 
-    if source.segments is not None and not source.segments:
+        curation, recording_minima = Curation._from_source(source._selection(), index=index, spans=source.curation)
+        table = curation.to_arrow()
+        return _from_bounds(
+            segment_ids=table["segment_id"].to_pylist(),
+            starts=table["start"].cast(pa.int64()).to_pylist(),
+            ends=table["end"].cast(pa.int64()).to_pylist(),
+            index_type=curation.index_type,
+            fields=fields,
+            timeline_sampling=timeline_sampling,
+            recording_minima=recording_minima,
+            trim_windows=False,
+        )
+
+    if source.segments == []:
         return SampleIndex([])
 
-    ranges_source = dataset if source.segments is None else dataset.filter_segments(source.segments)
-    ranges_df = ranges_source.get_index_ranges()
+    ranges_df = source._selection().get_index_ranges()
     try:
         start_col, end_col = _find_range_columns(ranges_df.schema().names, index)
     except EmptyTableError:
@@ -326,109 +361,96 @@ def _build(
     with tracing_scope("ranges_df.to_arrow_table"):
         # The lazy server query and deterministic sort run during materialization.
         ranges_table = ranges_df.to_arrow_table()
-    ctx = _RangesCtx(
+    segment_ids = ranges_table["rerun_segment_id"].to_pylist()
+    starts = ranges_table[start_col].cast(pa.int64()).to_pylist()
+    return _from_bounds(
+        segment_ids=segment_ids,
+        starts=starts,
+        ends=ranges_table[end_col].cast(pa.int64()).to_pylist(),
+        index_type=ranges_table.schema.field(start_col).type,
         fields=fields,
-        ranges_table=ranges_table,
-        start_col=start_col,
-        end_col=end_col,
+        timeline_sampling=timeline_sampling,
+        recording_minima=dict(zip(segment_ids, starts, strict=True)),
     )
 
-    start_type = ranges_table.schema.field(start_col).type
-    is_timestamp = pa.types.is_timestamp(start_type)
-    is_duration = pa.types.is_duration(start_type)
 
+def _from_bounds(
+    *,
+    segment_ids: list[str],
+    starts: list[int | None],
+    ends: list[int | None],
+    index_type: pa.DataType,
+    fields: dict[str, Field],
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None,
+    recording_minima: dict[str, int | None] | None = None,
+    trim_windows: bool = True,
+) -> SampleIndex:
+    is_timestamp = pa.types.is_timestamp(index_type)
+    is_duration = pa.types.is_duration(index_type)
     if is_timestamp or is_duration:
-        kind = "timestamp" if is_timestamp else "duration"
-        if timeline_sampling is None:
-            raise TypeError(
-                f"Index {index!r} is a {kind} timeline; pass timeline_sampling=FixedRateSampling(rate_hz=…)"
-            )
+        if index_type.unit != "ns":
+            raise ValueError("Temporal sampling requires nanosecond timeline bounds")
         if isinstance(timeline_sampling, TimeAlignedSampling):
             raise ValueError("TimeAlignedSampling requires an integer timeline")
         if not isinstance(timeline_sampling, FixedRateSampling):
-            raise TypeError("timeline_sampling must be TimeAlignedSampling, FixedRateSampling, or None")
+            kind = "timestamp" if is_timestamp else "duration"
+            raise TypeError(f"A {kind} timeline requires timeline_sampling=FixedRateSampling(rate_hz=…)")
+        step = _ns_per_sample(timeline_sampling.rate_hz)
         ns_dtype = "datetime64[ns]" if is_timestamp else "timedelta64[ns]"
-        return _build_fixed_rate(ctx, _ns_per_sample(timeline_sampling.rate_hz), ns_dtype=ns_dtype)
+        trim_start, trim_end = _window_trims_ns(fields)
+    else:
+        if index_type != pa.int64():
+            raise ValueError(f"Unsupported timeline type {index_type}")
+        if isinstance(timeline_sampling, FixedRateSampling):
+            raise ValueError("FixedRateSampling requires a timestamp or duration timeline")
+        step = 1
+        ns_dtype = None
+        trim_start = 0
+        trim_end = 0
+        for field in fields.values():
+            if field.window is not None:
+                if any(int(offset) != offset for offset in field.window):
+                    raise ValueError(f"Integer timelines require integral window offsets, got {field.window!r}")
+                trim_start = max(trim_start, -int(min(field.window)))
+                trim_end = max(trim_end, int(max(field.window)))
 
-    sample_index = _build_integer(ctx)
+    eligible: list[tuple[str, int, int]] = []
+    for segment_id, start, end in zip(segment_ids, starts, ends, strict=True):
+        if start is None or end is None:
+            continue
+        lo, hi = start, end
+        if trim_windows:
+            lo += trim_start
+            hi -= trim_end
+        else:
+            lo = -(-lo // step) * step
+        hi = lo + ((hi - lo) // step) * step
+        if lo <= hi:
+            if not trim_windows:
+                if lo - trim_start <= -(1 << 63) or hi + trim_end >= 1 << 63:
+                    raise ValueError("Curated field windows must fit within the valid 64-bit timeline")
+            eligible.append((segment_id, lo, hi))
+
+    merged: list[tuple[str, int, int]] = []
+    for segment_id, lo, hi in sorted(eligible):
+        if merged and merged[-1][0] == segment_id and lo <= merged[-1][2] + step:
+            previous = merged[-1]
+            merged[-1] = (segment_id, previous[1], max(previous[2], hi))
+        else:
+            merged.append((segment_id, lo, hi))
+    sample_index = SampleIndex(
+        [
+            SegmentMetadata(
+                segment_id,
+                lo,
+                hi,
+                (hi - lo) // step + 1,
+                index_min=recording_minima.get(segment_id) if recording_minima is not None else None,
+            )
+            for segment_id, lo, hi in merged
+        ],
+        ns_per_sample=step if ns_dtype is not None else None,
+        ns_dtype=ns_dtype,
+    )
     _validate_timeline_sampling(timeline_sampling, sample_index)
     return sample_index
-
-
-def _build_integer(ctx: _RangesCtx) -> SampleIndex:
-    """Build SampleIndex for integer-indexed data."""
-    min_window_start = 0
-    max_window_end = 0
-    for field in ctx.fields.values():
-        if field.window is not None:
-            if any(int(offset) != offset for offset in field.window):
-                raise ValueError(f"Integer timelines require integral window offsets, got {field.window!r}")
-            min_window_start = min(min_window_start, int(min(field.window)))
-            max_window_end = max(max_window_end, int(max(field.window)))
-
-    seg_col = ctx.ranges_table.column("rerun_segment_id").to_pylist()
-    min_vals = ctx.ranges_table.column(ctx.start_col).to_pylist()
-    max_vals = ctx.ranges_table.column(ctx.end_col).to_pylist()
-
-    segments: list[SegmentMetadata] = []
-    for seg_id, seg_min, seg_max in zip(seg_col, min_vals, max_vals, strict=False):
-        if seg_min is None or seg_max is None:
-            continue
-        effective_min = int(seg_min) - min_window_start
-        effective_max = int(seg_max) - max_window_end
-        if effective_min > effective_max:
-            continue
-
-        num_samples = effective_max - effective_min + 1
-        segments.append(
-            SegmentMetadata(
-                segment_id=seg_id,
-                index_start=effective_min,
-                index_end=effective_max,
-                num_samples=num_samples,
-                index_min=int(seg_min),
-            )
-        )
-
-    return SampleIndex(segments, ns_per_sample=None, ns_dtype=None)
-
-
-def _build_fixed_rate(ctx: _RangesCtx, ns_per_sample: int, *, ns_dtype: str) -> SampleIndex:
-    """
-    Build SampleIndex for a timestamp or duration timeline sampled at a fixed rate.
-
-    With a user-provided rate we compute `num_samples` and draw
-    sample timestamps algebraically on a grid -- no server query for
-    distinct timestamps. Any drift between grid and real timestamps
-    is absorbed by `fill_latest_at` on the server.
-    """
-    seg_col = ctx.ranges_table.column("rerun_segment_id").to_pylist()
-    # Cast through the underlying ns integer so the math below works
-    # for both timestamp("ns") and duration("ns") columns.
-    min_vals = ctx.ranges_table.column(ctx.start_col).to_numpy().astype("int64")
-    max_vals = ctx.ranges_table.column(ctx.end_col).to_numpy().astype("int64")
-
-    trim_start_ns, trim_end_ns = _window_trims_ns(ctx.fields)
-
-    segments: list[SegmentMetadata] = []
-    for seg_id, seg_min, seg_max in zip(seg_col, min_vals, max_vals, strict=False):
-        if seg_min is None:
-            continue
-        lo = int(seg_min) + trim_start_ns
-        hi = int(seg_max) - trim_end_ns
-        if lo > hi:
-            continue
-        n = (hi - lo) // ns_per_sample + 1
-        if n <= 0:
-            continue
-        segments.append(
-            SegmentMetadata(
-                segment_id=seg_id,
-                index_start=lo,
-                index_end=lo + (n - 1) * ns_per_sample,
-                num_samples=int(n),
-                index_min=int(seg_min),
-            )
-        )
-
-    return SampleIndex(segments, ns_per_sample=ns_per_sample, ns_dtype=ns_dtype)

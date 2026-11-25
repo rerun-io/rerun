@@ -52,7 +52,9 @@ pub use view_query::{
     DataResult, RecommendedMappings, ViewQuery, VisualizerComponentMappings,
     VisualizerComponentSource, VisualizerInstruction, VisualizerInstructionsPerType,
 };
-pub use view_states::{ActivePreview, PreviewState, ViewStates};
+pub use view_states::{
+    ALL_PREVIEWS_MODIFIER, ActivePreview, PreviewState, ScrubAllState, ViewStates,
+};
 pub use visualizability_constraints::{
     BufferAndFormatConstraint, SingleRequiredComponentConstraint, VisualizabilityConstraints,
 };

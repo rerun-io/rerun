@@ -271,6 +271,29 @@ impl RawRrdManifest {
         })
     }
 
+    /// Returns this manifest with only the chunks in `rows`.
+    ///
+    /// The result keeps the full Sorbet schema and all data columns, so it is a valid manifest
+    /// on its own, and [`Self::merge`] of consecutive slices gives back the original rows.
+    ///
+    /// # Panics
+    /// Panics if `rows` extends past the last row, like [`RecordBatch::slice`].
+    pub fn row_slice(&self, rows: re_span::Span<usize>) -> Self {
+        let Self {
+            store_id,
+            sorbet_schema,
+            sorbet_schema_sha256,
+            data,
+        } = self;
+
+        Self {
+            store_id: store_id.clone(),
+            sorbet_schema: sorbet_schema.clone(),
+            sorbet_schema_sha256: *sorbet_schema_sha256,
+            data: data.slice(rows.start, rows.len),
+        }
+    }
+
     /// Returns this manifest without the chunks logged under `__properties`.
     ///
     /// An asset joins the store of the segment that references it, where its own recording
@@ -747,7 +770,7 @@ impl RawRrdManifest {
     const INDEX_NAME_STATIC: &str = "rerun:static";
 
     /// The Segment Manifest's `rerun:index` value of the static-data pseudo-index.
-    const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
+    pub const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
 
     /// Index marker of the column holding the lower bound of an index range.
     pub const INDEX_MARKER_START: &str = "start";

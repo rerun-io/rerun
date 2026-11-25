@@ -41,7 +41,7 @@ If you're new to Rerun or wonder about differences to RViz, we recommend also to
 
 ## Install and run the example
 
-All steps that are required to install and run this example are explained in the example's description, which can be found [here](https://rerun.io/examples/robotics/ros_node) or in the [README.md](https://github.com/rerun-io/rerun/tree/main/examples/python/ros_node) of the example's source code.
+All steps that are required to install and run this example are explained in the [README.md](https://github.com/rerun-io/rerun/tree/main/examples/python/ros_node) of the example's source code.
 
 ## Code explanation
 
@@ -79,7 +79,7 @@ again.
 
 Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/Intermediate/About-Tf2.html) transforms to the corresponding Rerun archetype.
 
-Since Rerun 0.28, the [`Transform3D`](../../reference/types/archetypes/transform3d.md) archetype supports parent/child frame relationships, which makes our conversion step straight-forward. We just have to remember that the ROS [TFMessage](https://docs.ros2.org/foxy/api/tf2_msgs/msg/TFMessage.html) is a container for multiple transforms that have individual timestamps each and set the time accordingly.
+The [`Transform3D`](../../reference/types/archetypes/transform3d.md) archetype supports parent/child frame relationships, which makes our conversion step straight-forward. We just have to remember that the ROS [TFMessage](https://docs.ros2.org/foxy/api/tf2_msgs/msg/TFMessage.html) is a container for multiple transforms that have individual timestamps each and set the time accordingly.
 By specifying the parent and child frames, we can log all transforms to the same entity path, similar to the TF topic in ROS.
 
 To make sense of these transforms in the rest of our logged data, we also have to associate them to their respective frame name using [`CoordinateFrame`](../../reference/types/archetypes/coordinate_frame.md)s.
@@ -242,12 +242,8 @@ Although there is a non-trivial amount of code, none of it is overly complicated
 operates independently of the others, processing an incoming message, adapting it to Rerun and then
 logging it again.
 
-There are several places where Rerun is currently missing support for primitives that will further
-simplify this implementation. We will continue to update this guide as new functionality becomes
-available.
-
-While this guide has only covered a small fraction of the possible ROS messages that could
-be sent to Rerun, hopefully, it has given you some tools to apply to your project.
+This guide covers a small fraction of the ROS messages that can be sent to Rerun.
+The same pattern of one callback per message type applies to the others.
 
 If you find that specific functionality is lacking for your use case, please provide more
 context in the existing issues or [open a new one](https://github.com/rerun-io/rerun/issues/new/choose) on GitHub.

@@ -100,7 +100,7 @@ Pan and zoom changes are saved to the blueprint, and the view supports explicit 
 
 ### State timeline hover duration
 
-[State timeline](../viewer/plots-and-maps/state-timeline.md) hovers now show a human-readable Length.
+[State timeline](../viewer/view-types/state-timeline.md) hovers now show a human-readable Length.
 
 <picture>
   <img src="https://static.rerun.io/state-hover/d9799638a7e5fc701298caa1357f609107a8cfd1/full.png" alt="State timeline hover tooltip for an open state, listing Start +14s, Stop +19s, and Length 5s">
@@ -111,7 +111,7 @@ Pan and zoom changes are saved to the blueprint, and the view supports explicit 
 The notebook Viewer now works in [marimo](https://marimo.io/) notebooks: `rr.notebook_show()`, `Viewer.display()`, and a `Viewer` or blueprint as the last expression of a cell all show an embedded Viewer.
 marimo delivers messages from the Viewer only between cells, so to stream data live, create the Viewer in one cell and log to it from a later one.
 
-[Embed Rerun in notebooks](../integrations/embed-notebooks.md#running-in-marimo)
+[Embed Rerun in notebooks](../viewer/integrations/embed-notebooks.md#running-in-marimo)
 [marimo example notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py)
 
 ### New table blueprints with Python table API
@@ -168,7 +168,7 @@ client.get_table("my_table").register_blueprint(path.as_uri())
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/1200w.png">
 </picture>
 
-There's also a new doc page: [Configure table layouts and segment previews](../viewer/blueprints-and-views/configure-table-blueprints.md) for the full workflow, including dataset and remote storage.
+There's also a new doc page: [Configure table layouts and segment previews](../viewer/blueprints/configure-table-blueprints.md) for the full workflow, including dataset and remote storage.
 The existing [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints) has of course been updated as well.
 
 ### Improved table column settings, with search, display mode and bulk hide/show
@@ -188,7 +188,7 @@ Previews in the table and card views now have a new UI, which comes with more ti
     <source src="https://static.rerun.io/631ab9ba8c128590d45532693db3f32d7f2510b3_new-preview-controls.mp4" type="video/mp4" />
 </video>
 
-[Configure table layouts and previews](../viewer/blueprints-and-views/configure-table-blueprints.md)
+[Configure table layouts and previews](../viewer/blueprints/configure-table-blueprints.md)
 
 ### Assets can specify what segments they apply to
 

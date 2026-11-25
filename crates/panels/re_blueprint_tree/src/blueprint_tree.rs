@@ -6,14 +6,13 @@ use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
 use re_ui::drag_and_drop::DropTarget;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    ContextExt as _, DesignTokens, OnResponseExt as _, UiExt as _, filter_widget, list_item,
-};
+use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DataResultInteractionAddress, DragAndDropFeedback,
-    DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, RecordingCommandKind,
-    SystemCommand, SystemCommandSender as _, ViewId, ViewStates, ViewerContext,
-    ViewerReportSeverity, VisitorControlFlow, VisualizerViewReport, icon_for_container_kind,
+    DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, RecordingCommand,
+    RecordingCommandKind, SystemCommand, SystemCommandSender as _, ViewId, ViewStates,
+    ViewerContext, ViewerReportSeverity, VisitorControlFlow, VisualizerViewReport,
+    icon_for_container_kind, reset_blueprint_disabled_reason,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use smallvec::SmallVec;
@@ -91,22 +90,21 @@ impl BlueprintTree {
             let title_response =
                 self.filter_state
                     .section_title_ui_with_buttons(ui, "Blueprint", |ui| {
-                        ui.add(
-                            ui.small_icon_button_widget(
-                                &re_ui::icons::MORE,
-                                "Open menu with more options",
-                            )
-                            .on_hover_text("Open menu with more options")
-                            .on_menu(|ui| {
-                                let recording_id = ctx.store_context.recording_store_id();
-                                RecordingCommandKind::OpenAddViewOrContainerDialog.menu_button_ui(
-                                    ui,
-                                    Some(recording_id),
-                                    ctx.command_sender(),
-                                );
-                                set_blueprint_to_default_menu_buttons(ctx, ui);
-                                set_blueprint_to_auto_menu_button(ctx, ui);
-                            }),
+                        // The buttons are laid out right to left.
+                        recording_command_icon_button_ui(
+                            ctx,
+                            ui,
+                            RecordingCommandKind::ResetBlueprint,
+                            reset_blueprint_disabled_reason(
+                                ctx.store_context.blueprint,
+                                ctx.store_bundle(),
+                            ),
+                        );
+                        recording_command_icon_button_ui(
+                            ctx,
+                            ui,
+                            RecordingCommandKind::OpenAddViewOrContainerDialog,
+                            None,
                         );
                     });
 
@@ -752,7 +750,7 @@ impl BlueprintTree {
 
         let modifiers = ctx.egui_ctx().input(|i| i.modifiers);
 
-        if modifiers.shift {
+        if modifiers.contains(re_ui::SELECTION_RANGE_MODIFIER) {
             if let Some(anchor_item) = &self.range_selection_anchor_item {
                 let items_in_range = Self::items_in_range(
                     ctx,
@@ -778,7 +776,7 @@ impl BlueprintTree {
                         }),
                     );
 
-                    if modifiers.command {
+                    if modifiers.matches_logically(re_ui::SELECTION_TOGGLE_MODIFIER) {
                         // We extend into the current selection to append new items at the end.
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);
@@ -1242,55 +1240,18 @@ impl BlueprintTree {
 
 // ----------------------------------------------------------------------------
 
-fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    let default_blueprint_id = ctx
-        .store_hub()
-        .default_blueprint_id_for_app(ctx.store_context.application_id());
-
-    let default_blueprint = default_blueprint_id.and_then(|id| ctx.store_bundle().get(id));
-
-    let disabled_reason = match default_blueprint {
-        None => Some("No default blueprint is set for this app"),
-        Some(default_blueprint) => {
-            let active_is_clone_of_default =
-                Some(default_blueprint.store_id()) == ctx.store_context.blueprint.cloned_from();
-            let last_modified_at_the_same_time =
-                default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
-            if active_is_clone_of_default && last_modified_at_the_same_time {
-                Some("No modifications have been made")
-            } else {
-                None // it is valid to reset to default
-            }
-        }
-    };
-
-    let recording_id = disabled_reason
-        .is_none()
-        .then(|| ctx.store_context.recording_store_id());
-    let response = RecordingCommandKind::ResetBlueprintToDefault.menu_button_ui(
-        ui,
-        recording_id,
-        ctx.command_sender(),
-    );
-
-    if let Some(disabled_reason) = disabled_reason {
-        response.on_disabled_hover_text(disabled_reason);
+/// Show a [`RecordingCommandKind`] as a small icon button acting on the active recording.
+fn recording_command_icon_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    kind: RecordingCommandKind,
+    disabled_reason: Option<&str>,
+) {
+    RecordingCommand {
+        recording_id: ctx.store_context.recording_store_id().clone(),
+        kind,
     }
-}
-
-fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    // This is always enabled: figuring out when resetting to heuristic blueprint is not changing
-    // anything is actually quite hard. There's a wide variety of things to consider that aren't
-    // easily caught:
-    // * does running view-generation/layout-generation change anything?
-    //    * these heuristics run incrementally, does rerunning them in bulk change anything?
-    // * any changes in overrides/defaults/view-property means that a reset would change something
-    let recording_id = ctx.store_context.recording_store_id();
-    RecordingCommandKind::ResetBlueprintToHeuristic.menu_button_ui(
-        ui,
-        Some(recording_id),
-        ctx.command_sender(),
-    );
+    .icon_button_ui(ui, disabled_reason, ctx.command_sender());
 }
 
 /// List all views that have the provided entity as data result.

@@ -309,6 +309,177 @@ impl AppCore {
         }
     }
 
+    /// Makes a blueprint of a catalog dataset the active blueprint of `application_id`.
+    ///
+    /// The blueprint becomes active right away if the viewer has all of it. Otherwise it is
+    /// streamed from the server, and becomes active once its stream ends, if the user hasn't
+    /// picked or reset another blueprint of the app by then. The cached copy of the blueprint
+    /// becomes active if there is one, and otherwise a new clone of it.
+    pub(super) fn activate_dataset_blueprint(
+        &mut self,
+        store_hub: &mut StoreHub,
+        application_id: &re_log_types::ApplicationId,
+        origin: re_uri::Origin,
+        blueprint_dataset: EntryId,
+        blueprint_segment: SegmentId,
+    ) {
+        let blueprint = ServerBlueprint {
+            blueprint_id: re_redap_client::blueprint_store_id_for_segment(
+                application_id.clone(),
+                &blueprint_segment,
+            ),
+            origin,
+            blueprint_dataset,
+            blueprint_segment,
+        };
+
+        let has_all_of_blueprint = store_hub.entity_db(&blueprint.blueprint_id).is_some()
+            && self
+                .latest_blueprint_streams
+                .get(&blueprint.blueprint_id)
+                .is_some_and(|stream| stream.is_complete);
+        if !self.is_blueprint_streaming(&blueprint) && has_all_of_blueprint {
+            self.activate_blueprint(store_hub, &blueprint.blueprint_id);
+            return;
+        }
+
+        self.blueprints_to_activate
+            .insert(application_id.clone(), blueprint.blueprint_id.clone());
+        self.stream_server_blueprint(blueprint);
+    }
+
+    /// Makes `blueprint_id` the active blueprint of its app, for a
+    /// [`re_log_msg::BlueprintActivationCommand`] received from `channel_source`.
+    ///
+    /// A blueprint streamed from a catalog server only becomes active if it is the one in
+    /// [`Self::blueprints_to_activate`] for its app. Otherwise the active blueprint stays the
+    /// same. The command is the last message of such a stream, and the viewer stops receiving
+    /// from `channel_source`.
+    ///
+    /// A blueprint from any other source always becomes active, and the entry of its app in
+    /// [`Self::blueprints_to_activate`] is removed.
+    pub(super) fn activate_received_blueprint(
+        &mut self,
+        store_hub: &mut StoreHub,
+        channel_source: &LogSource,
+        blueprint_id: &StoreId,
+    ) {
+        let app_id = blueprint_id.application_id();
+
+        if matches!(channel_source, LogSource::RedapGrpcStream { .. }) {
+            self.rx_log.remove(channel_source);
+
+            if self.blueprints_to_activate.get(app_id) != Some(blueprint_id) {
+                return;
+            }
+        }
+
+        self.activate_blueprint(store_hub, blueprint_id);
+    }
+
+    /// Makes `blueprint_id` the active blueprint of its app right away.
+    ///
+    /// Removes the entry of its app in [`Self::blueprints_to_activate`].
+    fn activate_blueprint(&mut self, store_hub: &mut StoreHub, blueprint_id: &StoreId) {
+        self.blueprints_to_activate
+            .remove(blueprint_id.application_id());
+        if let Err(err) = store_hub.activate_blueprint(blueprint_id) {
+            re_log::warn!("Failed to make blueprint active: {err}");
+        }
+    }
+
+    /// Removes the entry in [`Self::blueprints_to_activate`] of the app of the current route.
+    ///
+    /// The active blueprint of that app then stays as it is once the stream of its picked
+    /// blueprint ends.
+    pub(super) fn remove_blueprint_to_activate_for_current_app(&mut self) {
+        if let Some(app_id) = self.navigation.routes.current().app_id() {
+            self.blueprints_to_activate.remove(app_id);
+        }
+    }
+
+    /// Removes the entry in [`Self::blueprints_to_activate`] of the blueprint streamed from
+    /// `channel_source`, once that stream has ended.
+    ///
+    /// A stream that ends with a [`re_log_msg::BlueprintActivationCommand`] has already removed
+    /// its entry, so this only removes the entry of a stream that failed or ended early.
+    pub(super) fn remove_blueprint_to_activate_for_ended_stream(
+        &mut self,
+        channel_source: &LogSource,
+    ) {
+        let LogSource::RedapGrpcStream { uri, .. } = channel_source else {
+            return;
+        };
+        let Some(segment) = &uri.segment_id else {
+            return;
+        };
+        self.blueprints_to_activate.retain(|app_id, blueprint_id| {
+            *blueprint_id
+                != re_redap_client::blueprint_store_id_for_segment(app_id.clone(), segment)
+        });
+    }
+
+    /// Whether the viewer is streaming `blueprint` from its own segment of the blueprint dataset.
+    fn is_blueprint_streaming(&self, blueprint: &ServerBlueprint) -> bool {
+        let ServerBlueprint {
+            blueprint_id: _,
+            origin,
+            blueprint_dataset,
+            blueprint_segment,
+        } = blueprint;
+
+        self.rx_log.sources().iter().any(|source| {
+            matches!(
+                source.as_ref(),
+                LogSource::RedapGrpcStream { uri, .. }
+                    if uri.origin == *origin
+                        && EntryId::from(uri.dataset_id) == *blueprint_dataset
+                        && uri.resource == re_uri::DatasetResource::Segments
+                        && uri.segment_id.as_ref() == Some(blueprint_segment)
+            )
+        })
+    }
+
+    /// Streams `blueprint` from its server, unless the viewer is already streaming it.
+    fn stream_server_blueprint(&mut self, blueprint: ServerBlueprint) {
+        if self.is_blueprint_streaming(&blueprint) {
+            return;
+        }
+
+        let ServerBlueprint {
+            blueprint_id,
+            origin,
+            blueprint_dataset,
+            blueprint_segment,
+        } = blueprint;
+        let (tx, rx) = re_redap_client::blueprint_log_channel(
+            origin.clone(),
+            blueprint_dataset,
+            &blueprint_segment,
+        );
+
+        let connection = self.connections.registry.connection_handle(origin);
+        self.async_runtime.spawn_future(async move {
+            let result = async {
+                let client = connection.client().await?;
+                re_redap_client::stream_active_blueprint_segment_from_server(
+                    client,
+                    tx,
+                    blueprint_id,
+                    blueprint_dataset,
+                    blueprint_segment,
+                )
+                .await
+            }
+            .await;
+
+            if let Err(err) = result {
+                re_log::warn!("Failed to stream blueprint: {err}");
+            }
+        });
+        self.add_log_receiver(rx);
+    }
+
     /// Streams every segment of a dataset that the viewer already has again.
     ///
     /// Segments keep their store id, so the route, blueprint and time cursor survive. Their data is
@@ -669,6 +840,18 @@ async fn read_rrd_metadata(reader: &impl re_async::AsyncReadAt) -> anyhow::Resul
     } else {
         Ok(re_log_encoding::enumerate_legacy_metadata(reader).await?)
     }
+}
+
+/// A blueprint registered for a catalog dataset, and the store it streams into.
+struct ServerBlueprint {
+    blueprint_id: StoreId,
+    origin: re_uri::Origin,
+
+    /// The dataset that holds the blueprints of the catalog dataset.
+    blueprint_dataset: EntryId,
+
+    /// The segment of `blueprint_dataset` that holds the blueprint.
+    blueprint_segment: SegmentId,
 }
 
 /// Depending on the content of the file, we want to navigate to different parts of the catalog.

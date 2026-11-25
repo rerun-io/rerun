@@ -28,7 +28,6 @@ if TYPE_CHECKING:
         NumericDecoder,
         VideoFrameDecoder,
     )
-    from .manifest._manifest import Manifest
 
 __all__ = [
     "BlockShuffle",
@@ -41,7 +40,6 @@ __all__ = [
     "FixedRateSampling",
     "ImageDecoder",
     "IndexValue",
-    "Manifest",
     "NoShuffle",
     "NumericDecoder",
     "PooledBatchCollator",
@@ -75,7 +73,6 @@ _LAZY_SUBMODULES = {
     "Yuv420Frame": "._yuv",
     "RerunIterableDataset": "._iterable_dataset",
     "RerunMapDataset": "._map_dataset",
-    "Manifest": ".manifest._manifest",
 }
 
 

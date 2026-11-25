@@ -19,7 +19,7 @@ Float32
 
 ## API reference links
  * 🌊 [C++ API docs for `OpticalDensity`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1OpticalDensity.html)
- * 🐍 [Python API docs for `OpticalDensity`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.OpticalDensity)
+ * 🐍 [Python API docs for `OpticalDensity`](https://ref.rerun.io/docs/python/stable/components#rerun.components.OpticalDensity)
  * 🦀 [Rust API docs for `OpticalDensity`](https://docs.rs/rerun/latest/rerun/components/struct.OpticalDensity.html)
 
 

@@ -25,6 +25,7 @@ default = []
 testing = []
 
 [dependencies]
+re_agent_tools.workspace = true
 re_async.workspace = true
 re_error.workspace = true
 re_log.workspace = true
@@ -47,7 +48,7 @@ http.workspace = true
 rig-core = { workspace = true, features = ["test-utils"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-agent-client-protocol.workspace = true
+agent-client-protocol = { workspace = true, features = ["process"] }
 crossbeam.workspace = true
 rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true

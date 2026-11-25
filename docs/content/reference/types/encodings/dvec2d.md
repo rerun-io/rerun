@@ -13,7 +13,7 @@ FixedSizeList(2 x non-null Float64)
 
 ## API reference links
  * 🌊 [C++ API docs for `DVec2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1DVec2D.html)
- * 🐍 [Python API docs for `DVec2D`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.DVec2D)
+ * 🐍 [Python API docs for `DVec2D`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.DVec2D)
  * 🦀 [Rust API docs for `DVec2D`](https://docs.rs/rerun/latest/rerun/encodings/struct.DVec2D.html)
 
 

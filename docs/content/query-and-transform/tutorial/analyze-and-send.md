@@ -6,6 +6,9 @@ description: Compute a signal from exported dataframe data and send it back to t
 
 In the previous sections, we explored our data and exported it to a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and send it back to the viewer.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 ## Analyze the data
 
 We already identified that thresholding the `jawOpen` signal at 0.15 is all we need to produce a binary "jaw open state" signal.

@@ -75,21 +75,27 @@ pub struct Dataset {
 }
 
 impl Dataset {
+    /// An empty dataset, created at `created_at` and last modified at `updated_at`.
     pub fn new(
         id: EntryId,
         name: EntryName,
         dataset_kind: DatasetKind,
         details: DatasetDetails,
+        created_at: jiff::Timestamp,
+        updated_at: jiff::Timestamp,
     ) -> Self {
         Self {
             id,
             dataset_kind,
-            created_at: jiff::Timestamp::now(),
-            inner: Tracked::new(DatasetInner {
-                name,
-                details,
-                segments: Default::default(),
-            }),
+            created_at,
+            inner: Tracked::new(
+                DatasetInner {
+                    name,
+                    details,
+                    segments: Default::default(),
+                },
+                updated_at,
+            ),
             required_client_protocol_level: ProtocolLevel::BASELINE,
             segment_properties: Default::default(),
             cached_schema: Mutex::new(None),
@@ -563,6 +569,10 @@ impl Dataset {
         Ok(())
     }
 
+    /// Add a layer to a segment, creating the segment if needed.
+    ///
+    /// `registration_time` orders the layers of a segment: see [`Segment::iter_sources`].
+    //
     // we can't expect there are no async calls without the lance feature
     #[allow(clippy::allow_attributes)]
     #[allow(clippy::unused_async)]
@@ -573,6 +583,7 @@ impl Dataset {
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
         storage_url: Url,
+        registration_time: jiff::Timestamp,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
         let layer_name = &layer_info.name;
@@ -612,6 +623,7 @@ impl Dataset {
             DataSourceKind::Rrd,
             storage_url,
             layer_info,
+            registration_time,
         )?);
 
         self.enforce_limits(&segment_id, &source)?;
@@ -733,6 +745,7 @@ impl Dataset {
                 slot_id,
                 resolved,
                 storage_url.clone(),
+                jiff::Timestamp::now(),
                 on_duplicate,
             )
             .await?;

@@ -4,9 +4,7 @@ use arrow::array::RecordBatch;
 use itertools::chain;
 use re_async::AsyncRuntimeHandle;
 use re_chunk::Chunk;
-use re_entity_db::{
-    ChunkFetcher, ChunkPrefetchOptions, FetchStage, RemainingByteBudget, StoreBundle,
-};
+use re_entity_db::{ChunkFetcher, ChunkPrefetchOptions, RemainingByteBudget, StoreBundle};
 use re_log_types::StoreId;
 use re_redap_client::{ApiResult, ConnectionClient};
 
@@ -74,6 +72,7 @@ pub fn prefetch_chunks_for_recordings(
     );
 
     // Early out if the budget is full already.
+    // The chunks protected by the last pass stay protected.
     if budget.full() {
         return;
     }
@@ -104,77 +103,21 @@ pub fn prefetch_chunks_for_recordings(
         }
     }
 
-    let mut fetch_states = |states: &mut [FetchState<'_>], stage| {
-        if states.is_empty() || budget.full() {
-            return;
-        }
-        let mut states: Vec<_> = states.iter_mut().collect();
-
-        while !states.is_empty() && !budget.full() {
-            // Evenly distribute bytes on wire between the states.
-            let on_wire_bytes_per_state =
-                budget.remaining_bytes_on_wire / states.len().cast_signed() as i64;
-
-            budget.remaining_bytes_on_wire %= states.len().cast_signed() as i64;
-
-            states.retain_mut(|state| {
-                // Don't set to `on_wire_bytes_per_state`, as both
-                // positive and negative number of bytes could remain from
-                // the last iteration.
-                //
-                // We add this `states.len()` times, so in total we add back
-                // as much memory as the `%=` above removed.
-                budget.remaining_bytes_on_wire += on_wire_bytes_per_state;
-
-                if budget.full() {
-                    return true;
-                }
-
-                if let Err(err) = state.fetcher.fetch(&mut budget, stage) {
-                    re_log::warn_once!("prefetch_chunks failed: {err}");
-                }
-
-                // If we've used the on wire budget, there are possibly more
-                // chunks to fetch in this fetch stage, so keep it for the
-                // next iteration.
-                budget.remaining_bytes_on_wire <= 0
-            });
-        }
-    };
-
-    // Fetches all stages in a specific order:
-    // 1. `Required` for active recordings.
-    // 2. `Required` for preview recordings.
-    // 3. `Similar(MAX_PREVIEW_FETCH_STAGE)` for active recordings.
-    // 4. `Similar(MAX_PREVIEW_FETCH_STAGE)` for preview recordings.
-    // 3. `max_fetch_stage` for active recordings.
-    // 6. If `max_fetch_stage == Everything`, `Everything` for background recordings.
-    //
-    // (Preview recordings intentionally skip above `Similar(MAX_PREVIEW_FETCH_STAGE)` stage)
-    //
-    // Stages above `max_fetch_stage` are skipped entirely.
-    //
-    // If any budget (on wire, or memory) gets filled here we stop and don't
-    // request/prioritize further.
     {
-        const MAX_PREVIEW_FETCH_STAGE: FetchStage =
-            FetchStage::Similar(Some(std::time::Duration::from_secs(10)));
-
-        for stage in [
-            FetchStage::Required,
-            MAX_PREVIEW_FETCH_STAGE.min(options.max_fetch_stage),
-        ] {
-            fetch_states(&mut active_states, stage);
-
-            fetch_states(&mut preview_states, stage);
-        }
-
-        fetch_states(&mut active_states, options.max_fetch_stage);
-
-        if options.max_fetch_stage == FetchStage::Everything {
-            fetch_states(&mut background_states, FetchStage::Everything);
-        }
-    };
+        let mut active: Vec<_> = active_states.iter_mut().map(|s| &mut s.fetcher).collect();
+        let mut previews: Vec<_> = preview_states.iter_mut().map(|s| &mut s.fetcher).collect();
+        let mut background: Vec<_> = background_states
+            .iter_mut()
+            .map(|s| &mut s.fetcher)
+            .collect();
+        ChunkFetcher::fetch_for_recordings(
+            &mut active,
+            &mut previews,
+            &mut background,
+            &mut budget,
+            options.max_fetch_stage,
+        );
+    }
 
     // Then finish fetching for all
     let results = chain!(active_states, preview_states, background_states)
@@ -250,7 +193,11 @@ async fn load_chunks(client: &mut ConnectionClient, batch: &RecordBatch) -> ApiR
     re_log::trace!("Requesting {} chunk(s) from server…", batch.num_rows());
 
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(chunk_stream, None);
+    let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(
+        chunk_stream,
+        re_redap_client::FetchedPayloads::Copied,
+        None,
+    );
     let mut all_chunks = Vec::new();
     while let Some(chunks) = chunk_stream.next().await {
         all_chunks.extend(chunks?);

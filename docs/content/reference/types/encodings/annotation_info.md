@@ -36,7 +36,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `AnnotationInfo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1AnnotationInfo.html)
- * 🐍 [Python API docs for `AnnotationInfo`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.AnnotationInfo)
+ * 🐍 [Python API docs for `AnnotationInfo`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.AnnotationInfo)
  * 🦀 [Rust API docs for `AnnotationInfo`](https://docs.rs/rerun/latest/rerun/encodings/struct.AnnotationInfo.html)
 
 

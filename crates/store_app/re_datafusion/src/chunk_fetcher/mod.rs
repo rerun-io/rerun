@@ -1,5 +1,6 @@
 //! Chunk fetching strategies: direct URL (HTTP Range) and gRPC.
 mod auth;
+mod scatter;
 
 pub use auth::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
 
@@ -10,6 +11,7 @@ use std::time::{Duration, Instant};
 use std::{error::Error as _, fmt::Write as _};
 
 use arrow::array::{Array as _, RecordBatch};
+use bytes::Bytes;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use tonic::IntoRequest as _;
@@ -28,6 +30,7 @@ use re_redap_client::ApiResult;
 use re_span::Span;
 
 use crate::analytics::{DirectFetchFailureReason, PendingQueryAnalytics, TaskFetchStats};
+use crate::chunk_fetcher::scatter::RangeLayout;
 use crate::dataframe_query_common::{ChunkSegments, ChunksWithSegment, DataframeClientAPI};
 
 // --- Telemetry ---
@@ -203,6 +206,14 @@ impl DirectFetchError {
             retryable,
             kind: DirectFetchErrorKind::Generic,
         }
+    }
+
+    /// The URL's query string is stripped, since it may carry presigned credentials.
+    fn with_url(msg: String, source_url: &str, retryable: bool) -> Self {
+        Self::new(
+            re_error::format_with_details(msg, format!("URL: {}", url_strip_query(source_url))),
+            retryable,
+        )
     }
 
     /// The source object backing this fetch has changed since the dataset was
@@ -430,6 +441,7 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
 
         let chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(
             response_stream,
+            re_redap_client::FetchedPayloads::Shared,
             Some(std::sync::Arc::clone(&decode_us)),
         );
 
@@ -554,7 +566,18 @@ fn merge_ranges_for_url(
     }];
 
     for (row_idx, span) in chunks.into_iter().skip(1) {
-        let gap_size = span.start.saturating_sub(current_span.end());
+        // Every chunk is a self-contained message, so two chunks can never share bytes.
+        let Some(gap_size) = span.start.checked_sub(current_span.end()) else {
+            let segment = segment_id.as_ref().map_or("unknown", |id| id.as_str());
+            return Err(DirectFetchError::with_url(
+                format!(
+                    "manifest chunks overlap: a chunk at {span:?} starts before the previous one ends at byte {} (segment {segment})",
+                    current_span.end(),
+                ),
+                url,
+                false,
+            ));
+        };
 
         // What the merged range would become (chunks are sorted, so the start stays)
         let candidate = current_span.union(span);
@@ -665,16 +688,16 @@ fn calculate_adaptive_concurrency(ranges: &[Span<u64>]) -> usize {
 }
 
 /// Decode a single chunk from raw RRD bytes (protobuf-encoded `ArrowMsg`).
+///
+/// An uncompressed chunk keeps `bytes` alive, so it should be the chunk's own buffer rather than
+/// a slice of something larger (see [`re_protos::common::v1alpha1::ext::record_batch_from_ipc_bytes`]).
 #[tracing::instrument(level = "debug", skip_all)]
-fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<Chunk, DirectFetchError> {
+fn decode_chunk_from_bytes(bytes: Bytes) -> Result<Chunk, DirectFetchError> {
     re_tracing::profile_function!();
-    use re_log_encoding::Decodable;
-    let raw_msg =
-        <Option<re_protos::log_msg::v1alpha1::log_msg::Msg> as Decodable>::from_rrd_bytes(bytes)
-            .map_err(|err| {
-                DirectFetchError::new(format!("Msg::from_rrd_bytes failed: {err}"), false)
-            })?
-            .ok_or_else(|| DirectFetchError::new("empty msg".to_owned(), false))?;
+    use re_log_encoding::Decodable as _;
+    let raw_msg = Option::<re_protos::log_msg::v1alpha1::log_msg::Msg>::from_rrd_bytes(bytes)
+        .map_err(|err| DirectFetchError::new(format!("Msg::from_rrd_bytes failed: {err}"), false))?
+        .ok_or_else(|| DirectFetchError::new("empty msg".to_owned(), false))?;
     let re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg) = raw_msg else {
         return Err(DirectFetchError::new("invalid msg type".to_owned(), false));
     };
@@ -969,39 +992,38 @@ async fn fetch_merged_range(
     let expected_etag = expected_etag.as_ref();
     let registration_time = *registration_time;
 
+    let layout =
+        RangeLayout::new(chunks.iter().map(|chunk| &chunk.span_in_merged)).map_err(|err| {
+            DirectFetchError::with_url(
+                format!("invalid merged range: {err}"),
+                request.url().as_str(),
+                false,
+            )
+        })?;
+    re_log::debug_assert_eq!(layout.total_len() as u64, file_range.len);
+
     // The direct-fetch concurrency permit lives inside `fetch_merged_range_bytes`
     // and is released when it returns — decoding below runs uncapped.
     let FetchedRange {
-        merged_bytes,
+        chunk_bytes,
         returned_etag,
         last_modified,
         source_url,
-    } = fetch_merged_range_bytes(http_client, request, segment_id).await?;
+    } = fetch_merged_range_bytes(http_client, request, file_range.start, layout, segment_id)
+        .await?;
 
-    tracing::Span::current().record("bytes", merged_bytes.len());
+    tracing::Span::current().record("bytes", file_range.len);
+    re_log::debug_assert_eq!(chunk_bytes.len(), chunks.len());
 
-    // Extract individual chunks from the merged response.
-    // Deep copy each chunk to avoid holding the entire merged buffer alive.
     // Time the decode/decompress work — the network transfer already
     // completed above, so this isolates CPU-bound decode cost.
     let decode_start = Instant::now();
-    let decoded: Vec<DecodedChunk> = chunks
-        .iter()
-        .map(|info| {
-            let span = info.span_in_merged;
-            // Deep copy: prevents holding entire 16MB merged buffer in memory
-            let chunk_bytes = merged_bytes.get(span.range_usize()).ok_or_else(|| {
-                DirectFetchError::new(
-                    format!(
-                        "merged range shorter than expected: need {end} bytes, got {}",
-                        merged_bytes.len(),
-                        end = span.end(),
-                    ),
-                    false,
-                )
-            })?;
-            decode_chunk_from_bytes(chunk_bytes)
-                .map_err(|err| {
+    let decoded: Vec<DecodedChunk> = std::iter::zip(chunks, chunk_bytes)
+        .map(|(info, bytes)| {
+            re_log::debug_assert_eq!(info.span_in_merged.len, bytes.len() as u64);
+            match decode_chunk_from_bytes(bytes) {
+                Ok(chunk) => Ok((info.original_row_index, chunk)),
+                Err(err) => {
                     let logged_url = url_strip_query(source_url.as_str());
                     let drifted = match (expected_etag, returned_etag.as_ref()) {
                         (Some(want), Some(got)) => !want.matches(got),
@@ -1022,13 +1044,13 @@ async fn fetch_merged_range(
                         %err,
                         "failed decoding bytes from direct fetch",
                     );
-                    if drifted {
+                    Err(if drifted {
                         DirectFetchError::source_changed(segment_id)
                     } else {
                         err
-                    }
-                })
-                .map(|chunk| (info.original_row_index, chunk))
+                    })
+                }
+            }
         })
         .try_collect()?;
     Ok((decoded, decode_start.elapsed()))
@@ -1036,8 +1058,8 @@ async fn fetch_merged_range(
 
 /// The undecoded bytes and metadata of a fetched merged range.
 struct FetchedRange {
-    /// The merged response body covering every chunk in the range.
-    merged_bytes: bytes::Bytes,
+    /// One buffer per chunk, in [`MergedRangeRequest::chunks`] order.
+    chunk_bytes: Vec<Bytes>,
 
     /// `ETag` returned by the source, captured for decode-failure attribution
     /// (RR-4549): compared against `expected_etag` if a chunk fails to decode.
@@ -1058,6 +1080,8 @@ struct FetchedRange {
 async fn fetch_merged_range_bytes(
     http_client: &reqwest::Client,
     request: reqwest::Request,
+    range_start: u64,
+    layout: RangeLayout,
     segment_id: Option<&SegmentId>,
 ) -> Result<FetchedRange, DirectFetchError> {
     let _permit = crate::pipeline_budget::direct_fetch_semaphore()
@@ -1087,13 +1111,48 @@ async fn fetch_merged_range_bytes(
         .map(str::to_owned);
     let source_url = response.url().clone();
 
-    let merged_bytes = response
-        .bytes()
-        .await
-        .map_err(|err| DirectFetchError::new(format!("failed to read body: {err}"), true))?;
+    // A server that ignores `Range` answers `200` with the whole object, which lines up with
+    // the requested bytes only when the range starts at the beginning of the object.
+    // Asking again gets the same answer, and skipping to the range could mean downloading
+    // most of a large object, so this is a non-retryable error.
+    if response.status() == reqwest::StatusCode::OK && range_start != 0 {
+        return Err(DirectFetchError::with_url(
+            format!(
+                "server ignored the Range header: got 200 OK for a range starting at byte {range_start}"
+            ),
+            source_url.as_str(),
+            false,
+        ));
+    }
+
+    // A body of the wrong length means the server did not honor the range: a short one is
+    // worth retrying, a long one will not get better.
+    let body_error = |err: &dyn std::error::Error, retryable: bool| {
+        DirectFetchError::with_url(
+            format!("failed to read body: {err}"),
+            source_url.as_str(),
+            retryable,
+        )
+    };
+
+    if let Some(content_length) = response.content_length() {
+        layout
+            .check_content_length(content_length)
+            .map_err(|err| body_error(&err, false))?;
+    }
+
+    let chunk_bytes = {
+        let mut sink = layout.sink();
+        let mut stream = response.bytes_stream();
+        while let Some(frame) = stream.next().await {
+            let src = frame.map_err(|err| body_error(&err, true))?;
+            sink.write(&src).map_err(|err| body_error(&err, false))?;
+        }
+        sink.finish().map_err(|err| body_error(&err, true))?
+    };
 
     Ok(FetchedRange {
-        merged_bytes,
+        chunk_bytes,
         returned_etag,
         last_modified,
         source_url,
@@ -1269,5 +1328,308 @@ mod tests {
             reason("HTTP request returned status 503 Service Unavailable"),
             DirectFetchFailureReason::Http5xx,
         );
+    }
+
+    /// Serves `response` to a single connection, written in a few pieces so the body
+    /// arrives as more than one frame when the client reads it promptly.
+    async fn serve_once(response: Vec<u8>) -> String {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            let mut buf = [0u8; 1024];
+            while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                let n = socket.read(&mut buf).await.unwrap();
+                if n == 0 {
+                    return;
+                }
+                request.extend_from_slice(&buf[..n]);
+            }
+            for piece in response.chunks(response.len().div_ceil(3).max(1)) {
+                socket.write_all(piece).await.unwrap();
+                socket.flush().await.unwrap();
+                tokio::task::yield_now().await;
+            }
+            socket.shutdown().await.ok();
+        });
+        format!("http://{addr}/segment.rrd")
+    }
+
+    fn http_response(status: &str, body: &[u8]) -> Vec<u8> {
+        let mut response = format!(
+            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        )
+        .into_bytes();
+        response.extend_from_slice(body);
+        response
+    }
+
+    fn get(url: &str) -> reqwest::Request {
+        reqwest::Client::new().get(url).build().unwrap()
+    }
+
+    fn layout(spans: &[(u64, u64)]) -> RangeLayout {
+        let spans: Vec<_> = spans
+            .iter()
+            .map(|&(start, len)| Span::from_start_len(start, len))
+            .collect();
+        RangeLayout::new(spans.iter()).unwrap()
+    }
+
+    /// A `Transfer-Encoding: chunked` response, which has no `Content-Length` to check up front.
+    fn chunked_http_response(status: &str, body: &[u8]) -> Vec<u8> {
+        let mut response = format!(
+            "HTTP/1.1 {status}\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n{:x}\r\n",
+            body.len()
+        )
+        .into_bytes();
+        response.extend_from_slice(body);
+        response.extend_from_slice(b"\r\n0\r\n\r\n");
+        response
+    }
+
+    async fn fetch(
+        url: &str,
+        range_start: u64,
+        spans: &[(u64, u64)],
+    ) -> Result<FetchedRange, DirectFetchError> {
+        fetch_merged_range_bytes(
+            &reqwest::Client::new(),
+            get(url),
+            range_start,
+            layout(spans),
+            None,
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn merged_range_body_is_split_per_chunk_without_gaps() {
+        let url = serve_once(http_response("206 Partial Content", b"abc__defg")).await;
+
+        let fetched = fetch(&url, 100, &[(0, 3), (5, 4)]).await.unwrap();
+
+        assert_eq!(fetched.chunk_bytes, [&b"abc"[..], &b"defg"[..]]);
+    }
+
+    #[tokio::test]
+    async fn short_merged_range_body_is_retryable() {
+        let url = serve_once(http_response("206 Partial Content", b"abc__de")).await;
+
+        let err = fetch(&url, 100, &[(0, 3), (5, 4)]).await.err().unwrap();
+
+        assert!(err.retryable, "{err:?}");
+        assert!(err.msg.contains("body ended after 7 of 9 bytes"), "{err:?}");
+    }
+
+    /// A range at the start of the object lines up with a `200` body, but only if the
+    /// object is no longer than the range.
+    #[tokio::test]
+    async fn ok_response_for_a_range_at_the_start_of_the_object() {
+        let url = serve_once(http_response("200 OK", b"abc__defg")).await;
+        let fetched = fetch(&url, 0, &[(0, 3), (5, 4)]).await.unwrap();
+        assert_eq!(fetched.chunk_bytes, [&b"abc"[..], &b"defg"[..]]);
+
+        let url = serve_once(http_response("200 OK", b"abc__defg_rest_of_object")).await;
+        let err = fetch(&url, 0, &[(0, 3), (5, 4)]).await.err().unwrap();
+        assert!(!err.retryable, "{err:?}");
+        assert!(
+            err.msg.contains("longer than the 9 requested bytes"),
+            "{err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn ok_response_for_a_range_past_the_start_is_not_retryable() {
+        let url = serve_once(http_response("200 OK", b"whole object")).await;
+
+        let err = fetch(&url, 100, &[(0, 3)]).await.err().unwrap();
+
+        assert!(!err.retryable, "{err:?}");
+        assert!(err.msg.contains("ignored the Range header"), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn chunked_body_longer_than_the_range_is_not_retryable() {
+        let url = serve_once(chunked_http_response("206 Partial Content", b"abc__defg_")).await;
+
+        let err = fetch(&url, 100, &[(0, 3), (5, 4)]).await.err().unwrap();
+
+        assert!(!err.retryable, "{err:?}");
+        assert!(
+            err.msg.contains("longer than the 9 requested bytes"),
+            "{err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn precondition_failed_is_source_changed() {
+        let url = serve_once(http_response("412 Precondition Failed", b"")).await;
+
+        let err = fetch(&url, 100, &[(0, 3)]).await.err().unwrap();
+
+        assert_eq!(err.kind, DirectFetchErrorKind::SourceChanged);
+    }
+
+    fn merge(spans: &[(u64, u64)], max_gap_size: u64) -> Result<Vec<Span<u64>>, DirectFetchError> {
+        let chunks = spans
+            .iter()
+            .enumerate()
+            .map(|(row, &(start, len))| (row, Span::from_start_len(start, len)))
+            .collect();
+        let merged = merge_ranges_for_url(
+            &reqwest::Client::new(),
+            "http://127.0.0.1:9/segment.rrd?X-Sig=secret",
+            chunks,
+            max_gap_size,
+            None,
+            None,
+            None,
+        )?;
+        Ok(merged.iter().map(|request| request.file_range).collect())
+    }
+
+    #[test]
+    fn merging_keeps_adjacent_chunks_together() {
+        let merged = merge(&[(10, 5), (0, 10), (20, 5)], 5).unwrap();
+        assert_eq!(merged, [Span::from_start_len(0, 25)]);
+
+        let merged = merge(&[(10, 5), (0, 10), (20, 5)], 0).unwrap();
+        assert_eq!(
+            merged,
+            [Span::from_start_len(0, 15), Span::from_start_len(20, 5)]
+        );
+    }
+
+    #[test]
+    fn merging_rejects_overlapping_chunks() {
+        for spans in [&[(0, 10), (5, 10)][..], &[(0, 10), (2, 3)][..]] {
+            for max_gap_size in [0, u64::MAX] {
+                let err = merge(spans, max_gap_size).err().unwrap();
+                assert!(!err.retryable, "{err:?}");
+                assert!(err.msg.contains("manifest chunks overlap"), "{err:?}");
+                assert!(!err.msg.contains("secret"), "{err:?}");
+            }
+        }
+    }
+
+    fn test_chunk(value: i64) -> Chunk {
+        use arrow::array::{ArrayRef, Int64Array};
+        use re_dataframe::external::re_chunk::RowId;
+
+        let array: ArrayRef = Arc::new(Int64Array::from(vec![value]));
+        Chunk::builder(re_log_types::EntityPath::from("/test"))
+            .with_row(
+                RowId::new(),
+                re_log_types::TimePoint::STATIC,
+                [(re_types_core::ComponentDescriptor::partial("value"), array)],
+            )
+            .build()
+            .unwrap()
+    }
+
+    /// The bytes a manifest span points at: the message header plus the uncompressed `ArrowMsg`.
+    fn encode_chunk(chunk: &Chunk) -> Vec<u8> {
+        use re_log_encoding::{Encodable as _, ToTransport as _};
+
+        let store_id = re_log_types::StoreId::new(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+            "segment".to_owned(),
+        );
+        let arrow_msg = chunk
+            .to_arrow_msg()
+            .unwrap()
+            .to_transport((store_id, re_log_encoding::Compression::Off))
+            .unwrap();
+        let mut out = Vec::new();
+        re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg)
+            .to_rrd_bytes(&mut out)
+            .unwrap();
+        out
+    }
+
+    fn merged_request(
+        url: &str,
+        file_range: Span<u64>,
+        chunks: Vec<ChunkInMergedRange>,
+    ) -> MergedRangeRequest {
+        MergedRangeRequest {
+            request: get(url),
+            file_range,
+            chunks,
+            segment_id: None,
+            expected_etag: None,
+            registration_time: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn merged_range_decodes_each_chunk_with_its_row() {
+        let (first, second) = (test_chunk(1), test_chunk(2));
+        let (first_bytes, second_bytes) = (encode_chunk(&first), encode_chunk(&second));
+        let gap = b"not part of any chunk";
+
+        let mut body = first_bytes.clone();
+        body.extend_from_slice(gap);
+        body.extend_from_slice(&second_bytes);
+        let url = serve_once(http_response("206 Partial Content", &body)).await;
+
+        let second_start = (first_bytes.len() + gap.len()) as u64;
+        let request = merged_request(
+            &url,
+            Span::from_start_len(100, body.len() as u64),
+            vec![
+                ChunkInMergedRange {
+                    original_row_index: 7,
+                    span_in_merged: Span::from_start_len(0, first_bytes.len() as u64),
+                },
+                ChunkInMergedRange {
+                    original_row_index: 3,
+                    span_in_merged: Span::from_start_len(second_start, second_bytes.len() as u64),
+                },
+            ],
+        );
+
+        let (decoded, _) = fetch_merged_range(&reqwest::Client::new(), &request)
+            .await
+            .unwrap();
+
+        let decoded: Vec<_> = decoded
+            .iter()
+            .map(|(row, chunk)| (*row, chunk.id()))
+            .collect();
+        assert_eq!(decoded, [(7, first.id()), (3, second.id())]);
+    }
+
+    /// The layout is checked before anything is sent, so the URL is never contacted.
+    #[tokio::test]
+    async fn overlapping_chunks_are_rejected_before_fetching() {
+        let request = merged_request(
+            "http://127.0.0.1:9/never-contacted.rrd",
+            Span::from_start_len(0, 8),
+            vec![
+                ChunkInMergedRange {
+                    original_row_index: 0,
+                    span_in_merged: Span::from_start_len(0, 5),
+                },
+                ChunkInMergedRange {
+                    original_row_index: 1,
+                    span_in_merged: Span::from_start_len(4, 4),
+                },
+            ],
+        );
+
+        let err = fetch_merged_range(&reqwest::Client::new(), &request)
+            .await
+            .err()
+            .unwrap();
+
+        assert!(!err.retryable, "{err:?}");
+        assert!(err.msg.contains("invalid merged range"), "{err:?}");
     }
 }

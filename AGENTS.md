@@ -2,6 +2,8 @@
 
 Guidance for LLMs working in this repo.
 
+Read [`CODE_STYLE.md`](CODE_STYLE.md) before editing code.
+
 ## Project overview
 
 Rerun is a time-aware multimodal data stack and visualizations tool used in robotics, spatial AI, computer vision, and similar domains. It provides SDKs (Python, Rust, C++) for logging rich data (images, point clouds, tensors, etc.) and a Viewer for visualization.

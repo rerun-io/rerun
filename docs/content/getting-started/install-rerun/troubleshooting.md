@@ -40,7 +40,7 @@ Check these, in order:
    Check the version with `pip --version`.
    If you're running a version of pip 20 or older, you should upgrade it with `pip install --upgrade pip`.
 
-> [!WARNING]
+> [!NOTE]
 > Depending on your system configuration this may upgrade the pip installation aliased by `pip3` instead of `pip`.
 
 If `import rerun` fails after a successful install, make sure that you have NumPy 2 or newer installed, and that you run the same Python environment that you installed into.
@@ -51,8 +51,13 @@ The prebuilt `rerun` binaries and the `rerun-sdk` wheels should work out of the 
 If the Viewer does not start, first make sure your graphics drivers are up to date (see [Graphics issues](#graphics-issues)).
 Installing `libxkbcommon-x11-0` also helps on some systems.
 
-[TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager sometimes causes Rerun to crash.
-Try unsetting the wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
+Running with the Wayland window manager sometimes causes Rerun to crash ([#1250](https://github.com/rerun-io/rerun/issues/1250)).
+Try unsetting the Wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
+
+<!--
+Discoverable for scripts/zombie_todos.py:
+TODO(#1250): fix above if ticket is outdated.
+-->
 
 ### Building from source on Linux
 
@@ -137,15 +142,13 @@ DirectX 12 is not supported.
 The web Viewer uses WebGPU in Chromium-based browsers, and falls back to WebGL if WebGPU is not available.
 In Safari, other WebKit browsers (including every browser on iOS), and Firefox, it always uses WebGL.
 
-The configuration we use for wgpu can be influenced in the following ways:
+To pick a different backend or graphics adapter:
 
--   pass `--renderer=<backend>` on startup: `<backend>` must be one of `vulkan`, `metal` or `gl` for native and
-    either `webgl` or `webgpu` for the web viewer (see also `--web-viewer` argument).
-    Naturally, support depends on your OS: `metal` only works on macOS, and `gl` does not work on macOS.
-    -   For instance, you can try `rerun --renderer=gl` or for the web viewer respectively `rerun --web-viewer --renderer=webgl`.
-    -   Alternatively, for the native viewer you can also use the `WGPU_BACKEND` environment variable with the above values.
-    -   The web viewer is configured by the `renderer=<backend>` url argument, e.g. [https://rerun.io/viewer?renderer=webgl](https://rerun.io/viewer?renderer=webgl)
--   `WGPU_POWER_PREF`: Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+-   Pass `--renderer` to the native Viewer, e.g. `rerun --renderer=gl`, or to a web Viewer started from the command line, e.g. `rerun --web-viewer --renderer=webgl`.
+-   Set the `WGPU_BACKEND` or `WGPU_POWER_PREF` environment variable for the native Viewer.
+-   Add the `renderer` URL parameter to a web Viewer, e.g. [https://rerun.io/viewer?renderer=webgl](https://rerun.io/viewer?renderer=webgl).
+
+The [CLI reference](../../reference/cli.md#rerun) lists the accepted values of `--renderer` and of the environment variables.
 
 We recommend setting these only if you're asked to try them or know what you're doing,
 since we don't support all of these settings equally well.

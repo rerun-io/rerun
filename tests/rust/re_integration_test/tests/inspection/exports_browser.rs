@@ -153,10 +153,7 @@ fn wait_for_test_recording(harness: &mut InspectionHarness, description: &'stati
 
 fn wait_for_test_blueprint(harness: &mut InspectionHarness, description: &'static str) {
     harness.step_until(description, |harness| {
-        harness
-            .query_all_by_label_contains("Browser export test view")
-            .next()
-            .is_some()
+        harness.has_label_contains("Browser export test view")
     });
 }
 

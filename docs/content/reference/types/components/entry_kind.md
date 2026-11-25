@@ -35,7 +35,7 @@ UInt8
 
 ## API reference links
  * 🌊 [C++ API docs for `EntryKind`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `EntryKind`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.EntryKind)
+ * 🐍 [Python API docs for `EntryKind`](https://ref.rerun.io/docs/python/stable/components#rerun.components.EntryKind)
  * 🦀 [Rust API docs for `EntryKind`](https://docs.rs/rerun/latest/rerun/components/enum.EntryKind.html)
 
 

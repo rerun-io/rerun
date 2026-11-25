@@ -22,6 +22,8 @@ sample_5_path = (
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 client = server.client()
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.get_dataset(name="sample_dataset")
 
 print(
@@ -90,6 +92,8 @@ for seg_id in segment_ids:
 
 
 # Register derived RRDs as a new layer
+# On Rerun Hub, register from object storage:
+# dataset.register(["s3://bucket/err.rrd"], layer_name="tracking_error").wait()
 dataset.register(
     [p.as_uri() for p in rrd_paths], layer_name="tracking_error"
 ).wait()
@@ -144,6 +148,8 @@ for seg_id, tracking_good in zip(
         rec.send_property("quality", rr.AnyValues(tracking_good=tracking_good))
 
 # Register as a separate layer
+# On Rerun Hub, register from object storage:
+# dataset.register(["s3://bucket/quality.rrd"], layer_name="quality").wait()
 dataset.register([p.as_uri() for p in rrd_paths], layer_name="quality").wait()
 # endregion: add_quality_property
 

@@ -105,7 +105,7 @@ impl Screenshotter {
             let w = image.width() as _;
             let h = image.height() as _;
             let image =
-                image::RgbaImage::from_raw(w, h, bytemuck::pod_collect_to_vec(&image.pixels))
+                image::RgbaImage::from_raw(w, h, bytemuck::pod_collect_to_vec(image.pixels()))
                     .expect("Failed to create image");
             match image.save(&path) {
                 Ok(()) => {

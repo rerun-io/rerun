@@ -5,7 +5,7 @@ description: How entity paths organize logged data into a hierarchy you can quer
 ---
 
 ## Entity paths
-As mentioned in the [Entity Component](entity-component.md) overview, all entities within Rerun have a unique _entity path_.
+All entities within Rerun have a unique _entity path_ (see [Entity Component](entity-component.md)).
 
 The first argument to the `log()` function is this path. Each time you log to a specific entity path you will update the entity, i.e. log a new instance of it along the timeline.
 
@@ -50,7 +50,7 @@ You can insert an arbitrary unicode code point into an entity path using `\u{262
 
 So for instance, `world/3D/My\ Image.jpg/detection` is a valid path (note the escaped space!).
 
-> [!WARNING]
+> [!NOTE]
 > Even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which uses `\` as a path separator).
 
 ### Path hierarchy functions
@@ -61,8 +61,6 @@ the relationship between that entity and its direct parent.
  * When resolving the meaning of [`ClassId`](../../reference/types/components/class_id.md) and [`KeypointId`](../../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](../../viewer/view-concepts/annotation-context.md) from the nearest ancestor in the hierarchy.
  * When adding data to [Blueprints](../../viewer/ui/blueprint-panel.md), it is common to add a path and all of its descendants.
  * When using `rr.log("entity/path", rr.Clear(recursive=True))`, it marks an entity *and all of its descendants* as being cleared.
- * In the future, it will also be possible to use path-hierarchy to set default-values for descendants
-   ([#1158](https://github.com/rerun-io/rerun/issues/1158)).
 
 ### Entity path filters
 

@@ -32,8 +32,7 @@ Each keypoint can define its own properties (colors, labels, etc.) that overwrit
 A typical example usage of keypoints is annotating the joints of a skeleton within a pose detection.
 In that case, the entire detected pose/skeleton is assigned a Class ID and each joint within gets a Keypoint ID.
 
-To help you more with this (and similar) use-case(s), you can also define connections between keypoints
-as part of your annotation class description.
+You can also define connections between keypoints as part of your annotation class description.
 The Viewer will draw the connecting lines for all connected keypoints whenever that class is used.
 Just as with labels and colors this allows you to use the same connection information on any instance of that class in your scene.
 

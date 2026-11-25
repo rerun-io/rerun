@@ -517,7 +517,8 @@ mod tests {
                     let response = &output.text_edit.response.response;
                     let enter = response.has_focus()
                         && ui.input_mut(|input| {
-                            !input.modifiers.shift && input.consume_key(Modifiers::NONE, Key::Enter)
+                            !input.modifiers.contains(Modifiers::SHIFT)
+                                && input.consume_key(Modifiers::NONE, Key::Enter)
                         });
                     if response.lost_focus() && ui.input(|input| input.key_pressed(Key::Enter))
                         || enter

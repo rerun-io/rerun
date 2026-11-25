@@ -1,7 +1,7 @@
 use arrow::array::ArrayRef;
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
-use re_entity_db::EntityDb;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
 use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
@@ -56,6 +56,25 @@ fn static_write_row_id(blueprint: &EntityDb) -> RowId {
         .map_or_else(RowId::new, RowId::new_after)
 }
 
+/// Why resetting `active_blueprint` would change nothing, if it wouldn't.
+pub fn reset_blueprint_disabled_reason(
+    active_blueprint: &EntityDb,
+    store_bundle: &StoreBundle,
+) -> Option<&'static str> {
+    // Resetting a blueprint without a source reruns the heuristics, which is always enabled.
+    // Figuring out when rerunning the heuristics doesn't change anything is actually quite hard.
+    // There's a wide variety of things to consider that aren't easily caught:
+    // * does running view-generation/layout-generation change anything?
+    //    * these heuristics run incrementally, does rerunning them in bulk change anything?
+    // * any changes in overrides/defaults/view-property means that a reset would change something
+    let is_unmodified_clone = active_blueprint
+        .cloned_from()
+        .and_then(|source_id| store_bundle.get(source_id))
+        .is_some_and(|source| source.latest_row_id() == active_blueprint.latest_row_id());
+
+    is_unmodified_clone.then_some("No modifications have been made")
+}
+
 impl ActiveStoreContext<'_> {
     /// The timepoint to use when writing an update to the blueprint.
     #[inline]
@@ -100,10 +119,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint.store_id().clone(),
+                chunks: vec![chunk],
+            });
     }
 
     fn save_blueprint_component(
@@ -154,10 +173,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint.store_id().clone(),
+                chunks: vec![chunk],
+            });
     }
 
     fn save_serialized_blueprint_component(
@@ -210,7 +229,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(store_id, vec![chunk]));
+            .send_system(SystemCommand::AppendToStore {
+                store_id,
+                chunks: vec![chunk],
+            });
     }
 
     fn save_static_blueprint_array(
@@ -234,10 +256,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint.store_id().clone(),
+                chunks: vec![chunk],
+            });
     }
 
     fn latest_at_in_current_blueprint(
@@ -332,10 +354,10 @@ pub trait BlueprintContext {
         match chunk {
             Ok(chunk) => self
                 .command_sender()
-                .send_system(SystemCommand::AppendToStore(
-                    blueprint.store_id().clone(),
-                    vec![chunk],
-                )),
+                .send_system(SystemCommand::AppendToStore {
+                    store_id: blueprint.store_id().clone(),
+                    chunks: vec![chunk],
+                }),
             Err(err) => {
                 re_log::error_once!("Failed to create Chunk for blueprint component: {err}");
             }
@@ -377,10 +399,10 @@ pub trait BlueprintContext {
         match chunk {
             Ok(chunk) => self
                 .command_sender()
-                .send_system(SystemCommand::AppendToStore(
-                    blueprint.store_id().clone(),
-                    vec![chunk],
-                )),
+                .send_system(SystemCommand::AppendToStore {
+                    store_id: blueprint.store_id().clone(),
+                    chunks: vec![chunk],
+                }),
             Err(err) => {
                 re_log::error_once!("Failed to create Chunk for blueprint component: {err}");
             }

@@ -7,6 +7,9 @@ description: Append data to existing dataset segments by registering named layer
 In the [catalog object model](catalog-object-model.md#datasets), a dataset is a collection of segments, and each segment is a collection of named layers.
 Together, layers form one logical segment.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 See [Recordings on a catalog server](../../logging-and-ingestion/data-model/recordings.md#recordings-on-a-catalog-server) for how segments and layers relate to recordings.
 
 ## Why use layers?
@@ -28,7 +31,7 @@ The outputs from each of these stages can be registered as separate layers — f
 
 A layer is immutable once created, but a segment can be enriched over time by registering additional layers under the same segment ID and a different layer name.
 
-Importantly, layers are natively understood by Rerun's visualization and query systems.
+Rerun's visualization and query systems understand layers.
 Viewing or querying a segment automatically includes all its layers, making it work as a single logical unit.
 
 ---
@@ -105,8 +108,6 @@ Output:
 ```
 
 For another example of computing derived data, see the [Query video streams](../images-and-video/query_videos.md) page.
-
-In the next section, we will demonstrate that the data has indeed been added by querying the dataset again.
 
 ## Adding properties to segments using layers
 

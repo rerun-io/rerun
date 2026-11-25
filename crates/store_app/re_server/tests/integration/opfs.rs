@@ -54,6 +54,7 @@ fn in_process_catalog_client<T: RerunCloudService>(service: Arc<T>) -> CatalogCl
             re_uri::Origin::http_local_host(1),
             service,
             re_server::capabilities(),
+            re_server::PROTOCOL_LEVEL,
         ),
         re_web::fs::root(),
     );

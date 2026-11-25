@@ -4,14 +4,15 @@ order: 400
 description: Reduce chunk count to improve ingest and query performance
 ---
 
+This page shows how to tell whether a recording has too many chunks, and how to merge them into fewer, larger ones.
 
 ## Understanding chunks and their impact on performance
 
-Rerun stores all its data in Chunks — Arrow-encoded tables of data. A basic understanding of chunks is key to understanding how Rerun works and why performance behaves the way it does. See the [chunk concept documentation](chunks.md) for more details.
+Rerun stores all its data in [Chunks](chunks.md) — Arrow-encoded tables of data.
 
 Chunks are the atomic unit of work in Rerun: the performance cost of logging, ingesting, storing, querying, and visualizing data (including memory overhead to some extent) scales roughly linearly with the number of chunks in the system (ignoring caching and indexing optimizations). Many small chunks cause significantly more overhead than fewer, larger ones. Larger chunks reduce index pressure and per-chunk overhead, improving write and query throughput.
 
-Rerun provides several online and offline systems to track and reduce chunk count. Using them effectively can yield dramatic performance improvements in real-world scenarios.
+Rerun provides several online and offline systems to track and reduce chunk count.
 
 The process of merging smaller chunks into fewer, larger ones is called compaction. It occurs at multiple points across the data’s lifecycle, each with different constraints. Earlier compaction reduces the work needed later in the pipeline.
 
@@ -33,7 +34,7 @@ This reduces metadata overhead (fewer chunks), which improves network and CPU ef
 These defaults aim to balance latency and throughput. To adjust them, see the [micro-batching documentation](../sinks-and-modes/micro-batching.md).
 To measure how much latency each step of the pipeline actually adds, see [Diagnose latency and performance](../../viewer/performance/diagnose-performance.md).
 
-Micro-batching trades a bit of latency for significantly fewer chunks, improving ingestion throughput and downstream performance. While lightweight to compute, it operates with minimal context — all it sees is a small rolling window of logs — so compaction is far from optimal.
+Micro-batching is lightweight to compute, but it operates with minimal context — all it sees is a small rolling window of logs — so compaction is far from optimal.
 
 Constraints:
 * Runs: client-side, in the SDK
@@ -48,7 +49,8 @@ On the server side, the Rerun Viewer performs continuous, online compaction in t
 By default, chunks compact up to ~384 KiB, or ~4096 rows (or 1024 for unsorted time chunks).
 These settings balance ingestion speed, query performance, and memory use. You can configure them using environment variables such as `RERUN_CHUNK_MAX_BYTES` and `RERUN_CHUNK_MAX_ROWS`. See the [store compaction docs](store-compaction.md) for more.
 
-Viewer-side compaction is more expensive than SDK-side micro-batching but has access to full context, enabling much more effective decisions. Fortunately, the cost is kept low thanks to micro-batching upstream: the better the batching in the SDK, the less work needed in the Viewer (as we'll see below, the CLI can even make that work disappear entirely!).
+Viewer-side compaction is more expensive than SDK-side micro-batching but has access to full context, enabling much more effective decisions. Micro-batching upstream keeps this cost low: the better the batching in the SDK, the less work the Viewer has to do.
+Files compacted ahead of time with the CLI (see below) need almost none.
 
 Constraints:
 * Runs: server-side, in the Viewer
@@ -161,13 +163,15 @@ This produces a new file where chunks have been merged up to the size and row th
 
 Because it runs offline, the CLI compactor has full access to the dataset and no real-time constraints, making it the most effective tool for optimal compaction. It's a good idea to compact files ahead of time if they’ll be queried or visualized repeatedly.
 
-> [!WARNING]
+> [!NOTE]
 > `rerun rrd optimize` will automatically migrate the data to the latest version of the RRD protocol, if needed.
 
-Note that `rerun rrd optimize` ships two preset profiles, selected with `--profile`, that set sensible thresholds for two common targets:
+`rerun rrd optimize` ships two preset profiles, selected with `--profile`:
 
-* `object-store` *(default)* — large chunks (up to ~65k rows, ~2 MiB), tuned for object-store-backed datasets stored on catalog servers, where query throughput and network streaming matter most.
-* `live` — small chunks (up to ~4096 rows, ~384 KiB), tuned for the live-Viewer workflow where the time panel benefits from finer-grained resolution.
+* `object-store` *(default)* — large chunks, tuned for object-store-backed datasets stored on catalog servers, where query throughput and network streaming matter most.
+* `live` — small chunks, tuned for the live-Viewer workflow where the time panel benefits from finer-grained resolution.
+
+The [CLI reference](../../reference/cli.md#rerun-rrd-optimize) lists the row and size limits of each profile.
 
 Per-knob flags (`--max-rows`, `--max-size`, …) and the `RERUN_CHUNK_MAX_*` environment variables override the profile's values.
 
@@ -188,14 +192,6 @@ snippet: howto/optimize_chunks[optimize]
 * `OptimizationProfile.OBJECT_STORE` (corresponds to `--profile object-store`, the CLI default) — large chunks for object-store-backed datasets;
 * `OptimizationProfile.LIVE` (corresponds to `--profile live`) — small chunks for the live-Viewer workflow.
 
-* **Note:** `collect()` materializes the entire pipeline into an in-memory `ChunkStore` before writing, so the full recording must fit in RAM.
+> [!NOTE]
+> `collect()` materializes the entire pipeline into an in-memory `ChunkStore` before writing, so the full recording must fit in RAM.
 
-
-## Conclusion
-
-* Compaction isn’t a minor optimization — it can and frequently does yield massive performance gains depending on your workload.
-* Rerun applies micro-batching and compaction by default, but optimal settings vary per use case.
-* Compaction can (and should) happen at multiple stages, each with different tradeoffs, operating under very different constraints.
-* Once data has been recorded, two complementary tools let you preemptively optimize it for downstream use:
-    * The Rerun CLI: `rerun rrd stats` to diagnose, `rerun rrd optimize` for one-shot offline compaction.
-    * The [Chunk Processing API](../import/chunk-processing-api.md): same compaction logic, exposed in-process so you can fold it into a Python ingestion or conversion pipeline via `collect(optimize=OptimizationProfile.…)`.

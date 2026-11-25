@@ -218,6 +218,7 @@ impl CommandKind {
                 | RecordingCommandKind::OpenAddViewOrContainerDialog
                 | RecordingCommandKind::ResetBlueprintToDefault
                 | RecordingCommandKind::ResetBlueprintToHeuristic
+                | RecordingCommandKind::ResetBlueprint
                 | RecordingCommandKind::ToggleTimePanel
                 | RecordingCommandKind::TogglePlayPause
                 | RecordingCommandKind::SeekToPreviousEvent
@@ -315,7 +316,8 @@ impl CommandKind {
             Self::Recording(kind) => match kind {
                 RecordingCommandKind::Close
                 | RecordingCommandKind::ResetBlueprintToDefault
-                | RecordingCommandKind::ResetBlueprintToHeuristic => true,
+                | RecordingCommandKind::ResetBlueprintToHeuristic
+                | RecordingCommandKind::ResetBlueprint => true,
 
                 RecordingCommandKind::Save
                 | RecordingCommandKind::SaveTimeSelection
@@ -429,6 +431,7 @@ impl CommandKind {
                 RecordingCommandKind::Close
                 | RecordingCommandKind::ResetBlueprintToDefault
                 | RecordingCommandKind::ResetBlueprintToHeuristic
+                | RecordingCommandKind::ResetBlueprint
                 | RecordingCommandKind::Save
                 | RecordingCommandKind::SaveTimeSelection
                 | RecordingCommandKind::SaveBlueprint => false,

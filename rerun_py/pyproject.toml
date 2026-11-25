@@ -38,14 +38,14 @@ name = "Rerun.io"
 [project.optional-dependencies]
 tests = [
   "av>=14.2.0", # PyAV, for demuxing mp4 in VideoStream tests
-  "inline-snapshot==0.31.1",
+  "inline-snapshot==0.36.2",
   "opencv-python>4.6",
   "pandas>=2",
-  "polars==1.36.1",
-  "pytest==9.0.3",
-  "semver>=3.0,<3.1",
-  "syrupy==5.0.0",
-  "tomli==2.0.1",
+  "polars==2.1.0",
+  "pytest==9.2.0",
+  "semver>=3.0,<3.2",
+  "syrupy==7.0.0",
+  "tomli==2.5.0",
   "torch>=2.5", # Needs numpy 2 support
   "torchvision", # Imported at top of `rerun.experimental.dataloader.decoders`, so needed to import the dataloader module at all
   "datafusion==54.0.0",

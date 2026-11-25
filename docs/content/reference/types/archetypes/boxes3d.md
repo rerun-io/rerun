@@ -34,7 +34,7 @@ Orienting and placing boxes forms a separate transform that is applied prior to 
 
 ## API reference links
  * 🌊 [C++ API docs for `Boxes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Boxes3D.html)
- * 🐍 [Python API docs for `Boxes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Boxes3D)
+ * 🐍 [Python API docs for `Boxes3D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Boxes3D)
  * 🦀 [Rust API docs for `Boxes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Boxes3D.html)
 
 ## Examples

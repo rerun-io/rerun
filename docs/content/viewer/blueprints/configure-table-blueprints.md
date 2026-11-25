@@ -7,13 +7,11 @@ description: Order, rename, or hide columns and show previews in catalog tables
 Use table blueprints to order, rename, or hide columns, embed segment previews, and display rows as cards in catalog tables and dataset segment tables.
 
 > [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+>
 > The `rerun.blueprint.table` API is experimental and may change in future releases.
 
 Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.
-
-An agent changes the table on screen through the [Viewer MCP server](../extend/mcp.md#table-blueprints), which reads and writes the same blueprint as JSON.
-It writes the table blueprint rather than clicking through the **Columns** menu.
-The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-blueprint/SKILL.md) covers both the Python API and the MCP tools.
 
 The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/visualization/configure_table_blueprints.py) downloads 20 recordings from the public [DROID sample dataset](https://huggingface.co/datasets/rerun/droid_sample/tree/main), starts a local catalog server, and opens the Viewer.
 
@@ -193,6 +191,12 @@ In an entity path, `:` and spaces in a column name are escaped as `\:` and `\ `.
 `TableColumnPreview.views` lists the `/view/{view_id}` paths of its views.
 A column with a `TableColumnPreview` shows as a preview.
 `TableColumn.column_type` holds the component identifier and component type set by `column_type`, e.g. `rerun.components.Flag`.
+
+## Agents
+
+An agent changes the table on screen through the [Viewer MCP server](../extend/mcp.md#table-blueprints), which reads and writes the same blueprint as JSON.
+It writes the table blueprint rather than clicking through the **Columns** menu.
+The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-blueprint/SKILL.md) covers both the Python API and the MCP tools.
 
 ## Further examples
 

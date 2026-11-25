@@ -2,8 +2,9 @@
 
 use std::sync::Arc;
 
+use re_agent::ModelApiProvider;
 use re_agent::acp::schema::v1::{SessionConfigId, SessionConfigOption, SessionConfigOptionValue};
-use re_agent::{AgentToolbox, ModelApiProvider};
+use re_agent_tools::AgentToolbox;
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_error::StructuredError;
 use re_ui::alert::Alert;
@@ -17,7 +18,7 @@ use re_agent::AgentEntry;
 use re_agent::Transcript;
 use re_agent::{AgentLaunch, AgentLaunchError};
 use re_agent::{AgentSession, Phase, Prompt, SessionReports};
-use re_agent::{AgentSettings, SessionContext};
+use re_agent::{AgentSettings, ModelPreselect, SessionContext};
 
 /// How wide a host should make the panel.
 ///
@@ -518,13 +519,30 @@ impl AgentPanel {
     pub fn open_conversation(
         &mut self,
         context: SessionContext,
-        opening_prompt: impl Into<String>,
+        opening_prompt: impl Into<Prompt>,
     ) {
         let mut conversation = self.fresh_conversation();
         conversation.context = Some(context);
-        conversation
-            .pending_prompts
-            .push_back(Prompt::from(opening_prompt.into()));
+        self.show_new_conversation(conversation, opening_prompt.into());
+    }
+
+    /// Opens a conversation with the panel's shared context, and sends `opening_prompt` as soon
+    /// as its agent is ready.
+    ///
+    /// Its agent starts on `model_preselect`. It is kept like any conversation the user started.
+    pub fn open_conversation_with_model(
+        &mut self,
+        model_preselect: ModelPreselect,
+        opening_prompt: impl Into<Prompt>,
+    ) {
+        let mut conversation = self.fresh_conversation();
+        conversation.model_preselect = model_preselect;
+        self.show_new_conversation(conversation, opening_prompt.into());
+    }
+
+    /// Shows `conversation`, which sends `opening_prompt` as soon as its agent is ready.
+    fn show_new_conversation(&mut self, mut conversation: Conversation, opening_prompt: Prompt) {
+        conversation.pending_prompts.push_back(opening_prompt);
         self.view = View::Conversation(conversation.id);
         self.conversations.push(conversation);
     }
@@ -762,7 +780,7 @@ impl AgentPanel {
                                     .clicked();
                             ui.label(egui::RichText::new(title).strong());
                             if !in_chat {
-                                experimental_tag_ui(ui).on_hover_text("Expect rough edges.");
+                                super::experimental_tag_ui(ui);
                             }
                             back.then_some(PanelAction::ShowList)
                         },
@@ -918,25 +936,6 @@ fn new_conversation_shortcut_pressed(ui: &egui::Ui, panel_rect: egui::Rect) -> b
         && ui.input_mut(|input| input.consume_shortcut(&NEW_CONVERSATION_SHORTCUT))
 }
 
-/// A warning-colored pill saying that the panel is experimental.
-fn experimental_tag_ui(ui: &mut egui::Ui) -> egui::Response {
-    let tokens = ui.tokens();
-    let alert = &tokens.alert_warning;
-    egui::WidgetAtom::new(
-        egui::RichText::new("Experimental")
-            .small()
-            .color(alert.icon),
-    )
-    .frame(
-        egui::Frame::new()
-            .fill(alert.fill)
-            .corner_radius(tokens.normal_corner_radius())
-            .inner_margin(egui::Margin::symmetric(6, 1)),
-    )
-    .show(ui)
-    .response
-}
-
 #[cfg(test)]
 mod tests {
     use re_agent::AgentProfileId;
@@ -1081,6 +1080,23 @@ mod tests {
                 .map(|prompt| prompt.text.as_str())
                 .collect::<Vec<_>>(),
             ["Prompt from command palette", "Prompt from chat"],
+        );
+    }
+
+    /// A conversation opened with a model preselect has no context of its own, so it is kept.
+    #[test]
+    fn conversation_with_model_is_kept() {
+        let mut panel =
+            AgentPanel::with_agents(AgentSettings::default(), None, Vec::new(), Vec::new());
+        panel.open_conversation_with_model(re_agent::ModelCategory::Fast.into(), "Prompt");
+
+        let [conversation] = panel.conversations.as_slice() else {
+            panic!("expected exactly one conversation");
+        };
+        assert!(conversation.context.is_none());
+        assert_eq!(
+            conversation.model_preselect,
+            re_agent::ModelCategory::Fast.into()
         );
     }
 

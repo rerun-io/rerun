@@ -4,170 +4,142 @@ use re_sdk_types::archetypes::Transform3D;
 use re_sdk_types::external::glam;
 use urdf_rs::{Joint, JointType};
 
-use super::quat_from_rpy;
+use super::{quat_from_rpy, unit_joint_axis};
+use crate::{JointTransform, MultiDofJointType, UnsupportedJointType};
 
-/// Errors that can occur when computing a joint transform.
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    /// The joint type is not supported for transform computation.
-    #[error("Joint type '{0:?}' is not supported for transform computation")]
-    UnsupportedJointType(JointType),
+/// The error returned by [`compute_transform3d`].
+#[deprecated(
+    since = "0.44.0",
+    note = "Use `re_importer::UnsupportedJointType` instead"
+)]
+pub type Error = UnsupportedJointType;
+
+/// Computes a [`Transform3D`] for a joint at the given value, and logs any warnings.
+///
+/// See [`compute_joint_transform`] for the meaning of `value` and `clamp`.
+#[deprecated(
+    since = "0.44.0",
+    note = "Use `compute_joint_transform` and convert the result with `Transform3D::from`"
+)]
+pub fn compute_transform3d(
+    joint: &Joint,
+    value: f64,
+    clamp: bool,
+) -> Result<Transform3D, UnsupportedJointType> {
+    let transform = compute_joint_transform(joint, value, clamp)?;
+    for warning in &transform.warnings {
+        re_log::warn!("{warning}");
+    }
+    Ok(transform.into())
 }
 
-/// Computes a [`Transform3D`] for a joint at the given value.
+/// Deprecated paths to [`compute_joint_transform`] and [`JointTransform`].
+pub mod internal {
+    pub use super::compute_joint_transform;
+
+    #[deprecated(since = "0.44.0", note = "Use `re_importer::JointTransform` instead")]
+    pub type JointTransform = crate::JointTransform;
+}
+
+/// Computes the transform from the joint's parent link to its child link, for the joint at `value`.
 ///
 /// `value` is either an angle in radians (revolute/continuous joint)
 /// or a distance in meters (prismatic joint).
+/// The frames are the plain link names, without any frame prefix.
 ///
-/// If `clamp` is true, values outside joint limits will be clamped and a warning is logged.
+/// If `clamp` is true, values outside joint limits are clamped and a warning is added.
 /// If `clamp` is false, values outside limits are used as-is without warnings.
-pub fn compute_transform3d(joint: &Joint, value: f64, clamp: bool) -> Result<Transform3D, Error> {
-    let result = internal::compute_joint_transform(joint, value, clamp)?;
+///
+/// The joint axis does not have to be a unit vector.
+/// A joint whose axis is zero-length or not finite does not move.
+pub fn compute_joint_transform(
+    joint: &Joint,
+    value: f64,
+    clamp: bool,
+) -> Result<JointTransform, UnsupportedJointType> {
+    let Joint {
+        name,
+        joint_type,
+        origin,
+        parent,
+        child,
+        axis: _,
+        limit,
+        calibration: _,
+        dynamics: _,
+        mimic: _,
+        safety_controller: _,
+    } = joint;
 
-    if let Some(warning) = &result.warning {
-        re_log::warn!("{}", warning);
-    }
+    let urdf_rs::Pose {
+        xyz: origin_xyz,
+        rpy: origin_rpy,
+    } = origin;
 
-    Ok(Transform3D::update_fields()
-        .with_translation(result.translation.to_array())
-        .with_quaternion(result.quaternion.to_array())
-        .with_parent_frame(result.parent_frame)
-        .with_child_frame(result.child_frame))
-}
+    let origin_quat = quat_from_rpy(origin_rpy);
+    let origin_translation = glam::Vec3::new(
+        origin_xyz[0] as f32,
+        origin_xyz[1] as f32,
+        origin_xyz[2] as f32,
+    );
 
-/// Internal utilities for joint transform computation.
-// Note: these are exposed for use in bindings.
-pub mod internal {
-
-    use super::{Error, Joint, JointType, glam, quat_from_rpy};
-
-    /// Internal result of computing a joint transform.
-    ///
-    /// Uses glam types for easier use in bindings.
-    pub struct JointTransform {
-        pub quaternion: glam::Quat,
-        pub translation: glam::Vec3,
-        pub parent_frame: String,
-        pub child_frame: String,
-
-        /// Optional warning message (e.g., if angle was clamped to limits).
-        pub warning: Option<String>,
-    }
-
-    /// Computes a [`JointTransform`] for a joint at the given value.
-    ///
-    /// `value` is either an angle in radians (revolute/continuous joint)
-    /// or a distance in meters (prismatic joint).
-    ///
-    /// If `clamp` is true, values outside joint limits will be clamped and a warning is generated.
-    /// If `clamp` is false, values outside limits are used as-is without warnings.
-    pub fn compute_joint_transform(
-        joint: &Joint,
-        value: f64,
-        clamp: bool,
-    ) -> Result<JointTransform, Error> {
-        let Joint {
-            name,
-            joint_type,
-            origin,
-            parent,
-            child,
-            axis,
-            limit,
-            calibration: _,
-            dynamics: _,
-            mimic: _,
-            safety_controller: _,
-        } = joint;
-
-        let urdf_rs::Pose {
-            xyz: origin_xyz,
-            rpy: origin_rpy,
-        } = origin;
-
-        let parent_frame = parent.link.clone();
-        let child_frame = child.link.clone();
-
-        let origin_quat = quat_from_rpy(origin_rpy);
-        let origin_translation = glam::Vec3::new(
-            origin_xyz[0] as f32,
-            origin_xyz[1] as f32,
-            origin_xyz[2] as f32,
-        );
-
-        match joint_type {
-            JointType::Revolute | JointType::Continuous => {
-                let mut warning = None;
-                let mut value = value;
-
-                // Check limits only for revolute (continuous has no limits).
-                if clamp
-                    && *joint_type == JointType::Revolute
-                    && !(limit.lower <= value && value <= limit.upper)
-                {
-                    warning = Some(format!(
-                        "Joint '{}' angle {:.4} rad is outside limits [{:.4}, {:.4}] rad. Clamping.",
-                        name, value, limit.lower, limit.upper
-                    ));
-                    value = value.clamp(limit.lower, limit.upper);
-                }
-
-                // Combine origin rotation with dynamic rotation (axis-angle).
-                let axis_vec =
-                    glam::Vec3::new(axis.xyz[0] as f32, axis.xyz[1] as f32, axis.xyz[2] as f32);
-                let quat_dynamic = glam::Quat::from_axis_angle(axis_vec, value as f32);
-                let combined_quat = origin_quat * quat_dynamic;
-
-                Ok(JointTransform {
-                    quaternion: combined_quat,
-                    translation: origin_translation,
-                    parent_frame,
-                    child_frame,
-                    warning,
-                })
-            }
-
-            JointType::Prismatic => {
-                let mut warning = None;
-                let mut value = value;
-
-                if clamp && !(limit.lower <= value && value <= limit.upper) {
-                    warning = Some(format!(
-                        "Joint '{}' distance {:.4} m is outside limits [{:.4}, {:.4}] m. Clamping.",
-                        name, value, limit.lower, limit.upper
-                    ));
-                    value = value.clamp(limit.lower, limit.upper);
-                }
-
-                // The axis is expressed in the joint frame, so the slide has to be rotated by the
-                // origin before it joins the parent-frame translation.
-                let axis_vec =
-                    glam::Vec3::new(axis.xyz[0] as f32, axis.xyz[1] as f32, axis.xyz[2] as f32);
-                let translation = origin_translation + origin_quat * (axis_vec * value as f32);
-
-                Ok(JointTransform {
-                    quaternion: origin_quat,
-                    translation,
-                    parent_frame,
-                    child_frame,
-                    warning,
-                })
-            }
-
-            // Fixed joint: just use the origin transform.
-            JointType::Fixed => Ok(JointTransform {
-                quaternion: origin_quat,
-                translation: origin_translation,
-                parent_frame,
-                child_frame,
-                warning: None,
-            }),
-
-            JointType::Floating | JointType::Planar | JointType::Spherical => {
-                Err(Error::UnsupportedJointType(joint_type.clone()))
-            }
+    let axis = unit_joint_axis(joint).unwrap_or(glam::Vec3::ZERO);
+    let mut warnings = Vec::new();
+    let mut clamped = |quantity: &str, unit: &str| {
+        if clamp && !(limit.lower <= value && value <= limit.upper) {
+            warnings.push(format!(
+                "Joint '{name}' {quantity} {value:.4} {unit} is outside limits [{:.4}, {:.4}] {unit}. Clamping.",
+                limit.lower, limit.upper
+            ));
+            value.clamp(limit.lower, limit.upper)
+        } else {
+            value
         }
-    }
+    };
+
+    let unsupported = |joint_type| UnsupportedJointType {
+        joint: name.clone(),
+        joint_type,
+    };
+
+    let (translation, rotation) = match joint_type {
+        // Continuous joints have no limits.
+        JointType::Continuous => (
+            origin_translation,
+            origin_quat * glam::Quat::from_scaled_axis(axis * value as f32),
+        ),
+        JointType::Revolute => {
+            let value = clamped("angle", "rad");
+            (
+                origin_translation,
+                origin_quat * glam::Quat::from_scaled_axis(axis * value as f32),
+            )
+        }
+
+        // The axis is expressed in the joint frame, so the slide has to be rotated by the
+        // origin before it joins the parent-frame translation.
+        JointType::Prismatic => {
+            let value = clamped("distance", "m");
+            (
+                origin_translation + origin_quat * (axis * value as f32),
+                origin_quat,
+            )
+        }
+
+        JointType::Fixed => (origin_translation, origin_quat),
+
+        JointType::Floating => return Err(unsupported(MultiDofJointType::Floating)),
+        JointType::Planar => return Err(unsupported(MultiDofJointType::Planar)),
+        JointType::Spherical => return Err(unsupported(MultiDofJointType::Spherical)),
+    };
+
+    Ok(JointTransform {
+        translation,
+        quaternion: rotation,
+        parent_frame: parent.link.clone(),
+        child_frame: child.link.clone(),
+        warnings,
+    })
 }
 
 #[cfg(test)]
@@ -200,7 +172,7 @@ mod tests {
                 .iter()
                 .find(|joint| joint.name == name)
                 .expect("the test URDF declares this joint");
-            internal::compute_joint_transform(joint, 0.04, false)
+            compute_joint_transform(joint, 0.04, false)
                 .expect("a prismatic joint is supported")
                 .translation
         };
@@ -226,8 +198,43 @@ mod tests {
 
         let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
         let joint = &robot.joints[0];
-        let transform =
-            internal::compute_joint_transform(joint, 0.5, false).expect("revolute is supported");
+        let transform = compute_joint_transform(joint, 0.5, false).expect("revolute is supported");
         assert!((transform.translation - glam::Vec3::new(0.088, 0.0, 0.0)).length() < 1e-6);
+    }
+
+    /// Non-unit axes, which are common in URDF files, act like their unit-length direction.
+    #[test]
+    fn test_non_unit_axis_is_normalized() {
+        const URDF: &str = r#"
+            <robot name="arm">
+              <link name="a"/><link name="b"/><link name="c"/>
+              <joint name="hinge" type="continuous">
+                <parent link="a"/><child link="b"/><axis xyz="0 0 0.1"/>
+              </joint>
+              <joint name="slide" type="prismatic">
+                <parent link="b"/><child link="c"/><axis xyz="0 2 2"/>
+                <limit lower="0" upper="1" effort="1" velocity="1"/>
+              </joint>
+            </robot>"#;
+
+        let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+
+        for angle in [0.5, -0.5] {
+            let hinge = compute_joint_transform(&robot.joints[0], angle, false).expect("supported");
+            let expected = glam::Quat::from_rotation_z(angle as f32);
+            assert!(
+                hinge.quaternion.angle_between(expected) < 1e-6,
+                "hinge rotation at {angle}: {:?}",
+                hinge.quaternion
+            );
+        }
+
+        let slide = compute_joint_transform(&robot.joints[1], 1.0, false).expect("supported");
+        let expected = glam::Vec3::new(0.0, 1.0, 1.0) / 2.0_f32.sqrt();
+        assert!(
+            (slide.translation - expected).length() < 1e-6,
+            "slide translation {:?}",
+            slide.translation
+        );
     }
 }

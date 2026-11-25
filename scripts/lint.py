@@ -64,6 +64,7 @@ deprecated_rerun_cloud = re.compile(r"\bRerun\s+Cloud\b", re.IGNORECASE)
 deprecated_rerun_base = re.compile(r"\bRerun\s+Base\b", re.IGNORECASE)
 deprecated_rerun_data_platform = re.compile(r"\bRerun\s+Data\s+Platform\b", re.IGNORECASE)
 deprecated_data_platform = re.compile(r"\bData\s+Platform\b", re.IGNORECASE)
+deprecated_cloud_instance = re.compile(r"\byour\s+cloud\s+instances?\b", re.IGNORECASE)
 deprecated_dataplatform = re.compile(r"(?<![/\[,])dataplatform(?![/\],])", re.IGNORECASE)
 rerun_hub = re.compile(r"\bRerun\s+Hub\b", re.IGNORECASE)
 recording_stream_app_id = re.compile(r'(RecordingStreamBuilder::new|\.init|RecordingStream)\(\s*"([^"]*)')
@@ -200,6 +201,126 @@ def lint_docs_redirect_links(filepath: str, content: str, redirects: dict[str, s
         path = match.group(1).strip("/")
         if new_path := redirects.get(path):
             errors.append((match.start(), f"`docs/{path}` is a redirect: link to `docs/{new_path}` instead"))
+    return errors
+
+
+absolute_docs_link = re.compile(r"https?://(?:www\.)?rerun\.io/docs/[^\s)\"'>]*")
+python_sdk_source_link = re.compile(
+    r"https://github\.com/rerun-io/rerun/(?:blob|tree)/[^\s)\"'>]*/rerun_py/rerun_sdk/[^\s)\"'>]*"
+)
+version_anchor = re.compile(
+    r"\b(?:[Ss]ince|[Aa]s of|[Ss]tarting (?:with|from)) (?:Rerun )?`?v?0\.\d+|\b[Ii]n Rerun `?v?0\.\d+"
+)
+
+
+def docs_page_frontmatter(content: str) -> dict[str, Any]:
+    """The YAML frontmatter of a `docs/content/` page, or `{}` if it has none."""
+    if not content.startswith("---\n"):
+        return {}
+    end = content.find("\n---", 4)
+    if end == -1:
+        return {}
+    try:
+        frontmatter = yaml.safe_load(content[4:end])
+    except yaml.YAMLError:
+        return {}
+    return frontmatter if isinstance(frontmatter, dict) else {}
+
+
+@cache
+def documented_frontmatter_keys() -> frozenset[str]:
+    """The frontmatter keys listed in the first YAML block of the "Frontmatter" section of `docs/README.md`."""
+    readme = (Path(__file__).resolve().parent.parent / "docs" / "README.md").read_text(encoding="utf-8")
+    section = readme[readme.index("### Frontmatter") :]
+    block_start = section.index("```yaml\n") + len("```yaml\n")
+    block = section[block_start : section.index("```", block_start)]
+    return frozenset(re.findall(r"^(\w+):", block, re.MULTILINE))
+
+
+def mask_html_comments(line: str, in_comment: bool) -> tuple[str, bool]:
+    """
+    `line` with everything inside `<!-- … -->` comments replaced by spaces, and whether a comment is still open at its end.
+
+    The masked line has the same length as `line`, so match positions in it are positions in `line`.
+    """
+    masked = ""
+    pos = 0
+    while pos < len(line):
+        if in_comment:
+            end = line.find("-->", pos)
+            if end == -1:
+                return masked + " " * (len(line) - pos), True
+            masked += " " * (end + 3 - pos)
+            pos = end + 3
+            in_comment = False
+        else:
+            start = line.find("<!--", pos)
+            if start == -1:
+                return masked + line[pos:], False
+            masked += line[pos:start] + "    "
+            pos = start + 4
+            in_comment = True
+    return masked, in_comment
+
+
+def lint_docs_page(filepath: str, content: str) -> list[tuple[int, str]]:
+    """Rules for the hand-written pages in `docs/content/`, as `(index, error)`."""
+    if "docs/content/" not in filepath or not filepath.endswith(".md"):
+        return []
+    if "docs/content/changelog/changeset-" in filepath or "docs/content/reference/migration/" in filepath:
+        return []  # History: it keeps the links and wording of its time.
+    if "docs/content/reference/types/" in filepath:
+        return []  # Generated from the type definitions, whose docs also become the SDKs' docstrings.
+
+    errors = []
+
+    frontmatter = docs_page_frontmatter(content)
+    if frontmatter.get("hidden") is True and "redirect" in frontmatter:
+        errors.append((0, "A hidden redirect page: move the redirect to `docs/content/_redirects.yaml` instead"))
+
+    is_upcoming_changelog = "docs/content/changelog/upcoming/" in filepath
+
+    # Changelog entries have their own keys, documented in `changelog/upcoming/_template.md`.
+    if not is_upcoming_changelog:
+        for key in sorted(frontmatter.keys() - documented_frontmatter_keys()):
+            errors.append((0, f"Undocumented frontmatter key `{key}`: add it to the list in `docs/README.md`"))
+
+    in_code_block = False
+    in_html_comment = False
+    line_start = 0
+    for line in content.splitlines(keepends=True):
+        if line.lstrip().startswith("```") and not in_html_comment:
+            if not in_code_block and line.strip() == "```py":
+                errors.append((line_start, "Use ```python, not ```py: the website does not highlight `py`"))
+            in_code_block = not in_code_block
+        elif not in_code_block:
+            # Only outside code blocks: a `<!--` in example code does not open a comment.
+            visible, in_html_comment = mask_html_comments(line, in_html_comment)
+            for match in absolute_docs_link.finditer(visible):
+                errors.append((
+                    line_start + match.start(),
+                    f"Link to docs pages with a relative `.md` path, not `{match.group()}`: relative links are checked against this repo, and work on GitHub",
+                ))
+            for match in python_sdk_source_link.finditer(visible):
+                errors.append((
+                    line_start + match.start(),
+                    "Link to the Python reference docs on `ref.rerun.io`, not to the SDK source on GitHub",
+                ))
+            # A `breaking` changelog entry is its change's migration guide, which may name versions.
+            if not is_upcoming_changelog:
+                for match in version_anchor.finditer(visible):
+                    errors.append((
+                        line_start + match.start(),
+                        f"Describe the current behavior instead of when it changed (`{match.group()}`): version history belongs in the changelog and migration guides",
+                    ))
+            # Changelog entries may hold `TODO(name)` placeholders: the release is blocked until they are resolved.
+            if "TODO" in visible and not is_upcoming_changelog:
+                errors.append((
+                    line_start + visible.find("TODO"),
+                    "Readers see this TODO: state the current limitation instead, or move the TODO into an `<!-- … -->` comment",
+                ))
+        line_start += len(line)
+
     return errors
 
 
@@ -389,6 +510,9 @@ def lint_line(
         return f"'Rerun Data Platform' {deprecated_msg}"
     if deprecated_data_platform.search(line):
         return f"'Data Platform' {deprecated_msg}"
+    # Only in the OSS rerun repo: elsewhere "cloud instance" is a generic infrastructure term (an EC2 instance, …).
+    if is_in_oss_rerun_repo and deprecated_cloud_instance.search(line):
+        return f"'your cloud instance' {deprecated_msg}"
     # The bare word `dataplatform` is only checked in the OSS rerun repo:
     # in the monorepo it is the literal name of the workspace directory, docker image,
     # pixi tasks, env vars, etc., so it is legitimate there.
@@ -517,6 +641,7 @@ def test_lint_line() -> None:
         "The data platform stores recordings.",
         "Rerun Base is the new commercial offering.",
         "rerun base is the new commercial offering.",
+        "In practice you'll connect to your cloud instance.",
         # Wrong 'Rerun Hub' capitalization.
         "Connect to Rerun hub today.",
         "Use rerun Hub for catalogs.",
@@ -558,6 +683,8 @@ def test_lint_line() -> None:
     # …except the bare word 'dataplatform', which legitimately names the workspace directory there.
     assert lint_line("The dataplatform is powerful", None, is_in_oss_rerun_repo=True) is not None
     assert lint_line("The dataplatform is powerful", None, is_in_oss_rerun_repo=False) is None
+    assert lint_line("Launch an EC2 cloud instance with a GPU.", None) is None
+    assert lint_line("Connect to your cloud instance.", None, is_in_oss_rerun_repo=False) is None
 
     # rST (reStructuredText) is not rendered by MkDocs/mkdocstrings.
     # Flagged inside Python docstrings and Rust `///` doc comments only.
@@ -752,6 +879,59 @@ def test_lint_docs_redirect_links() -> None:
     assert errors("README.md", "https://rerun.io/docs/old/page-two") == []
     assert errors("CHANGELOG.md", "https://rerun.io/docs/old/page") == []
     assert errors("docs/content/changelog/changeset-0-42.md", "https://rerun.io/docs/old/page") == []
+
+
+def test_lint_docs_page() -> None:
+    def num_errors(content: str, filepath: str = "docs/content/viewer/page.md") -> int:
+        return len(lint_docs_page(filepath, content))
+
+    # Frontmatter keys must be listed in `docs/README.md`.
+    assert num_errors("---\ntitle: A\norder: 1\nindex: true\n---\n") == 0
+    assert num_errors("---\ntitle: A\nsidebar: false\n---\n") == 1
+    assert num_errors("---\ntitle: A\ntype: feature\n---\n", filepath="docs/content/changelog/upcoming/x.md") == 0
+
+    # Absolute links to docs pages.
+    assert num_errors("See [views](https://rerun.io/docs/viewer/views).\n") == 1
+    assert num_errors("See [views](../viewer/views.md).\n") == 0
+    assert num_errors("```python\nprint('https://rerun.io/docs/viewer')\n```\n") == 0
+    assert num_errors("See https://rerun.io/docs/viewer.\n", filepath="README.md") == 0
+    assert num_errors("See https://rerun.io/docs/viewer.\n", filepath="docs/content/changelog/changeset-0-42.md") == 0
+    assert num_errors("See https://rerun.io/docs/viewer.\n", filepath="docs/content/changelog/upcoming/x.md") == 1
+
+    # Links to the Python SDK source.
+    url = "https://github.com/rerun-io/rerun/blob/main/rerun_py/rerun_sdk/rerun/urdf.py"
+    assert num_errors(f"The [`urdf`]({url}) module.\n") == 1
+    assert num_errors("The [example](https://github.com/rerun-io/rerun/tree/main/examples/python/dna).\n") == 0
+
+    # Version anchors.
+    assert num_errors("Since Rerun 0.28, transforms are logged per frame.\n") == 1
+    assert num_errors("In Rerun `v0.30` we added multiple visualizers.\n") == 1
+    assert num_errors("As of 0.31, this is the default.\n") == 1
+    assert num_errors("Wait in 0.5 second steps.\n") == 0
+    assert num_errors("Since Rerun 0.28, …\n", filepath="docs/content/reference/migration/migration-0-28.md") == 0
+    assert num_errors("As of 0.43, this is the default.\n", filepath="docs/content/changelog/upcoming/x.md") == 0
+
+    # `py` code fences.
+    assert num_errors("```py\nx = 1\n```\n") == 1
+    assert num_errors("```python\nx = 1\n```\n") == 0
+
+    # TODOs that readers see.
+    assert num_errors("TODO(#1150): Allow disabling this.\n") == 1
+    assert num_errors("<!-- TODO(#1150): Allow disabling this. -->\n") == 0
+    assert num_errors("<!--\nTODO(#1150): Allow disabling this.\n-->\n") == 0
+    assert num_errors("<!-- a --> TODO(#1150) <!-- b -->\n") == 1
+    assert lint_docs_page("docs/content/a.md", "<!-- TODO(a) --> TODO(b)\n")[0][0] == 17
+
+    # Readers never see HTML comments.
+    assert num_errors("<!-- See https://rerun.io/docs/viewer. -->\n") == 0
+    assert num_errors("<!--\nSince Rerun 0.28, this works.\n-->\n") == 0
+    assert num_errors("TODO(name): add docs link\n", filepath="docs/content/changelog/upcoming/x.md") == 0
+    assert num_errors("```html\n<!-- start of embed\n```\nTODO(#1)\n") == 1
+
+    # Hidden redirect pages.
+    assert num_errors("---\ntitle: Old\nhidden: true\nredirect: viewer/new\n---\n") == 1
+    assert num_errors("---\ntitle: Index\nredirect: getting-started\n---\n") == 0
+    assert num_errors("---\ntitle: Page\nhidden: true\n---\n") == 0
 
 
 def test_lint_example_app_ids() -> None:
@@ -1185,6 +1365,11 @@ def lint_file(filepath: str, args: Any, content: str | None = None) -> int:
             print(source.error(error, line_nr=_index_to_line_nr(source.content, index)))
             num_errors += 1
 
+    for index, error in lint_docs_page(filepath, source.content):
+        if not source.should_ignore_index(index):
+            print(source.error(error, line_nr=_index_to_line_nr(source.content, index)))
+            num_errors += 1
+
     # Markdown-specific lints
     if filepath.endswith(".md"):
         errors = lint_frontmatter(filepath, source.content)
@@ -1396,6 +1581,7 @@ def main() -> None:
     test_lint_line()
     test_is_emoji()
     test_lint_docs_redirect_links()
+    test_lint_docs_page()
     test_lint_example_app_ids()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")

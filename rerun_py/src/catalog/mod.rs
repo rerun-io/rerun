@@ -72,7 +72,7 @@ fn blueprint_fields(blueprint: RegisteredBlueprint) -> BlueprintFields {
     (
         blueprint.segment_id.to_string(),
         blueprint.name.map(BlueprintName::into_string),
-        blueprint.kind.as_str(),
+        blueprint.kind.unwrap_or_default().as_str(),
     )
 }
 

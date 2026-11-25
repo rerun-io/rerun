@@ -110,8 +110,9 @@ impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderI
                 }
 
                 Ok(buf) => {
-                    self.decoder.push_byte_chunk(buf.to_vec());
-                    let len = buf.len(); // borrowck limitation
+                    let len = buf.len().min(super::MAX_BYTE_CHUNK_LEN);
+                    self.decoder
+                        .push_byte_chunk(bytes::Bytes::copy_from_slice(&buf[..len]));
                     self.reader.consume(len);
                 }
 
@@ -163,13 +164,7 @@ mod tests {
         vec![
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
-                info: StoreInfo::new(
-                    store_id.clone(),
-                    StoreSource::RustSdk {
-                        rustc_version: String::new(),
-                        llvm_version: String::new(),
-                    },
-                ),
+                info: StoreInfo::new(store_id.clone(), StoreSource::RustSdk),
             }),
             LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
             LogMsg::BlueprintActivationCommand(re_log_msg::BlueprintActivationCommand {
@@ -315,6 +310,49 @@ mod tests {
                 .collect();
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
+    }
+
+    /// A message larger than [`super::super::MAX_BYTE_CHUNK_LEN`] spans several byte chunks when
+    /// read from a slice, and must still decode intact.
+    #[test]
+    fn test_decode_message_larger_than_byte_chunk() {
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+
+        let blob: Vec<u8> = (0..3 * super::super::MAX_BYTE_CHUNK_LEN)
+            .map(|i| (i % 251) as u8)
+            .collect();
+        let arrow_msg = re_chunk::Chunk::builder("big_entity")
+            .with_archetype(
+                RowId::new(),
+                re_log_types::TimePoint::STATIC,
+                &re_sdk_types::archetypes::Asset3D::new(blob),
+            )
+            .build()
+            .unwrap()
+            .to_arrow_msg()
+            .unwrap();
+
+        let messages = vec![
+            LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::new(),
+                info: StoreInfo::new(store_id.clone(), StoreSource::RustSdk),
+            }),
+            LogMsg::ArrowMsg(store_id, arrow_msg),
+        ];
+
+        let mut file = vec![];
+        crate::Encoder::encode_into(
+            CrateVersion::LOCAL,
+            EncodingOptions::PROTOBUF_UNCOMPRESSED,
+            messages.iter().map(Ok),
+            &mut file,
+        )
+        .unwrap();
+
+        let decoded_messages: Vec<_> = DecoderApp::decode_lazy(file.as_slice())
+            .map(Result::unwrap)
+            .collect();
+        similar_asserts::assert_eq!(decoded_messages, messages);
     }
 
     /// Test that legacy messages (aka `StoreId` without an application id) are properly decoded.

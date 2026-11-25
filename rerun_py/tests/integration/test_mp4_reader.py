@@ -446,3 +446,84 @@ def _assert_same_timelines(left: list[Chunk], right: list[Chunk]) -> None:
             assert a_batch.column(name).equals(b_batch.column(name))
             compared += 1
     assert compared > 0
+
+
+# ---------------------------------------------------------------------------
+# `info()` — container metadata, without streaming the file
+# ---------------------------------------------------------------------------
+
+
+def test_info_describes_the_source_file() -> None:
+    info = Mp4Reader(H264_NO_BFRAMES).info()
+
+    assert info.codec == VideoCodec.H264
+    assert info.codec_string == "avc1.640028"
+    assert (info.width, info.height) == (1920, 1080)
+    assert info.bit_depth == 8
+    assert info.num_frames == 30
+    assert info.duration_ns == 1_000_000_000
+    assert not info.has_b_frames
+    assert (info.gop_size_min, info.gop_size_max) == (30, 30)
+
+    assert info.samples.schema.names == [
+        "frame_nr",
+        "pts",
+        "dts",
+        "duration",
+        "is_keyframe",
+        "byte_offset",
+        "byte_size",
+    ]
+    assert info.samples.schema.field("pts").type == pa.duration("ns")
+    assert info.samples.schema.field("duration").type == pa.duration("ns")
+    assert not any(field.nullable for field in info.samples.schema)
+    assert info.samples.num_rows == info.num_frames
+
+    # The table stays out of the repr, and does not make the info unhashable.
+    assert "frame_nr" not in repr(info)
+    hash(info)
+
+
+@pytest.mark.parametrize("path", [H264_NO_BFRAMES, AV1_MULTI_GOP])
+def test_info_keyframes_match_the_stream(path: Path) -> None:
+    """`info()` exists to replace a full stream read, so it must agree with one."""
+    info = Mp4Reader(path).info()
+    chunks = Mp4Reader(path).stream().to_chunks()
+
+    assert info.keyframe_timestamps_ns.tolist() == sorted(_times(_keyframe_marker(chunks)))
+    assert info.num_frames == sum(c.num_rows for c in _sample_chunks(chunks))
+
+    # Without B-frames, presentation order is file order.
+    assert info.samples.column("frame_nr").to_pylist() == list(range(info.num_frames))
+    is_keyframe = info.samples.column("is_keyframe").to_pylist()
+    assert info.keyframe_frame_nrs.tolist() == [nr for nr, key in enumerate(is_keyframe) if key]
+
+
+def test_info_counts_gops() -> None:
+    info = Mp4Reader(AV1_MULTI_GOP).info()
+
+    assert info.num_frames == 300
+    assert len(info.keyframe_frame_nrs) == 12
+    assert (info.gop_size_min, info.gop_size_max) == (2, 72)
+
+
+def test_info_of_a_b_frame_source_needs_no_ffmpeg() -> None:
+    """A B-frame source can only be streamed through FFmpeg, but describing it reads the header alone."""
+    info = Mp4Reader(H264_WITH_BFRAMES).info()
+
+    assert info.has_b_frames
+    assert sorted(info.samples.column("frame_nr").to_pylist()) == list(range(info.num_frames))
+    assert info.samples.column("dts").to_pylist() != info.samples.column("pts").to_pylist()
+
+
+def test_info_ignores_the_reader_configuration() -> None:
+    baseline = Mp4Reader(H264_NO_BFRAMES).info()
+    configured = Mp4Reader(
+        H264_NO_BFRAMES,
+        mode="asset",
+        timeline_name="other",
+        timeline_type="timestamp_ns",
+        entity_path="/camera",
+    ).info()
+
+    assert configured == baseline

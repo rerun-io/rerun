@@ -6,9 +6,12 @@ description: Export dataframe view data to Pandas with the dataframe API of the 
 
 In the [previous section](explore-as-dataframe.md), we explored some face tracking data using the dataframe view. In this section, we will see how we can use the dataframe API of the Rerun SDK to export the same data into a [Pandas](https://pandas.pydata.org) dataframe to further inspect and process it.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 ## Load the recording
 
-The dataframe SDK loads data from an .RRD file.
+The dataframe API loads data from an .RRD file.
 The first step is thus to save the recording as RRD, which can be done from the Rerun menu:
 
 <picture style="zoom: 0.5">
@@ -82,7 +85,8 @@ We can make several observations from this output:
 -   The last column is named `/blendshapes/0/jawOpen:Scalars:scalars`. This is what we call a _component column_, and it corresponds to the [Scalar](../../reference/types/components/scalar.md) component logged to the `/blendshapes/0/jawOpen` entity.
 -   Each row in the `/blendshapes/0/jawOpen:Scalars:scalars` column consists of a _list_ of (typically one) scalar.
 
-This last point may come as a surprise but is a consequence of Rerun's data model where components are always stored as arrays. This enables, for example, to log an entire point cloud using the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype under a single entity and at a single timestamp.
+[Component columns are lists](../dataframes/dataframe-queries.md#why-are-component-columns-lists) because Rerun's data model always stores components as arrays.
+This lets you, for example, log an entire point cloud using the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype under a single entity and at a single timestamp.
 
 Let's explore this further, recalling that, in our recording, no face was detected at around frame #170:
 
@@ -114,7 +118,6 @@ Here is the result:
 Name: /blendshapes/0/jawOpen:Scalars:scalars, dtype: object
 ```
 
-Each value is wrapped in a list because [component columns are lists](../dataframes/dataframe-queries.md#why-are-component-columns-lists), even when a single scalar was logged per row.
 We note that the data contains empty lists when no face is detected. When the blendshapes entities are [`Clear`](../../reference/types/archetypes/clear.md)ed, this happens for the corresponding timestamps and all further timestamps until a new value is logged.
 
 While this data representation is in general useful, a flat floating point representation with `NaN` for missing values is typically more convenient for scalar data. This is achieved using the [`explode()`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.explode.html) method:

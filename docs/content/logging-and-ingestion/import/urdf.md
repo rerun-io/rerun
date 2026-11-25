@@ -4,7 +4,7 @@ order: 500
 description: Load robot models defined in URDF files and visualize them in the 3D view
 ---
 
-Rerun features a built-in [importer](https://rerun.io/docs/logging-and-ingestion/import/importers/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
+Rerun features a built-in [importer](importers/overview.md) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/urdf-viewer/ebdefa158ab6f26f9dc1cb1924fce4b846fe8db2/full.png" alt="A robot model loaded from an URDF file visualized in Rerun.">
@@ -22,10 +22,7 @@ This will automatically invoke the importer, which will take care of:
 * loading the joint transforms and associated frame IDs of links
 
 Once that is done, the joints can be updated by sending [`Transform3D`](../../reference/types/archetypes/transform3d.md)s, where you have to set the `parent_frame` and `child_frame` fields explicitly to each joint's specific frame IDs.
-
-> [!NOTE]
-> Previous versions (< 0.28) required you to send transforms with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
-> This was dropped in favor of _named_ frame IDs, which is more in line with ROS and allows you to send all transform updates on one entity (e.g. a `transforms` entity like in the example below).
+Because the frames are named, you can send all joint transform updates on one entity (e.g. a `transforms` entity like in the example below).
 
 ## Meshes and `package://` paths
 
@@ -61,7 +58,7 @@ For a full animation example, see the [Python animated URDF example](https://git
 
 ## URDF utilities (Python)
 
-Rerun provides the [`rr.urdf`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/urdf.py) Python module that can facilitate the handling of URDF models in your code.
+Rerun provides the [`rr.urdf`](https://ref.rerun.io/docs/python/stable/urdf/) Python module that can facilitate the handling of URDF models in your code.
 It can be used as an alternative to other 3rd-party packages like [yourdfpy](https://yourdfpy.readthedocs.io/en/latest/index.html) or [pytransform3d](https://dfki-ric.github.io/pytransform3d/index.html).
 As shown below, you can use it e.g. to access individual joints of the URDF model and to compute their respective transforms based on joint states (e.g. angles for revolute joints).
 These transforms can be directly sent to Rerun.
@@ -70,35 +67,13 @@ These transforms can be directly sent to Rerun.
 
 Load a URDF file and access its structure:
 
-```python
-urdf_tree = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix=None)
-
-# Access properties
-robot_name = urdf_tree.name
-root_link = urdf_tree.root_link()
-joints = urdf_tree.joints()
-
-# Lookup by name
-urdf_tree.get_joint_by_name("shoulder")
-urdf_tree.get_link_by_name("base_link")
-
-# Get the entity paths of collision or visual geometries of a link.
-# This can be used for example to update the color / transparency during runtime:
-for visual_path in urdf_tree.get_visual_geometry_paths("gripper"):
-    rec.log(visual_path, rr.Asset3D.from_fields(albedo_factor=[255, 0, 0, 100]), static=True)
-```
+snippet: howto/urdf_utilities[urdf_tree]
 
 #### Frame prefix
 
-When loading the same URDF multiple times (e.g. a dual-arm setup), use `frame_prefix` to give each instance unique frame IDs and `entity_path_prefix` to separate their geometry in the entity tree. Use `log_urdf_to_recording()` to log the model with prefixed frame IDs:
+When loading the same URDF multiple times (e.g. a dual-arm setup), use `frame_prefix` to give each instance unique frame IDs and `entity_path_prefix` to separate their geometry in the entity tree. Use `log_to_recording()` to log the model with prefixed frame IDs:
 
-```python
-left = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="left", frame_prefix="left/")
-right = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="right", frame_prefix="right/")
-
-left.log_urdf_to_recording()
-right.log_urdf_to_recording()
-```
+snippet: howto/urdf_utilities[frame_prefix]
 
 Transforms computed via `joint.compute_transform()` will automatically use the prefixed frame IDs (e.g. `"left/base"`, `"right/shoulder"`).
 
@@ -114,26 +89,14 @@ Each joint exposes properties from the URDF file:
 
 Use `compute_transform()` to get a [`Transform3D`](../../reference/types/archetypes/transform3d.md) with the correct `parent_frame` and `child_frame` already set:
 
-```python
-# For revolute/continuous joints: pass angle in radians
-# For prismatic joints: pass distance in meters
-transform = joint.compute_transform(angle)
-rec.log("transforms", transform)
-```
+snippet: howto/urdf_utilities[compute_transform]
 
 By default, values outside the joint limits are clamped, with a warning.
 Pass `clamp=False` to use the value as is: `joint.compute_transform(angle, clamp=False)`.
 
 To send many joint values at once, use `compute_transform_columns()` with [`send_columns`](../send-data/send-columns.md):
 
-```python
-angles = [0.0, 0.1, 0.2, 0.3]
-rec.send_columns(
-    "transforms",
-    indexes=[rr.TimeColumn("step", sequence=range(len(angles)))],
-    columns=joint.compute_transform_columns(angles),
-)
-```
+snippet: howto/urdf_utilities[compute_transform_columns]
 
 #### Mimic joints
 
@@ -144,12 +107,12 @@ Compute the value of the mimic joint from its driver joint yourself, then call `
 ```python
 if (mimic := joint.mimic) is not None:
     value = mimic.multiplier * driver_value + mimic.offset
-    rec.log("transforms", joint.compute_transform(value))
+    rr.log("transforms", joint.compute_transform(value))
 ```
 
 ### Streaming the model as chunks
 
-`UrdfTree.stream()` returns the chunks of the model as an experimental `rerun.chunk.LazyChunkStream`, for use with the [Chunk Processing API](chunk-processing-api.md).
+`UrdfTree.stream()` returns the chunks of the model as a `rerun.chunk.LazyChunkStream`, for use with the [Chunk Processing API](chunk-processing-api.md).
 Pass `include_joint_transforms=False` to leave out the static joint transforms.
 
 ## Load URDF into an existing recording
@@ -168,6 +131,6 @@ To add them, we can simply drag the corresponding URDF files into the viewer whe
 
 ## References
 
-* [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
+* [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.log_file_from_path)
 * [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)

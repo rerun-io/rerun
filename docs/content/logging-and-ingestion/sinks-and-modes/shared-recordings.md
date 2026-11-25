@@ -55,28 +55,7 @@ Each process must call `rr.init` itself, with the same application ID, and then 
 Processes started with Python's `multiprocessing` inherit the default recording ID of the parent process.
 If you set `recording_id` yourself in the parent, pass the same `recording_id` in every child.
 
-```python
-import multiprocessing
-
-import rerun as rr
-
-
-@rr.shutdown_at_exit  # Forked processes skip the `atexit` handler that flushes data.
-def task(index: int) -> None:
-    rr.init("rerun_example_multiprocessing")  # Same application ID as the parent.
-    rr.connect_grpc()
-    rr.log(f"task_{index}", rr.TextLog(f"hello from task {index}"))
-
-
-if __name__ == "__main__":
-    rr.init("rerun_example_multiprocessing")
-    rr.spawn(connect=False)  # Start a Viewer that the child processes connect to.
-
-    for i in range(3):
-        p = multiprocessing.Process(target=task, args=(i,))
-        p.start()
-        p.join()
-```
+snippet: howto/multiprocessing_logging
 
 See the [multiprocess logging example](https://github.com/rerun-io/rerun/blob/latest/examples/python/multiprocess_logging/multiprocess_logging.py).
 

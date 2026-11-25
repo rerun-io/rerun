@@ -227,11 +227,13 @@ pub fn find_drop_target<ItemId: Copy>(
     // body rect, if any AND it actually contains something
     let non_empty_body_rect = body_rect.filter(|r| r.height() > 0.0);
 
-    // visualize the drag zones in debug builds, when the `Alt` key is pressed during drag
+    // visualize the drag zones in debug builds, when `SHOW_EXTRAS_MODIFIER` is held during drag
     #[cfg(debug_assertions)]
     {
+        use crate::ContextExt as _;
+
         // Visualize the drag zones
-        if ui.input(|i| i.modifiers.alt) {
+        if ui.ctx().show_extras() {
             ui.debug_painter().debug_rect(top, egui::Color32::RED, "t");
             ui.debug_painter()
                 .debug_rect(bottom, egui::Color32::GREEN, "b");

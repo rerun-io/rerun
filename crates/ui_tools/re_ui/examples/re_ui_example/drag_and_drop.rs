@@ -52,7 +52,10 @@ impl ExampleDragAndDrop {
 
             // Basic click and cmd/ctr-click
             if response.clicked() {
-                if ui.input(|i| i.modifiers.command) {
+                if ui.input(|i| {
+                    i.modifiers
+                        .matches_logically(re_ui::SELECTION_TOGGLE_MODIFIER)
+                }) {
                     if self.selected_items.contains(item_id) {
                         self.selected_items.remove(item_id);
                     } else {

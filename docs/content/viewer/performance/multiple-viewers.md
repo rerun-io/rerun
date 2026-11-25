@@ -39,13 +39,10 @@ $ rerun --port 6789 image.jpg
 When using `connect_grpc()` from the SDK, specify the port to target a specific viewer:
 
 ```python
-import rerun as rr
-
-# Connect to viewer on default port
-rr.init("rerun_example_demo")
+# Connect to the Viewer on the default port (9876):
 rr.connect_grpc()
 
-# Or connect to a specific port
+# Or connect to the Viewer on port 6789:
 rr.connect_grpc("rerun+http://127.0.0.1:6789/proxy")
 ```
 

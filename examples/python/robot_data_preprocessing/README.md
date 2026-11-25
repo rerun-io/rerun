@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Robot data preprocessing example"
+steps = ["collect", "prepare"]
 description = "Assemble a robot recording from multiple file sources with Rerun's chunk processing API and preprocessing steps."
 tags = ["API example"]
 thumbnail = "https://static.rerun.io/robot_data_preprocessing_thumbnail/1d64ea2972f5861bb3a8443d16f9c210bda37fdd/768w.png"

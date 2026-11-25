@@ -8,6 +8,7 @@ recording.print_blueprint_store: Prints the entire blueprint store to the consol
 recording.print_chunk_store: Prints the entire chunk store to the console and clipboard. WARNING: this may be A LOT of text.
 recording.print_primary_cache: Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.
 recording.redo_blueprint_edit: Redo the last undone thing
+recording.reset_blueprint: Discard all changes made to the current blueprint
 recording.reset_blueprint_to_default: Clear active blueprint and use the default blueprint instead. If no default blueprint is set, this will use a heuristic blueprint.
 recording.reset_blueprint_to_heuristic: Re-populate viewport with automatically chosen views using default visualizers
 recording.save: Save all data to a Rerun data file (.rrd)

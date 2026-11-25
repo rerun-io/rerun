@@ -6,7 +6,8 @@ description: Define view layouts and visualization defaults programmatically
 
 ## What are Blueprints?
 
-When you work with the Rerun Viewer, understanding blueprints is important if you want to build consistency around your Viewer experience.
+A blueprint describes how the Viewer lays out and displays your data.
+This page covers what blueprints control, how they bind to recordings, and the ways to create and change them.
 
 *For a video overview, check out the [Blueprints video](https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw) on YouTube.*
 
@@ -18,22 +19,22 @@ A way to think about the Rerun Viewer is that
 -   The **recording** provides the actual data you are visualizing
 -   The **blueprint** determines how that data is displayed
 
-Both pieces are crucial. Without a recording there is nothing to show. Without a blueprint there is no way to show it. Even when you use Rerun without explicitly loading a blueprint, the Viewer creates one automatically for you.
+When you do not load a blueprint, the Viewer creates one automatically.
 
 ## What blueprints control
 
-Blueprints give you complete control over the Viewer's layout and configuration:
+Blueprints control the Viewer's layout and configuration:
 
 -   **Panel visibility**: Whether panels like the blueprint panel, selection panel, and time panel are expanded or collapsed
 -   **Layout structure**: How views are arranged using containers (Grid, Horizontal, Vertical, Tabs)
--   **View types and configuration**: What kind of views display your data (2D/3D spatial, maps, charts, text logs, etc.) and their specific settings
+-   **View classes and configuration**: What kind of views display your data (2D/3D spatial, maps, charts, text logs, etc.) and their specific settings
 -   **Visual properties**: Styling like backgrounds, colors, zoom levels, time ranges, and visual bounds
 
 In general, if you can modify an aspect of how something looks through the Viewer, you are actually modifying the blueprint.
 
 ## Application IDs: binding blueprints to data
 
-The [Application ID](../logging-and-ingestion/data-model/recordings.md) is how blueprints connect to your data. This is a critical concept:
+The [Application ID](../logging-and-ingestion/data-model/recordings.md) is how blueprints connect to your data:
 
 **All recordings that share the same Application ID will use the same blueprint.**
 
@@ -44,25 +45,29 @@ This loose coupling between blueprints and recordings means:
 
 Think of the Application ID as the "key" that binds a blueprint to a specific type of recording. If you want recordings to share the same layout, give them the same Application ID.
 
-## Reset behavior: heuristic vs default
+## Blueprints of a catalog dataset
 
-The Viewer provides two types of blueprint reset, accessible from the blueprint panel:
+A catalog dataset can have several blueprints registered for its recordings, and one of them can be the dataset's default.
+See [Blueprints](../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register them.
+A recording opened from the dataset starts with the dataset's default blueprint, if it has one.
+The [blueprint dropdown in the top bar](ui/blueprint-panel.md#dataset-blueprints) switches between the dataset's blueprints and a heuristic blueprint.
 
-<picture>
-  <img src="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/full.png" alt="Blueprint panel menu with Add view or container, Reset to default blueprint, and Reset to heuristic blueprint">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1200w.png">
-</picture>
+## Reset behavior
+
+The [reset button](ui/blueprint-panel.md#reset-button) in the blueprint panel discards all changes made to the current blueprint.
+The **View** menu and the command palette have two more resets.
 
 ### Reset to heuristic blueprint
-This generates a new blueprint automatically based on your current data. The Viewer analyzes what you've logged and creates an appropriate layout using built-in heuristics. This is useful when you want to start fresh and let Rerun figure out a reasonable layout.
+This generates a new blueprint automatically based on your current data.
+The Viewer analyzes what you've logged and creates an appropriate layout using built-in heuristics.
+This is useful when you want to start over and let Rerun figure out a reasonable layout.
 
 ### Reset to default blueprint
-This returns to your programmatically specified blueprint (sent from code) or a saved blueprint file (`.rbl`). If you've sent a blueprint using `rr.send_blueprint()` or loaded a `.rbl` file, this becomes your "default." The reset button in the blueprint panel will restore this default whenever you need it.
+This returns to your programmatically specified blueprint (sent from code) or a saved blueprint file (`.rbl`).
+If you've sent a blueprint using `rr.send_blueprint()` or loaded a `.rbl` file, this becomes your "default."
+For a recording opened from a catalog dataset, the default is the dataset's default blueprint.
 
-When no default blueprint has been set, the reset button will use the heuristic blueprint instead.
+When no default blueprint has been set, this uses the heuristic blueprint instead.
 
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px" alt="Current, default, and heuristic blueprints">
@@ -99,23 +104,10 @@ Write blueprint code that configures the Viewer automatically:
 -   Define layouts in Python using `rerun.blueprint`, or in Rust using `rerun::blueprint`
 -   Send blueprints with `rr.send_blueprint()` or via `default_blueprint` parameter (Python), or `RecordingStreamBuilder::with_blueprint` and `Blueprint::send` (Rust)
 -   Generate layouts dynamically based on your data
--   Perfect for creating consistent views for specific debugging scenarios
 
 For example, you might send different blueprints automatically based on detected issues in your application (e.g., a robot enters an error state and surfaces the correct blueprint to help you debug that).
 
-```python
-import rerun as rr
-import rerun.blueprint as rrb
-
-if robot_error:
-    # Show diagnostic views for debugging
-    blueprint = rrb.Grid(
-        rrb.Spatial3DView(name="Robot view", origin="/world/robot"),
-        rrb.TextLogView(name="Error Logs", origin="/diagnostics"),
-        rrb.TimeSeriesView(name="Sensor Data", origin="/sensors"),
-    )
-    rr.send_blueprint(blueprint, make_active=True)
-```
+snippet: howto/visualization/blueprint_view_options[send_on_error]
 
 See our guide on how to [build a blueprint programmatically](blueprints/build-a-blueprint-programmatically.md) for detailed examples.
 
@@ -158,39 +150,10 @@ A blueprint with no containers or views has `auto_views=True` by default; to cre
 There are four container kinds: `rrb.Horizontal`, `rrb.Vertical`, `rrb.Grid`, and `rrb.Tabs`.
 Use `active_tab` to choose which tab is shown first, by index or by name:
 
-```python
-rrb.Blueprint(
-    rrb.Tabs(
-        rrb.Spatial3DView(name="Scene", origin="/world"),
-        rrb.TimeSeriesView(name="Plots", origin="/metrics"),
-        active_tab="Plots",
-    )
-)
-```
+snippet: howto/visualization/blueprint_view_options[tabs]
 
 There is no scrollable container yet: all views in a container share the available space.
 See [missing features](../development/roadmap.md#missing-features).
-
-## Common use cases
-
-### Debugging specific scenarios
-Create blueprints optimized for diagnosing particular issues. For example, when debugging robot perception, you might want a blueprint that shows:
--   The camera view in 2D
--   The 3D world with detected objects
--   Detection confidence scores in a time series chart
--   Error logs in a text panel
-
-### Sharing layouts with teams
-Save a blueprint file and share it with your team. Everyone loading that blueprint with matching recordings will see the data the same way, making it easier to discuss findings and collaborate.
-
-### Templating for different data types
-Create different blueprint templates for different types of recordings. For example:
--   A blueprint for autonomous vehicle data that focuses on map views and sensor fusion
--   A blueprint for robotics manipulation that emphasizes joint angles and gripper cameras
--   A blueprint for computer vision that shows side-by-side comparisons of different models
-
-### Dynamic Viewer configuration
-Generate blueprints programmatically based on runtime conditions. For instance, automatically create one view per detected anomaly, or adjust the layout based on how many data sources are active.
 
 ## Blueprint architecture
 
@@ -198,8 +161,7 @@ Under the hood, blueprints are just data. They are structured using the same [En
 
 -   **Anything you modify in the Viewer can be saved and shared** as a blueprint file
 -   **Blueprints can be produced programmatically** using just the Rerun SDK without depending on the Viewer
--   **Blueprint data is fully expressive**, enabling [blueprint overrides](view-concepts/customize-views.md#component-mappings) that are as powerful as logged data
--   **The full time-series nature** simplifies future features like snapshots and undo/redo
+-   **Blueprint data uses the same component types as logged data**, so [blueprint overrides](view-concepts/customize-views.md#component-mappings) can set any component a visualizer reads
 -   **Debugging tools for Rerun data** can inspect blueprint state just like recording data
 
 ### Viewer operation

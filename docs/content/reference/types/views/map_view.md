@@ -15,7 +15,7 @@ Configures the zoom level of the map view.
 Configuration for the background map of the map view.
 
 ## API reference links
- * 🐍 [Python API docs for `MapView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.MapView)
+ * 🐍 [Python API docs for `MapView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.MapView)
 
 ## Example
 

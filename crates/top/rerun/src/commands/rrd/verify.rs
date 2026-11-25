@@ -272,7 +272,7 @@ fn load_from_rrd_filepath_with_rrd_manifest(
         buf.resize(size as usize, 0u8);
         file.read_exact(&mut buf)?;
 
-        let chunk = re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(&buf)?;
+        let chunk = re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(buf.as_slice())?;
         anyhow::ensure!(
             chunk_id
                 == re_chunk::ChunkId::from_tuid(

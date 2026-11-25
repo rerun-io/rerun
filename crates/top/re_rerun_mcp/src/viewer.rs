@@ -24,7 +24,7 @@ use rmcp::{
     ErrorData as McpError,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{CallToolRequestParams, CallToolResult, ContentBlock, Tool},
-    service::{RequestContext, RoleServer},
+    service::{Peer, RequestContext, RoleServer},
     tool, tool_router,
 };
 use serde::Deserialize;
@@ -34,7 +34,8 @@ use url::Url;
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetLogsRequest, UnexpectedResponseKind, ViewerControlOp, ViewerLogEntry,
+    EguiInspectRequest, GetLogsRequest, GetStateRequest, ListCommandsRequest, RunCommandRequest,
+    UnexpectedResponseKind, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
 use re_viewer_control_tools::ScreenshotDelivery;
@@ -42,6 +43,9 @@ use re_viewer_control_tools::ScreenshotDelivery;
 use crate::{ToolResult, annotations, complete, text_error};
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
+
+/// The viewer command that re-reads a catalog server's entries ("Refresh server").
+const REFRESH_SERVER_COMMAND: &str = "server.refresh";
 
 /// Agents on MCP are coding agents that can read files. See [`ScreenshotDelivery::File`].
 const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::File;
@@ -69,13 +73,26 @@ const UI_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 /// otherwise has to infer.
 const INSTRUCTIONS: &str = include_str!("viewer_instructions.md");
 
+/// Why the catalog server of the connected viewer is unknown.
+#[derive(Debug, thiserror::Error)]
+pub enum ViewerCatalogError {
+    #[error("Not connected to a viewer")]
+    NotConnected,
+
+    #[error("Failed to read the viewer's state: {source}")]
+    ReadState { source: ExecuteError },
+
+    #[error("The viewer reported an invalid catalog URL: {source}. URL: {url:?}")]
+    InvalidUrl { source: re_uri::Error, url: String },
+}
+
 /// Why a viewer-control operation got no usable answer.
 #[derive(Debug, thiserror::Error)]
-enum ExecuteError {
+pub enum ExecuteError {
     #[error("The viewer did not answer within {REQUEST_TIMEOUT:?}")]
     Timeout,
 
-    #[error("ViewerControl rpc failed: {source}")]
+    #[error("The ViewerControl request failed ({:?}): {}", .source.code(), .source.message())]
     Rpc { source: tonic::Status },
 
     #[error("{source}")]
@@ -224,6 +241,11 @@ struct Connection {
     /// Sequence number of the last viewer log entry appended to a tool result.
     /// Starts at the newest entry at connect time, so old logs are not replayed.
     log_cursor: AtomicU64,
+
+    /// Every command id the viewer knows, whether it can run right now or not.
+    ///
+    /// Asked for at connect time, so that `run_command` lists them. `None` if that request failed.
+    command_ids: Option<Vec<String>>,
 }
 
 /// Prefix on every tool this toolset defines, so a `viewer_*` name is a viewer-control operation and
@@ -303,17 +325,47 @@ impl ViewerToolset {
             },
         )
         .await
+        .map_or_else(
+            |err| {
+                re_log::warn!("Failed to read the viewer log; new tool results may repeat old log entries: {err}");
+                0
+            },
+            |response| response.entries.last().map_or(0, |entry| entry.sequence),
+        );
+        let command_ids = execute(
+            &mut client,
+            ListCommandsRequest {
+                include_unavailable: Some(true),
+                ..Default::default()
+            },
+        )
+        .await
+        .inspect_err(|err| re_log::warn!("Failed to list the viewer's commands: {err}"))
         .ok()
-        .and_then(|response| response.entries.last().map(|e| e.sequence))
-        .unwrap_or(0);
+        .map(|response| {
+            response
+                .commands
+                .into_iter()
+                .map(|command| command.id)
+                .collect()
+        });
         *self.conn.lock() = Some(Arc::new(Connection {
             ui: egui_mcp::UiServer::new(bridge),
             client,
             viewer_endpoint: endpoint.clone(),
             peer: peer.clone(),
             log_cursor: AtomicU64::new(newest_log),
+            command_ids,
         }));
         Ok(peer)
+    }
+
+    /// The connected viewer's command ids, if known. See [`Connection::command_ids`].
+    fn command_ids(&self) -> Option<Vec<String>> {
+        self.conn
+            .lock()
+            .as_ref()
+            .and_then(|conn| conn.command_ids.clone())
     }
 
     /// Connect to the endpoint the toolset was started for, if any.
@@ -375,6 +427,58 @@ impl ViewerToolset {
         Ok(result)
     }
 
+    /// The catalog server the connected viewer serves, if it serves one.
+    pub async fn catalog_url(&self) -> Result<Option<re_uri::Origin>, ViewerCatalogError> {
+        let conn = self
+            .conn
+            .lock()
+            .clone()
+            .ok_or(ViewerCatalogError::NotConnected)?;
+        let mut client = conn.client.clone();
+        let state = execute(&mut client, GetStateRequest {})
+            .await
+            .map_err(|source| ViewerCatalogError::ReadState { source })?;
+        state
+            .catalog_url
+            .map(|url| {
+                url.parse()
+                    .map_err(|source| ViewerCatalogError::InvalidUrl { source, url })
+            })
+            .transpose()
+    }
+
+    // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+    /// Has the connected viewer refresh the catalog server at `origin`, so that the user sees a
+    /// change the agent made. Does nothing if the viewer is not connected to that server.
+    pub async fn show_catalog_changes(&self, origin: &re_uri::Origin) {
+        let Some(conn) = self.conn.lock().clone() else {
+            return;
+        };
+        let mut client = conn.client.clone();
+        let request = RunCommandRequest {
+            id: REFRESH_SERVER_COMMAND.to_owned(),
+            store_id: None,
+            server_origin: Some(origin.to_string()),
+            allow_blocking_native_modal: None,
+        };
+        if let Err(err) = execute(&mut client, request).await {
+            re_log::debug!("Failed to refresh the changed catalog in the viewer: {err}");
+        }
+    }
+
+    /// Whether the connected viewer runs on this machine.
+    pub fn is_on_this_machine(&self) -> bool {
+        self.conn
+            .lock()
+            .as_ref()
+            .is_some_and(|conn| match conn.viewer_endpoint.host() {
+                Some(url::Host::Domain(domain)) => domain == "localhost",
+                Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+                Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+                None => false,
+            })
+    }
+
     /// Appends the viewer log entries since the previous tool call to `result`,
     /// so the agent sees warnings and errors as they happen.
     async fn append_new_logs(&self, result: &mut CallToolResult) {
@@ -384,15 +488,22 @@ impl ViewerToolset {
         };
         let after_sequence = conn.log_cursor.load(Ordering::Relaxed);
         let mut client = conn.client.clone();
-        let Ok(response) = execute(
+        let response = match execute(
             &mut client,
             GetLogsRequest {
                 after_sequence: Some(after_sequence),
             },
         )
         .await
-        else {
-            return;
+        {
+            Ok(response) => response,
+            Err(err) => {
+                re_log::warn!("Failed to read the viewer log: {err}");
+                result.content.push(ContentBlock::text(format!(
+                    "Could not read the viewer log: {err}"
+                )));
+                return;
+            }
         };
         let entries = response.entries;
         let Some(last) = entries.last() else {
@@ -409,14 +520,17 @@ impl ViewerToolset {
     /// `viewer_control.proto`, and the reusable egui UI tools.
     ///
     /// Both routers are independent of the connection, so their tools stay listed even while
-    /// disconnected.
+    /// disconnected. Only `run_command` depends on it: it lists the connected viewer's command ids.
     pub fn tools(&self) -> Vec<Tool> {
+        let command_ids = self.command_ids();
         let mut tools = self.tool_router.list_all();
+        // TODO(rerun-io/egui_crates#205): serve the viewer tools through `toolbox` too, once the
+        // egui tools are an `AgentToolbox`.
         tools.extend(
-            re_viewer_control_tools::tools(SCREENSHOT_DELIVERY)
+            re_viewer_control_tools::tools(SCREENSHOT_DELIVERY, command_ids.as_deref())
                 .into_iter()
                 .map(
-                    |re_viewer_control_tools::ToolDefinition {
+                    |re_agent_tools::ToolDefinition {
                          name,
                          description,
                          input_schema,
@@ -510,6 +624,7 @@ impl ViewerToolset {
     async fn connect(
         &self,
         Parameters(args): Parameters<ConnectArgs>,
+        client: Peer<RoleServer>,
     ) -> ToolResult<CallToolResult> {
         let endpoint = args
             .endpoint
@@ -519,7 +634,11 @@ impl ViewerToolset {
                 || Url::parse(DEFAULT_VIEWER_ENDPOINT).map_err(|err| err.to_string()),
                 Ok,
             )?;
+        let command_ids_before = self.command_ids();
         let peer = self.connect_to(&endpoint).await?;
+        if self.command_ids() != command_ids_before {
+            notify_tool_list_changed(&client).await;
+        }
         Ok(CallToolResult::structured(serde_json::json!({
             "ok": true,
             "connected": endpoint,
@@ -538,8 +657,13 @@ impl ViewerToolset {
     async fn disconnect(
         &self,
         Parameters(_args): Parameters<EmptyArgs>,
+        client: Peer<RoleServer>,
     ) -> ToolResult<CallToolResult> {
-        if self.conn.lock().take().is_some() {
+        let conn = self.conn.lock().take();
+        if let Some(conn) = conn {
+            if conn.command_ids.is_some() {
+                notify_tool_list_changed(&client).await;
+            }
             Ok(CallToolResult::structured(
                 serde_json::json!({ "ok": true }),
             ))
@@ -547,6 +671,15 @@ impl ViewerToolset {
             Err("not connected".to_owned())
         }
     }
+}
+
+/// Tell the agent to list the tools again, since `run_command` now lists other command ids.
+async fn notify_tool_list_changed(client: &Peer<RoleServer>) {
+    client
+        .notify_tool_list_changed()
+        .await
+        .inspect_err(|err| re_log::warn!("Failed to tell the agent its tools changed: {err}"))
+        .ok();
 }
 
 /// One line per entry: `#sequence [LEVEL target] message`.

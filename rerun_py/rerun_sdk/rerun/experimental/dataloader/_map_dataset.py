@@ -11,7 +11,7 @@ from rerun._tracing import with_tracing
 
 from ._config import TimeAlignedSampling
 from ._metrics import DataloaderMetrics
-from ._sample_index import SampleIndex, _validate_timeline_sampling
+from ._sample_index import SampleIndex
 from ._utils import (
     FetchedBlock,
     FetchMetricsAccumulator,
@@ -26,14 +26,16 @@ from ._utils import (
     _record_query_metrics,
     _resolve_decode_requests_in_block,
     _resolve_decode_threads,
+    _validate_source_schema,
     _warn_if_fork_unsafe,
     _WorkerConnection,
 )
 from .decoders._base import DecodedSample
 
 if TYPE_CHECKING:
+    from rerun.experimental.spans import Curation
+
     from ._config import DataSource, Field, FixedRateSampling
-    from .manifest._manifest import Manifest
 
 
 class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
@@ -97,8 +99,13 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         self._timeline_sampling = timeline_sampling
         self._index = index
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
-        self._manifest: Manifest | None = None
 
+        _validate_source_schema(
+            source,
+            index,
+            fields,
+            expected_index_type=None if source.curation is None else source.curation.index_type,
+        )
         self._sample_index = SampleIndex.build(
             source,
             index,
@@ -111,9 +118,9 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         self._connection = _WorkerConnection.from_source(source, fields)
 
     @classmethod
-    def from_manifest(
+    def from_curation(
         cls,
-        manifest: Manifest,
+        curation: Curation,
         source: DataSource,
         fields: dict[str, Field],
         *,
@@ -121,53 +128,20 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         decode_threads: int | None = None,
     ) -> RerunMapDataset:
         """
-        Build a map-style dataset over a frozen [`Manifest`][rerun.experimental.dataloader.Manifest]'s validated samples.
+        Index candidates from selected intervals in canonical segment and timeline order.
 
-        This is a **performance optimization only**: it reuses the manifest's validated sample set
-        and frozen decode ranges, so there is no live scan and no per-batch keyframe lookup.
-
-        !!! warning
-            The manifest's recorded order is **not** respected here. Ordering and cross-worker
-            sharding stay with the `DataLoader`'s sampler, as for any map-style dataset, so this
-            cannot reproduce a manifest's run. For reproducible, resumable training use
-            [`RerunIterableDataset.from_manifest`][rerun.experimental.dataloader.RerunIterableDataset.from_manifest].
-
-        Parameters
-        ----------
-        manifest:
-            The frozen manifest to read. Provides the validated sample set and decode ranges.
-        source:
-            The live catalog connection.
-        fields:
-            The decoders, keyed by field name (a manifest records only their spec, not the objects).
-        timeline_sampling:
-            Optional sampling declaration matching the manifest's stored grid.
-            Stored sample positions and decode ranges are unchanged.
-        decode_threads:
-            Fields to decode concurrently within each `DataLoader` worker.
-
-        Returns
-        -------
-        RerunMapDataset
-            A dataset over the manifest's validated samples.
-
+        Field windows may extend beyond selected intervals. Overlapping selections
+        produce one candidate per anchor. Missing values remain in returned sample
+        dictionaries; the DataLoader's sampler controls ordering and worker ownership.
+        Fields and keyframes are resolved at runtime within the source selection.
         """
-        self = cls.__new__(cls)
-        torch.utils.data.Dataset.__init__(self)
-        _warn_if_fork_unsafe(stacklevel=3)
-        meta = manifest.metadata
-        self._fields = fields
-        self._timeline_sampling = timeline_sampling
-        self._index = meta.index_name
-        self._manifest = manifest
-        self._decode_threads = _resolve_decode_threads(decode_threads, fields)
-        # Query construction only needs the grid step / dtype, not the full sample space.
-        self._sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
-        _validate_timeline_sampling(timeline_sampling, self._sample_index)
-        self._metrics = DataloaderMetrics()
-        self._metrics_publisher = self._metrics._worker_publisher()
-        self._connection = _WorkerConnection.from_source(source, fields)
-        return self
+        return cls(
+            source._with_curation(curation),
+            curation.index_name,
+            fields,
+            timeline_sampling=timeline_sampling,
+            decode_threads=decode_threads,
+        )
 
     @property
     def metrics(self) -> DataloaderMetrics:
@@ -182,9 +156,7 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         return self._sample_index
 
     def __len__(self) -> int:
-        """Total number of samples across all segments."""
-        if self._manifest is not None:
-            return self._manifest.num_rows
+        """Number of candidates, including candidates with missing field values."""
         return self._sample_index.total_samples
 
     def __getstate__(self) -> dict[str, object]:
@@ -208,35 +180,29 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         fetch_metrics = FetchMetricsAccumulator()
         fetch_started_ns = time.perf_counter_ns()
         with _record_query_metrics(fetch_metrics):
-            if self._manifest is not None:
-                from .manifest._manifest_read import targets_from_rows
-
-                rows = self._manifest.to_arrow().take(indices)
-                targets = targets_from_rows(rows, fields=self._fields, sample_index=self._sample_index)
-            else:
-                located = _locate_samples(
-                    indices,
-                    sample_index=self._sample_index,
-                    num_fields=len(self._fields),
-                )
-                keyframes = (
-                    {}
-                    if isinstance(self._timeline_sampling, TimeAlignedSampling)
-                    else _discover_prior_keyframes(
-                        view=view,
-                        index=self._index,
-                        fields=self._fields,
-                        located=located,
-                        sample_index=self._sample_index,
-                    )
-                )
-                targets = _build_targets(
-                    located,
-                    keyframes,
+            located = _locate_samples(
+                indices,
+                sample_index=self._sample_index,
+                num_fields=len(self._fields),
+            )
+            keyframes = (
+                {}
+                if isinstance(self._timeline_sampling, TimeAlignedSampling)
+                else _discover_prior_keyframes(
+                    view=view,
+                    index=self._index,
                     fields=self._fields,
+                    located=located,
                     sample_index=self._sample_index,
-                    timeline_sampling=self._timeline_sampling,
                 )
+            )
+            targets = _build_targets(
+                located,
+                keyframes,
+                fields=self._fields,
+                sample_index=self._sample_index,
+                timeline_sampling=self._timeline_sampling,
+            )
 
             query_plans = _build_query_plans(
                 targets,

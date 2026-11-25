@@ -308,6 +308,93 @@ pub enum SegmentSelection {
     Explicit(BTreeSet<SegmentId>),
 }
 
+/// The sample times of each segment of a [`ChunkMode::Samples`] selection.
+///
+/// Every segment in the map has at least one sample time, and no sample time is
+/// [`TimeInt::STATIC`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SampleTimes(BTreeMap<SegmentId, BTreeSet<TimeInt>>);
+
+impl SampleTimes {
+    /// Drops the segments without sample times: they select nothing.
+    ///
+    /// Fails with `InvalidArgument` if a sample time is [`TimeInt::STATIC`].
+    pub fn new(segments: BTreeMap<SegmentId, BTreeSet<TimeInt>>) -> tonic::Result<Self> {
+        for (segment_id, times) in &segments {
+            if times.contains(&TimeInt::STATIC) {
+                return Err(tonic::Status::invalid_argument(format!(
+                    "`static` is not a valid value for segment selection (segment {segment_id})"
+                )));
+            }
+        }
+
+        let segments = segments
+            .into_iter()
+            .filter(|(_, times)| !times.is_empty())
+            .collect();
+
+        Ok(Self(segments))
+    }
+
+    /// The sample times of `segment`, or `None` when the selection does not name it.
+    pub fn get(&self, segment: &SegmentId) -> Option<&BTreeSet<TimeInt>> {
+        self.0.get(segment)
+    }
+
+    /// Whether the selection names `segment`.
+    pub fn contains_segment(&self, segment: &SegmentId) -> bool {
+        self.0.contains_key(segment)
+    }
+
+    /// The IDs of the selected segments, in ascending order.
+    pub fn segment_ids(&self) -> impl Iterator<Item = &SegmentId> {
+        self.0.keys()
+    }
+
+    /// The selected segments with their sample times, in segment order.
+    pub fn iter(&self) -> impl Iterator<Item = (&SegmentId, &BTreeSet<TimeInt>)> {
+        self.0.iter()
+    }
+
+    /// Every sample time of every segment.
+    pub fn times(&self) -> impl Iterator<Item = &TimeInt> {
+        self.0.values().flatten()
+    }
+
+    /// The number of segments.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether no segment is selected.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// The number of sample times over every segment.
+    pub fn num_times(&self) -> usize {
+        self.0.values().map(BTreeSet::len).sum()
+    }
+}
+
+impl IntoIterator for SampleTimes {
+    type Item = (SegmentId, BTreeSet<TimeInt>);
+    type IntoIter = std::collections::btree_map::IntoIter<SegmentId, BTreeSet<TimeInt>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a SampleTimes {
+    type Item = (&'a SegmentId, &'a BTreeSet<TimeInt>);
+    type IntoIter = std::collections::btree_map::Iter<'a, SegmentId, BTreeSet<TimeInt>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 /// The selection mode of a [`FindChunksRequest`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChunkMode {
@@ -336,10 +423,8 @@ pub enum ChunkMode {
         /// unless the dataset has no data.
         timeline: TimelineName,
 
-        /// The sample times of each selected segment. Sample times are never [`TimeInt::STATIC`].
-        ///
-        /// A segment with no sample times selects nothing, not even its static chunks.
-        segments: BTreeMap<SegmentId, BTreeSet<TimeInt>>,
+        /// The sample times of each selected segment.
+        segments: SampleTimes,
 
         /// Whether to also select the chunks that resolve state at each sample time.
         fill_mode: FillMode,
@@ -354,7 +439,7 @@ impl ChunkMode {
                 SegmentSelection::All => true,
                 SegmentSelection::Explicit(ids) => ids.contains(segment_id),
             },
-            Self::Samples { segments, .. } => segments.contains_key(segment_id),
+            Self::Samples { segments, .. } => segments.contains_segment(segment_id),
         }
     }
 }
@@ -638,15 +723,14 @@ fn try_samples_mode(
     let timeline = TimelineName::try_new(timeline)
         .map_err(|err| tonic::Status::invalid_argument(err.to_string()))?;
 
-    let mut seen = HashSet::with_capacity(segments.len());
-    let mut entries = Vec::with_capacity(segments.len());
+    let mut entries = BTreeMap::new();
 
     for entry in segments {
         let crate::cloud::v1alpha1::SegmentSamples { segment_id, values } = entry;
 
         let segment_id: SegmentId = required_field(segment_id, "samples.segment_id")?.try_into()?;
 
-        if !seen.insert(segment_id.clone()) {
+        if entries.contains_key(&segment_id) {
             return Err(tonic::Status::invalid_argument(format!(
                 "duplicate segment id in `samples`: {segment_id}"
             )));
@@ -657,15 +741,10 @@ fn try_samples_mode(
             .map(|raw| try_time_value(raw, "samples.values"))
             .collect::<tonic::Result<BTreeSet<_>>>()?;
 
-        entries.push((segment_id, values));
+        entries.insert(segment_id, values);
     }
 
-    // Drop segments with an empty value list only after every entry has been validated, so a
-    // later duplicate or invalid value is still rejected.
-    let segments = entries
-        .into_iter()
-        .filter(|(_, values)| !values.is_empty())
-        .collect();
+    let segments = SampleTimes::new(entries)?;
 
     Ok(ChunkMode::Samples {
         timeline,
@@ -1594,11 +1673,34 @@ mod tests {
                 ),
                 outcome: FcrOutcome::Valid { is_empty: true },
             },
+            FcrCase {
+                name: "samples: static sentinel value",
+                proto: fcr_request(
+                    Some(fcr_all_contents()),
+                    Some(fcr_samples_mode(
+                        "frame",
+                        vec![(Some("seg1"), vec![i64::MIN])],
+                    )),
+                ),
+                outcome: FcrOutcome::Invalid("samples.values"),
+            },
         ];
 
         for case in cases {
             fcr_check(case);
         }
+    }
+
+    #[test]
+    fn sample_times_reject_static() {
+        let err = SampleTimes::new(BTreeMap::from([(
+            SegmentId::from("a"),
+            BTreeSet::from([TimeInt::new_temporal(1), TimeInt::STATIC]),
+        )]))
+        .expect_err("a static sample time is invalid");
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("`static`"), "{err}");
+        assert!(err.message().contains("segment a"), "{err}");
     }
 
     /// The range bound rules, including the static sentinel and equal bounds.
@@ -1758,10 +1860,11 @@ mod tests {
                 contents: ContentSelection::All,
                 mode: ChunkMode::Samples {
                     timeline: TimelineName::from("frame"),
-                    segments: BTreeMap::from([(
+                    segments: SampleTimes::new(BTreeMap::from([(
                         SegmentId::from("seg1"),
                         BTreeSet::from([TimeInt::new_temporal(1), TimeInt::new_temporal(2)]),
-                    )]),
+                    )]))
+                    .expect("valid sample times"),
                     fill_mode: FillMode::None,
                 },
                 direct_url_mode: DirectUrlMode::Signed,
@@ -1771,10 +1874,11 @@ mod tests {
                 contents: ContentSelection::All,
                 mode: ChunkMode::Samples {
                     timeline: TimelineName::from("frame"),
-                    segments: BTreeMap::from([(
+                    segments: SampleTimes::new(BTreeMap::from([(
                         SegmentId::from("seg1"),
                         BTreeSet::from([TimeInt::new_temporal(1)]),
-                    )]),
+                    )]))
+                    .expect("valid sample times"),
                     fill_mode: FillMode::EarliestAt,
                 },
                 direct_url_mode: DirectUrlMode::Signed,

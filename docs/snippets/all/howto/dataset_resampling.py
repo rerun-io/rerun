@@ -16,10 +16,10 @@ sample_dataset_path = (
     Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "dataset"
 )
 server = rr.server.Server(datasets={"dataset": sample_dataset_path})
-# Using OSS server for demonstration but in practice replace with
-# the URL of your cloud instance
 CATALOG_URL = server.url()
 client = rr.catalog.CatalogClient(CATALOG_URL)
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.get_dataset(name="dataset")
 # endregion: get_dataset
 

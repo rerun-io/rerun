@@ -58,6 +58,9 @@ Run these commands from `rerun/` to enforce some of the rules (also done by CI):
 
 ## Rust code
 
+`relint`, our custom linter, checks many of the rules below that `clippy` cannot.
+Run `pixi run relint` from `rerun/` or `dataplatform/`, and see [`scripts/relint/README.md`](scripts/relint/README.md) for details.
+
 ### Avoid `unsafe`
 `unsafe` code should be only used when necessary, and should be carefully scrutinized during PR reviews.
 
@@ -119,8 +122,10 @@ Prefer strong types over primitive ones:
 * A newtype (`struct StreamId(u64)`) over a bare integer or a type alias.
 * A newtype (`struct SchemaId([u8; 32])`) over a bare byte array (`[u8; N]`) holding a hash, key, or ID.
 * An enum over a `bool` field or parameter (`enum Screen { Setup, Chat }` over `show_setup: bool`).
+  Define the enum once, in the lowest crate that needs it, and pass it across crate boundaries instead of converting it back to a `bool`.
 * `Option<Result<(), Error>>` over `Option<bool>`.
 * A named struct (or `Rangef`, `Span`, …) over a tuple.
+* `re_span::Span` over a separate start and length (or start and end) of an integer range, e.g. `rows: Span<usize>` over `offset: usize, len: usize`.
 * `Option<NonZeroU64>` over a `u64` where `0` means "disabled".
 
 If a path or file marker could silently go stale, add a `debug_assert!` or a test that checks it.
@@ -255,6 +260,8 @@ This also makes the compiler tell you when a new field is added that you may hav
 
 If you use a type or function more than twice in a file, add a `use` for it at the top of the file instead of spelling out its full path each time.
 
+Put types and constants at the top of the file, before the functions that use them.
+
 Keep hand-written lists sorted alphabetically, unless the order carries meaning.
 This includes enum variants, match arms, Cargo features, `clippy.toml` entries, `.gitattributes` lines, and tables in docs.
 
@@ -270,14 +277,19 @@ Don't issue one query or request per item when one call can fetch them all.
 Don't wrap code in a closure that is called immediately, and don't extract a helper that is only called once unless it names a concept.
 
 Avoid catch-all `_ =>` arms when matching on our own enums, so that the compiler flags every `match` that needs updating when a variant is added.
+For the same reason, branch on our own enums with an exhaustive `match`, not with `==` or `matches!`.
 
 Prefer `if let … else` over a `match … pattern => …, _ => …` when possible.
+
+Don't negate a parenthesized boolean expression: write `!a || !b` instead of `!(a && b)`.
 
 Every new timeout, size limit, or threshold needs a reason: say where the number comes from, or reuse an existing constant.
 Refer to metadata keys and column names through their constants, never through a string literal.
 
 ### API design
 * Prefer constructors and associated functions over free functions.
+* Put general or context parameters first and specific ones last, e.g. `fn entity_ui(ctx: &ViewerContext, ui: &mut Ui, entity_path: &EntityPath)`.
+* All other things being equal, order parameters chronologically, e.g. `fn after_direct_read_failed(direct_err: &ApiError, fallback_err: ApiError)`, where the direct read failed first.
 * Avoid global state (`static FOO: LazyLock<…>`); let the caller own it.
 * Instead of `fn should_do_x(x) -> bool` + `fn do_x(x)`, write a single `fn do_x(x) -> Option<…>`.
 * Keep items private by default, and make only the intended API `pub`.
@@ -321,6 +333,10 @@ You can also use the `todo()!` macro during development, but again it won't pass
 Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `re_log::warn!("Unknown key: {key:?}");`.
 
 Use `{:#}` or `re_error::format(err)` when displaying an error - NOT `Debug`/`{:?}`.
+
+Name error variables `err`, not `e`: `Err(err) => …`, `.map_err(|err| …)`.
+
+Inline simple variables in format strings: `format!("{name}")`, not `format!("{}", name)`.
 
 Derive egui ids from the parent `Ui` with `ui.make_persistent_id(…)`, so that two instances of the same widget don't collide.
 Hash a tuple rather than building an id with `format!`: `ui.make_persistent_id(("plot_legend", view_id))`.

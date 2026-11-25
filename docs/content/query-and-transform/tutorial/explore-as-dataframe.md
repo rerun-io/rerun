@@ -4,11 +4,11 @@ order: 1
 description: Run the face tracking example and explore its data in the dataframe view
 ---
 
-In this first part of the guide, we run the [face tracking example](https://rerun.io/examples/video-image/face_tracking) and explore the data in the viewer.
+In this first part of the guide, we run the [face tracking example](https://github.com/rerun-io/rerun/tree/main/examples/python/face_tracking) and explore the data in the viewer.
 
 ## Create a recording
 
-The first step is to create a recording in the viewer using the face tracking example. Check the [face tracking installation instruction](https://rerun.io/examples/video-image/face_tracking#run-the-code) for more information on how to run this example.
+The first step is to create a recording in the viewer using the face tracking example. Check the [face tracking installation instruction](https://github.com/rerun-io/rerun/tree/main/examples/python/face_tracking#run-the-code) for more information on how to run this example.
 
 Here is such a recording:
 
@@ -59,7 +59,8 @@ Our exploration of the data in the viewer so far provided us with two important 
 
 First, we identified that the `Scalar` value contained in `/blendshapes/0/jawOpen` contains relevant data. In particular, thresholding this signal with a value of 0.15 should provide us with a closed/opened jaw state binary indicator.
 
-Then, we explored the numerical data in a dataframe view. Importantly, the way we configured this view for our needs informs us on how to query the recording from code such as to obtain the correct output.
+Then, we explored the numerical data in a dataframe view.
+The way we configured this view tells us how to query the recording from code to obtain the correct output.
 
 <!-- TODO(#7462): improve the previous paragraph to mention copy-as-code instead -->
 

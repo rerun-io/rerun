@@ -7,7 +7,7 @@ use re_chunk_index::{ChunkProvider, ChunkProviderError, RawRrdManifest, RrdManif
 use re_log_types::EntryId;
 use re_types_core::SegmentId;
 
-use crate::asset::{AssetSegments, asset_manifest, asset_segments};
+use crate::asset::{asset_manifest, asset_segments};
 use crate::{ApiError, ConnectionClient, ConnectionHandle, fetch_chunks_response_to_chunks};
 
 /// gRPC-backed [`ChunkProvider`]: serves the manifest of a dataset segment
@@ -31,13 +31,13 @@ pub struct SegmentChunkProvider {
 impl SegmentChunkProvider {
     /// Fetch the segment manifest from the server and build a provider.
     ///
-    /// With `include_assets`, the manifests of the assets the dataset registered are fetched too,
+    /// With an `asset_dataset`, the manifests of the assets registered in it are fetched too,
     /// and this provider then also serves their chunks.
     pub async fn try_new(
         connection: ConnectionHandle,
         dataset_id: EntryId,
         segment_id: SegmentId,
-        include_assets: bool,
+        asset_dataset: Option<EntryId>,
     ) -> Result<Self, ApiError> {
         let mut client = connection.client().await?;
         let raw_manifest = client
@@ -54,8 +54,8 @@ impl SegmentChunkProvider {
             )
         })?);
 
-        let asset_manifests = if include_assets {
-            fetch_asset_manifests(&mut client, dataset_id, &segment_id).await
+        let asset_manifests = if let Some(asset_dataset) = asset_dataset {
+            fetch_asset_manifests(&mut client, asset_dataset, &segment_id).await
         } else {
             Vec::new()
         };
@@ -104,16 +104,10 @@ impl SegmentChunkProvider {
 /// remaining assets are still loaded.
 async fn fetch_asset_manifests(
     client: &mut ConnectionClient,
-    dataset_id: EntryId,
+    asset_dataset_id: EntryId,
     segment_id: &SegmentId,
 ) -> Vec<Arc<RrdManifest>> {
-    let Some(AssetSegments {
-        dataset_id: asset_dataset_id,
-        segment_ids: asset_segment_ids,
-    }) = asset_segments(client, dataset_id, segment_id).await
-    else {
-        return Vec::new();
-    };
+    let asset_segment_ids = asset_segments(client, asset_dataset_id, segment_id).await;
 
     let mut manifests = Vec::with_capacity(asset_segment_ids.len());
     for asset_segment_id in asset_segment_ids {
@@ -191,7 +185,8 @@ impl ChunkProvider for SegmentChunkProvider {
             .fetch_segment_chunks_by_id(&rb)
             .await
             .map_err(SegmentProviderError::Api)?;
-        let mut stream = fetch_chunks_response_to_chunks(response, None);
+        let mut stream =
+            fetch_chunks_response_to_chunks(response, crate::FetchedPayloads::Copied, None);
 
         let mut out = Vec::with_capacity(ids.len());
         while let Some(batch) = stream.next().await {

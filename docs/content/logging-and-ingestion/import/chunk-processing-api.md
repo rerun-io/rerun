@@ -4,9 +4,8 @@ order: 100
 description: Pipelines for ingesting, transforming, and converting chunks
 ---
 
-The Chunk Processing API is a flexible, [chunk](../chunks-and-rrd/chunks.md)-centric API for data ingestion, transformation, and conversion pipelines.
-It covers I/O from common robotics file formats, powerful declarative data wrangling primitives, and a multithreaded, native engine for pipeline execution.
-The API is designed to support distributed execution in the future.
+The Chunk Processing API is a [chunk](../chunks-and-rrd/chunks.md)-centric API for data ingestion, transformation, and conversion pipelines.
+It covers I/O from common robotics file formats, declarative data wrangling primitives, and a multithreaded, native engine for pipeline execution.
 
 > [!NOTE]
 > The core Chunk Processing API, including `McapReader` and `RrdReader`, is available in the Python SDK under `rerun.chunk`.
@@ -17,8 +16,8 @@ The API is designed to support distributed execution in the future.
 The Chunk Processing API is built from three kinds of primitives — readers, stores, and lazy streams — that compose into a pipeline executed by a terminal call:
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/b7b8066dc15f6d78d23ff780d6ecc830b1f3b05c_d2.svg" alt="Diagram of a chunk pipeline: a reader feeds a store or a LazyChunkStream, shaped by filter, lenses and map, ending in a terminal call">
-  <img class="d2-light" src="https://static.rerun.io/6bf30bb1480977c570880549e98fbfbe7b6c8f84_d2-light.svg" alt="Diagram of a chunk pipeline: a reader feeds a store or a LazyChunkStream, shaped by filter, lenses and map, ending in a terminal call">
+  <img class="d2-dark" src="https://static.rerun.io/a262c77d396228d6a4f936d8287bf4ea94c99f62_diagram-chunk-pipeline-dark.svg" alt="Diagram of a chunk pipeline: a reader feeds a store or a LazyChunkStream, shaped by filter, lenses and map, ending in a terminal call">
+  <img class="d2-light" src="https://static.rerun.io/8c905c8bf7e249a92565bc55641978e31684ba87_diagram-chunk-pipeline-light.svg" alt="Diagram of a chunk pipeline: a reader feeds a store or a LazyChunkStream, shaped by filter, lenses and map, ending in a terminal call">
 </div>
 
 ### Readers
@@ -110,7 +109,7 @@ To recap:
 
 - A pipeline is a DAG rooted at one or more readers or stores and ending at a leaf node represented by a lazy stream.
 - Composition is cheap: building the DAG is metadata only, regardless of input size. This is done through `LazyChunkStream`'s APIs.
-- The actual execution of the pipeline is triggered by calling a terminal method of the lazy stream, for example `.write_rrd()`. Terminal calls are blocking, but execution is multithreaded and essentially GIL-free.
+- The actual execution of the pipeline is triggered by calling a terminal method of the lazy stream, for example `.write_rrd()`. Terminal calls are blocking, but execution is multithreaded and releases the GIL, except while it runs Python functions passed to `map` or `flat_map`.
 - Memory cost is bounded by what flows through a chunk at a time, not by the total recording size.
 
 #### Move semantics
@@ -189,7 +188,7 @@ The two are interoperable:
 - **Logging → chunk processing:** save a `RecordingStream` to an `.rrd`, then re-open it with `RrdReader` to get a `LazyChunkStream`.
 
   > [!NOTE]
-  > This roundtrip-via-file will be smoothed out in the future for better ergonomics and performance.
+  > There is no direct conversion from a `RecordingStream` to a `LazyChunkStream`: the data has to go through an `.rrd` file.
 - **Chunk processing → logging:** `rerun.send_chunks(chunks, recording=...)` feeds chunks into an active `RecordingStream` (useful for streaming to a viewer, for example).
 - **Building chunks by hand:** `Chunk.from_columns` mirrors `rr.send_columns` and accepts the same `rr.<Archetype>.columns(...)` helpers, so any data that can be logged with `rr.send_columns` can also be packaged as a `Chunk` and injected into a processing pipeline.
   Likewise, `Chunk.from_record_batch` (for a single `RecordBatch`) and `Chunk.from_dataframe` (a multi-batch `Table`, `RecordBatchReader`, or `datafusion.DataFrame`) mirror `rr.send_record_batch` and `rr.send_dataframe`.

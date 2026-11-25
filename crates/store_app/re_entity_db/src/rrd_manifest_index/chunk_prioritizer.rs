@@ -190,17 +190,17 @@ impl<'a> ChunkRequestBatcher<'a> {
         Ok(())
     }
 
-    /// Add a chunk to be fetched.
-    fn try_fetch(
+    /// Add a chunk to be fetched, and subtract its size from the on-wire budget.
+    fn fetch(
         &mut self,
         chunk_row_idx: usize,
         budget: &mut RemainingByteBudget,
-    ) -> Result<bool, PrefetchError> {
+    ) -> Result<(), PrefetchError> {
         let on_wire_byte_size = self.chunk_byte_size[chunk_row_idx];
 
-        if !budget.try_fit_on_wire(on_wire_byte_size) {
-            return Ok(false);
-        }
+        budget.remaining_bytes_on_wire = budget
+            .remaining_bytes_on_wire
+            .saturating_sub_unsigned(on_wire_byte_size);
 
         let uncompressed_chunk_size = self.chunk_byte_size_uncompressed[chunk_row_idx];
 
@@ -212,7 +212,7 @@ impl<'a> ChunkRequestBatcher<'a> {
             self.finish_batch()?;
         }
 
-        Ok(true)
+        Ok(())
     }
 
     /// Returns all batches that should be loaded
@@ -252,7 +252,23 @@ pub struct RemainingByteBudget {
 impl RemainingByteBudget {
     /// If either the wire budget, or memory budget is filled.
     pub fn full(&self) -> bool {
-        self.remaining_bytes_in_memory == 0 || self.remaining_bytes_on_wire <= 0
+        self.remaining_bytes_in_memory == 0 || self.on_wire_full()
+    }
+
+    /// If no more chunks can be requested.
+    fn on_wire_full(&self) -> bool {
+        self.remaining_bytes_on_wire <= 0
+    }
+
+    /// If no more chunks up to `stage` can be requested.
+    ///
+    /// `Required` chunks are requested even once the memory budget is used up.
+    fn full_for_stage(&self, stage: FetchStage) -> bool {
+        if stage.is_required() {
+            self.on_wire_full()
+        } else {
+            self.full()
+        }
     }
 
     /// Create a new budget with the given memory and on-wire limits.
@@ -262,6 +278,13 @@ impl RemainingByteBudget {
             remaining_bytes_in_memory: total_bytes_in_memory,
             remaining_bytes_on_wire: max_bytes_on_wire.saturating_into::<i64>(),
         }
+    }
+
+    /// Whether [`Self::try_fit_in_memory`] would return `true` for `bytes`.
+    ///
+    /// Leaves the remaining memory budget unchanged.
+    fn fits_in_memory(&self, bytes: u64, required: bool) -> bool {
+        required || bytes < self.remaining_bytes_in_memory
     }
 
     /// Try to fit `bytes` into the remaining memory budget.
@@ -288,17 +311,6 @@ impl RemainingByteBudget {
         } else {
             true
         }
-    }
-
-    /// Try to fit `bytes` into the remaining on-wire budget.
-    ///
-    /// Returns `true` if it fits (even partially), `false` if the budget is exhausted.
-    fn try_fit_on_wire(&mut self, bytes: u64) -> bool {
-        let fit_on_wire = self.remaining_bytes_on_wire > 0;
-
-        self.remaining_bytes_on_wire = self.remaining_bytes_on_wire.saturating_sub_unsigned(bytes);
-
-        fit_on_wire
     }
 }
 
@@ -602,7 +614,10 @@ impl ChunkPrioritizer {
             }
         }
 
+        let unvisited_in_transit_roots = self.chunk_requests.pending_root_chunk_ids().collect();
+
         ChunkFetcher {
+            unvisited_in_transit_roots,
             visited_root_chunks: std::mem::take(&mut self.frame_visited),
             chunk_id_scratch: Vec::new(),
             state: PrioritizationState::default(),
@@ -613,6 +628,7 @@ impl ChunkPrioritizer {
             next_chunk: None,
             fetch_stage: ChunkPriorityStage::Start,
             tracker: chunk_usage_tracker,
+            protect_skipped_unloaded: false,
 
             request_batcher: Some(ChunkRequestBatcher::new(manifest, options)),
         }
@@ -759,6 +775,9 @@ impl Default for FetchStage {
 }
 
 impl FetchStage {
+    /// The highest stage preview recordings fetch.
+    pub const MAX_PREVIEW: Self = Self::Similar(Some(Duration::from_secs(10)));
+
     pub fn is_required(&self) -> bool {
         match self {
             Self::Required => true,
@@ -848,6 +867,10 @@ enum ChunkPriorityStage<'a> {
 pub struct ChunkFetcher<'a> {
     time_cursor: Option<PrefetchTimeCursor>,
     visited_root_chunks: HashSet<ChunkId>,
+
+    /// Root chunks of the downloads in progress that no pass has visited yet.
+    unvisited_in_transit_roots: HashSet<ChunkId>,
+
     chunk_id_scratch: Vec<ChunkId>,
     pub state: PrioritizationState,
 
@@ -858,6 +881,10 @@ pub struct ChunkFetcher<'a> {
     next_chunk: Option<PrioritizedRootChunk>,
     fetch_stage: ChunkPriorityStage<'a>,
     tracker: QueriedChunkIdTracker,
+
+    /// A protect pass skipped an unloaded chunk. That chunk counts as visited, so a later
+    /// [`Self::fetch`] doesn't request it.
+    protect_skipped_unloaded: bool,
 
     request_batcher: Option<ChunkRequestBatcher<'a>>,
 }
@@ -1177,27 +1204,62 @@ impl ChunkFetcher<'_> {
     /// Iterate through prioritized chunks, consuming budget.
     ///
     /// `to_state` determines how many chunks we process before stopping (within budget).
+    ///
+    /// Stops at the first unloaded chunk once the on-wire budget is used up.
+    /// The next call starts at that chunk.
     pub fn fetch(
         &mut self,
         budget: &mut RemainingByteBudget,
         to_state: FetchStage,
     ) -> Result<(), PrefetchError> {
+        self.run_pass(budget, to_state, PassMode::Request)
+    }
+
+    /// Continue iterating through prioritized chunks up to `to_state`, without requesting any,
+    /// until every chunk in transit has been visited.
+    ///
+    /// Chunks in transit and the loaded chunks before them stay protected as long as the
+    /// memory budget allows.
+    /// A later [`Self::fetch`] doesn't request the unloaded chunks this skips, so call this
+    /// once the on-wire budget is used up or after the last [`Self::fetch`] up to `to_state`.
+    pub(super) fn protect_in_transit(
+        &mut self,
+        budget: &mut RemainingByteBudget,
+        to_state: FetchStage,
+    ) -> Result<(), PrefetchError> {
+        self.run_pass(budget, to_state, PassMode::ProtectInTransit)
+    }
+
+    fn run_pass(
+        &mut self,
+        budget: &mut RemainingByteBudget,
+        to_state: FetchStage,
+        mode: PassMode,
+    ) -> Result<(), PrefetchError> {
+        if mode == PassMode::Request {
+            debug_assert!(
+                !self.protect_skipped_unloaded,
+                "`ChunkFetcher::fetch` called after a protect pass skipped an unloaded chunk"
+            );
+        }
+
         let Some(mut batcher) = self.request_batcher.take() else {
             return Ok(());
         };
 
-        let res = self.fetch_inner(&mut batcher, budget, to_state);
+        let res = self.run_pass_inner(&mut batcher, budget, to_state, mode);
 
         self.request_batcher = Some(batcher);
 
         res
     }
 
-    fn fetch_inner(
+    fn run_pass_inner(
         &mut self,
         batcher: &mut ChunkRequestBatcher<'_>,
         budget: &mut RemainingByteBudget,
         to_state: FetchStage,
+        mode: PassMode,
     ) -> Result<(), PrefetchError> {
         if self.state.all_required_are_loaded.is_none() {
             self.state.all_required_are_loaded = Some(true);
@@ -1206,6 +1268,10 @@ impl ChunkFetcher<'_> {
         let entity_paths = batcher.manifest.col_chunk_entity_path();
 
         loop {
+            if mode == PassMode::ProtectInTransit && self.unvisited_in_transit_roots.is_empty() {
+                break;
+            }
+
             // Peek before consuming so we can stop without eating the first optional
             // chunk when doing the required-only pass.
             if self.peek_chunk().is_some_and(|next| next.stage > to_state) {
@@ -1223,6 +1289,7 @@ impl ChunkFetcher<'_> {
             if !self.visited_root_chunks.insert(root_chunk_id) {
                 continue; // Already handled earlier in the priority order.
             }
+            self.unvisited_in_transit_roots.remove(&root_chunk_id);
 
             let Some(root_chunk) = self.root_chunks.get(&root_chunk_id) else {
                 re_log::debug_warn_once!("Missing root chunk");
@@ -1251,26 +1318,43 @@ impl ChunkFetcher<'_> {
                         continue;
                     }
 
+                    if root_chunk.state == LoadState::Unloaded
+                        && (mode != PassMode::Request || budget.on_wire_full())
+                    {
+                        self.state.transit_budget_filled |= budget.on_wire_full();
+                        self.chunk_id_scratch.clear();
+
+                        match mode {
+                            PassMode::Request => {
+                                // The next `fetch` starts at this chunk.
+                                self.visited_root_chunks.remove(&root_chunk_id);
+                                self.next_chunk = Some(PrioritizedRootChunk {
+                                    stage,
+                                    root_chunk_id,
+                                });
+                                break;
+                            }
+                            PassMode::ProtectOnly | PassMode::ProtectInTransit => {
+                                // The skipped chunk uses none of the memory budget.
+                                if !budget
+                                    .fits_in_memory(uncompressed_chunk_size, stage.is_required())
+                                {
+                                    self.state.memory_budget_filled = true;
+                                }
+                                self.protect_skipped_unloaded = true;
+                                continue;
+                            }
+                        }
+                    }
+
                     if !budget.try_fit_in_memory(uncompressed_chunk_size, stage.is_required()) {
                         self.state.memory_budget_filled = true;
                         self.chunk_id_scratch.clear();
                         break;
                     }
 
-                    if root_chunk.state == LoadState::Unloaded
-                        && !batcher.try_fetch(row_idx, budget)?
-                    {
-                        // If we don't have anything more to fetch we stop looking.
-                        //
-                        // This isn't entirely correct gc wise. But if we evict chunks
-                        // we didn't get to because of this break, we won't be fighting
-                        // back and forth with gc since there's some unloaded
-                        // chunks inbetween we have to download first. After
-                        // which we won't stop prioritizing which chunks should
-                        // be in memory here.
-                        self.state.transit_budget_filled = true;
-                        self.chunk_id_scratch.clear();
-                        break;
+                    if root_chunk.state == LoadState::Unloaded {
+                        batcher.fetch(row_idx, budget)?;
                     }
 
                     self.prioritizer
@@ -1383,6 +1467,130 @@ pub struct ChunkFetchResult {
     pub(super) time_cursor: Option<TimelinePoint>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PassMode {
+    /// Request unloaded chunks until the on-wire budget is used up.
+    Request,
+
+    /// Skip unloaded chunks, and protect chunks in transit and loaded chunks.
+    ProtectOnly,
+
+    /// Like `ProtectOnly`, but stop once every chunk in transit has been visited.
+    ProtectInTransit,
+}
+
+impl ChunkFetcher<'_> {
+    /// Fetch chunks for several recordings that share one budget.
+    ///
+    /// Fetches all stages in a specific order:
+    /// 1. `Required` for active recordings.
+    /// 2. `Required` for preview recordings.
+    /// 3. [`FetchStage::MAX_PREVIEW`] for active recordings.
+    /// 4. [`FetchStage::MAX_PREVIEW`] for preview recordings.
+    /// 5. `max_fetch_stage` for active recordings.
+    /// 6. If `max_fetch_stage == Everything`, `Everything` for background recordings.
+    ///
+    /// Preview recordings never fetch above [`FetchStage::MAX_PREVIEW`].
+    ///
+    /// Stages above `max_fetch_stage` are skipped entirely.
+    ///
+    /// Once the on-wire budget is used up, no more chunks are requested.
+    /// Chunks in transit and loaded chunks stay protected in the same stage order as fetching,
+    /// up to [`FetchStage::MAX_PREVIEW`].
+    /// Above it, only chunks in transit and the loaded chunks before them stay protected.
+    /// Once the memory budget is used up, only `Required` chunks are requested or protected.
+    pub fn fetch_for_recordings(
+        active: &mut [&mut ChunkFetcher<'_>],
+        previews: &mut [&mut ChunkFetcher<'_>],
+        background: &mut [&mut ChunkFetcher<'_>],
+        budget: &mut RemainingByteBudget,
+        max_fetch_stage: FetchStage,
+    ) {
+        re_tracing::profile_function!();
+
+        let preview_stage = FetchStage::MAX_PREVIEW.min(max_fetch_stage);
+
+        for stage in [FetchStage::Required, preview_stage] {
+            Self::fetch_up_to_stage(active, budget, stage, PassMode::ProtectOnly);
+            Self::fetch_up_to_stage(previews, budget, stage, PassMode::ProtectOnly);
+        }
+
+        Self::fetch_up_to_stage(active, budget, max_fetch_stage, PassMode::ProtectInTransit);
+
+        if max_fetch_stage == FetchStage::Everything {
+            Self::fetch_up_to_stage(
+                background,
+                budget,
+                FetchStage::Everything,
+                PassMode::ProtectInTransit,
+            );
+        }
+    }
+
+    /// Requests chunks up to `stage` for every fetcher.
+    ///
+    /// Splits the on-wire budget evenly between the fetchers, and each fetcher requests chunks
+    /// until its own share is used up. A fetcher that used up its share gets a share of what is
+    /// left in the next round, until the budget is used up or every fetcher has reached the end
+    /// of `stage`.
+    ///
+    /// Then runs another pass up to `stage` with `protect_mode` for every fetcher. That pass
+    /// protects chunks in transit and loaded chunks, and requests none.
+    fn fetch_up_to_stage(
+        fetchers: &mut [&mut ChunkFetcher<'_>],
+        budget: &mut RemainingByteBudget,
+        stage: FetchStage,
+        protect_mode: PassMode,
+    ) {
+        if fetchers.is_empty() {
+            return;
+        }
+
+        let mut requesting: Vec<_> = fetchers.iter_mut().collect();
+
+        while !requesting.is_empty() && !budget.full_for_stage(stage) {
+            // Evenly distribute bytes on wire between the fetchers.
+            // Every fetcher gets at least one byte, so it can request a chunk.
+            let on_wire_bytes_per_fetcher =
+                (budget.remaining_bytes_on_wire / requesting.len().cast_signed() as i64).max(1);
+
+            requesting.retain_mut(|fetcher| {
+                // The fetcher sees only its own share as the on-wire budget.
+                // What it used is subtracted from the total afterwards.
+                let on_wire_bytes_of_others = budget
+                    .remaining_bytes_on_wire
+                    .saturating_sub(on_wire_bytes_per_fetcher);
+                budget.remaining_bytes_on_wire = on_wire_bytes_per_fetcher;
+
+                let has_more_to_request = if budget.full_for_stage(stage) {
+                    true
+                } else {
+                    if let Err(err) = fetcher.fetch(budget, stage) {
+                        re_log::warn_once!("prefetch_chunks failed: {err}");
+                    }
+
+                    // If we've used the on wire budget, there are possibly more
+                    // chunks to fetch in this fetch stage, so keep it for the
+                    // next iteration.
+                    budget.on_wire_full()
+                };
+
+                budget.remaining_bytes_on_wire = budget
+                    .remaining_bytes_on_wire
+                    .saturating_add(on_wire_bytes_of_others);
+
+                has_more_to_request
+            });
+        }
+
+        for fetcher in fetchers {
+            if let Err(err) = fetcher.run_pass(budget, stage, protect_mode) {
+                re_log::warn_once!("prefetch_chunks failed: {err}");
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -1465,6 +1673,24 @@ mod tests {
             poll_promise::Promise::from_ready(Ok(vec![]))
         };
         (load, requested)
+    }
+
+    /// A time cursor at the start of `timeline` that moves 100 time units per second.
+    fn time_cursor_at_zero(timeline: Timeline) -> PrefetchTimeCursor {
+        PrefetchTimeCursor {
+            time_cursor: (timeline, TimeInt::new_temporal(0)).into(),
+            speed_if_unpaused: 100.0,
+            loop_range: None,
+        }
+    }
+
+    /// Finishes `fetchers` in order and returns the chunk ids they requested.
+    fn finish_and_take_requested<const N: usize>(fetchers: [ChunkFetcher<'_>; N]) -> Vec<ChunkId> {
+        let (load, requested) = recording_load_fn();
+        for fetcher in fetchers {
+            let _result = fetcher.finish(&load).unwrap();
+        }
+        std::mem::take(&mut *requested.lock())
     }
 
     struct FetchOutcome {
@@ -1689,6 +1915,317 @@ mod tests {
         );
     }
 
+    /// A chunk is in transit when another chunk earlier in the priority order goes missing
+    /// and the on-wire budget has no room for it. The missing chunk isn't requested, but the
+    /// chunk in transit stays protected and its download isn't canceled.
+    #[test]
+    fn in_transit_chunk_stays_protected_when_on_wire_budget_is_full() {
+        let tl = Timeline::new_sequence("frame");
+        let chunks: Vec<Arc<Chunk>> = (0..3)
+            .map(|i| build_temporal_chunk("/entity", tl, (i + 1) * 100))
+            .collect();
+
+        let (store, mut manifest_index) = setup_test_recording(&chunks);
+        let time_cursor = time_cursor_at_zero(tl);
+        let options = ChunkPrefetchOptions {
+            max_fetch_stage: FetchStage::Similar(None),
+            ..Default::default()
+        };
+        let (load, requested) = recording_load_fn();
+
+        // Room for a single chunk on the wire.
+        store.report_missing_virtual_chunk_id(chunks[0].id());
+        manifest_index
+            .prefetch_chunks(
+                &store,
+                &options,
+                Some(time_cursor),
+                &mut RemainingByteBudget::new(u64::MAX, 1),
+                &load,
+            )
+            .unwrap();
+        assert_eq!(*requested.lock(), vec![chunks[0].id()]);
+        requested.lock().clear();
+
+        // No room on the wire.
+        store.report_missing_virtual_chunk_id(chunks[2].id());
+        manifest_index
+            .prefetch_chunks(
+                &store,
+                &options,
+                Some(time_cursor),
+                &mut RemainingByteBudget::new(u64::MAX, 0),
+                &load,
+            )
+            .unwrap();
+        assert!(
+            requested.lock().is_empty(),
+            "nothing should be requested without on-wire budget"
+        );
+
+        assert_eq!(
+            manifest_index.chunk_prioritizer().protected_chunks().roots,
+            [chunks[0].id(), chunks[2].id()]
+                .into_iter()
+                .collect::<ahash::HashSet<_>>(),
+            "the chunk in transit and the missing chunk should be protected"
+        );
+
+        manifest_index.cancel_outdated_requests(0.0);
+        assert_eq!(
+            manifest_index
+                .root_chunk_info(&chunks[0].id())
+                .map(|info| info.state),
+            Some(LoadState::InTransit),
+            "the chunk in transit should not be canceled"
+        );
+    }
+
+    /// A chunk is in transit, and a loaded chunk comes after it in the priority order. Once the
+    /// on-wire budget is used up, the pass stops after the chunk in transit, so the loaded
+    /// chunk isn't protected.
+    #[test]
+    fn protect_stops_after_last_chunk_in_transit() {
+        let tl = Timeline::new_sequence("frame");
+        let chunks: Vec<Arc<Chunk>> = (0..3)
+            .map(|i| build_temporal_chunk("/entity", tl, (i + 1) * 100))
+            .collect();
+
+        let (mut store, mut manifest_index) = setup_test_recording(&chunks);
+        let events = store.insert_chunk(&chunks[2]).unwrap();
+        manifest_index.on_events(&store, &events);
+
+        let time_cursor = time_cursor_at_zero(tl);
+        let options = ChunkPrefetchOptions {
+            max_fetch_stage: FetchStage::Everything,
+            ..Default::default()
+        };
+        let (load, requested) = recording_load_fn();
+
+        // Room for a single chunk on the wire.
+        store.report_missing_virtual_chunk_id(chunks[0].id());
+        manifest_index
+            .prefetch_chunks(
+                &store,
+                &options,
+                Some(time_cursor),
+                &mut RemainingByteBudget::new(u64::MAX, 1),
+                &load,
+            )
+            .unwrap();
+        assert_eq!(*requested.lock(), vec![chunks[0].id()]);
+
+        // No room on the wire.
+        store.report_missing_virtual_chunk_id(chunks[0].id());
+        manifest_index
+            .prefetch_chunks(
+                &store,
+                &options,
+                Some(time_cursor),
+                &mut RemainingByteBudget::new(u64::MAX, 0),
+                &load,
+            )
+            .unwrap();
+
+        let protected = manifest_index.chunk_prioritizer().protected_chunks();
+        assert_eq!(
+            protected.roots,
+            std::iter::once(chunks[0].id()).collect::<ahash::HashSet<_>>(),
+            "only the chunk in transit should be protected"
+        );
+        assert!(
+            !protected.physical.contains(&chunks[2].id()),
+            "the loaded chunk after the chunk in transit should not be protected"
+        );
+    }
+
+    /// A preview recording misses several chunks and comes before a preview recording that
+    /// is fully loaded. The on-wire budget fits all missing chunks, but an even share of it
+    /// doesn't. The loaded preview's unused share goes to the other preview, which then
+    /// requests all its missing chunks.
+    #[test]
+    fn unused_on_wire_share_goes_to_preview_with_missing_chunks() {
+        let tl = Timeline::new_sequence("frame");
+        let build_chunks = || -> Vec<Arc<Chunk>> {
+            (0..3)
+                .map(|i| build_temporal_chunk("/entity", tl, (i + 1) * 100))
+                .collect()
+        };
+        let missing_chunks = build_chunks();
+        let loaded_chunks = build_chunks();
+
+        let (missing_store, mut missing_index) = setup_test_recording(&missing_chunks);
+        let (mut loaded_store, mut loaded_index) = setup_test_recording(&loaded_chunks);
+
+        for chunk in &missing_chunks {
+            missing_store.report_missing_virtual_chunk_id(chunk.id());
+        }
+        for chunk in &loaded_chunks {
+            let events = loaded_store.insert_chunk(chunk).unwrap();
+            loaded_index.on_events(&loaded_store, &events);
+        }
+
+        let chunk_byte_sizes = missing_index.manifest().unwrap().col_chunk_byte_size();
+        let on_wire_bytes: u64 = chunk_byte_sizes.iter().sum();
+        let largest_chunk_bytes = chunk_byte_sizes.iter().copied().max().unwrap();
+        assert!(
+            on_wire_bytes / 2 <= on_wire_bytes - largest_chunk_bytes,
+            "an even share of the on-wire budget should not fit every missing chunk"
+        );
+        let mut budget = RemainingByteBudget::new(u64::MAX, on_wire_bytes);
+        let options = ChunkPrefetchOptions::default();
+
+        let mut missing = missing_index
+            .prepare_chunk_fetcher(&missing_store, &options, None, &mut budget)
+            .unwrap();
+        let mut loaded = loaded_index
+            .prepare_chunk_fetcher(&loaded_store, &options, None, &mut budget)
+            .unwrap();
+
+        ChunkFetcher::fetch_for_recordings(
+            &mut [],
+            &mut [&mut missing, &mut loaded],
+            &mut [],
+            &mut budget,
+            options.max_fetch_stage,
+        );
+
+        let mut requested = finish_and_take_requested([missing, loaded]);
+        requested.sort();
+        let mut expected: Vec<ChunkId> = missing_chunks.iter().map(|c| c.id()).collect();
+        expected.sort();
+        assert_eq!(
+            requested, expected,
+            "every missing chunk should be requested exactly once"
+        );
+    }
+
+    /// Two preview recordings each miss one chunk. The on-wire budget is smaller than a chunk,
+    /// so an even share of it is smaller than a chunk too. Each preview still requests its
+    /// missing chunk.
+    #[test]
+    fn each_preview_requests_a_chunk_when_its_share_is_smaller_than_a_chunk() {
+        let tl = Timeline::new_sequence("frame");
+        let first_chunk = build_temporal_chunk("/entity", tl, 100);
+        let second_chunk = build_temporal_chunk("/entity", tl, 100);
+
+        let (first_store, mut first_index) =
+            setup_test_recording(std::slice::from_ref(&first_chunk));
+        let (second_store, mut second_index) =
+            setup_test_recording(std::slice::from_ref(&second_chunk));
+        first_store.report_missing_virtual_chunk_id(first_chunk.id());
+        second_store.report_missing_virtual_chunk_id(second_chunk.id());
+
+        let mut budget = RemainingByteBudget::new(u64::MAX, 2);
+        let options = ChunkPrefetchOptions::default();
+
+        let mut first = first_index
+            .prepare_chunk_fetcher(&first_store, &options, None, &mut budget)
+            .unwrap();
+        let mut second = second_index
+            .prepare_chunk_fetcher(&second_store, &options, None, &mut budget)
+            .unwrap();
+
+        ChunkFetcher::fetch_for_recordings(
+            &mut [],
+            &mut [&mut first, &mut second],
+            &mut [],
+            &mut budget,
+            options.max_fetch_stage,
+        );
+
+        assert_eq!(
+            finish_and_take_requested([first, second]),
+            vec![first_chunk.id(), second_chunk.id()],
+            "each preview should request its missing chunk"
+        );
+    }
+
+    /// An active recording and a preview recording each miss a required chunk. The active
+    /// recording's chunk uses up the memory budget. The preview's required chunk is still
+    /// requested. The preview's unloaded chunk above the `Required` stage isn't requested,
+    /// and the preview's state says the memory budget is filled.
+    #[test]
+    fn preview_requests_required_chunks_once_memory_budget_is_used_up() {
+        let tl = Timeline::new_sequence("frame");
+        let active_chunk = build_temporal_chunk("/entity", tl, 100);
+        let preview_chunk = build_temporal_chunk("/entity", tl, 100);
+
+        // Static chunks are in the `Indicated` stage, above `Required`.
+        let preview_static_chunk = build_static_chunk("/static");
+
+        let (active_store, mut active_index) =
+            setup_test_recording(std::slice::from_ref(&active_chunk));
+        let (preview_store, mut preview_index) = setup_test_recording(&[
+            Arc::clone(&preview_chunk),
+            Arc::clone(&preview_static_chunk),
+        ]);
+        active_store.report_missing_virtual_chunk_id(active_chunk.id());
+        preview_store.report_missing_virtual_chunk_id(preview_chunk.id());
+
+        let active_chunk_bytes = active_index
+            .manifest()
+            .unwrap()
+            .col_chunk_byte_size_uncompressed()
+            .iter()
+            .sum();
+        let mut budget = RemainingByteBudget::new(active_chunk_bytes, u64::MAX);
+        let options = ChunkPrefetchOptions::default();
+
+        let mut active = active_index
+            .prepare_chunk_fetcher(&active_store, &options, None, &mut budget)
+            .unwrap();
+        let mut preview = preview_index
+            .prepare_chunk_fetcher(&preview_store, &options, None, &mut budget)
+            .unwrap();
+
+        ChunkFetcher::fetch_for_recordings(
+            &mut [&mut active],
+            &mut [&mut preview],
+            &mut [],
+            &mut budget,
+            options.max_fetch_stage,
+        );
+
+        let preview_state = preview.state;
+
+        assert_eq!(
+            finish_and_take_requested([active, preview]),
+            vec![active_chunk.id(), preview_chunk.id()],
+            "only the two required chunks should be requested"
+        );
+        assert!(
+            preview_state.memory_budget_filled,
+            "the preview's state should say the memory budget is filled"
+        );
+    }
+
+    /// A recording has an unloaded chunk that is bigger than the whole memory budget, and the
+    /// on-wire budget has no room. The chunk isn't requested, and the state says some chunks
+    /// are too big.
+    #[test]
+    fn some_chunks_too_big_is_set_when_on_wire_budget_is_full() {
+        let chunk = build_static_chunk("/entity");
+        let (store, mut manifest_index) = setup_test_recording(std::slice::from_ref(&chunk));
+
+        let mut budget = RemainingByteBudget::new(1, 0);
+        let outcome = run_fetch(
+            &mut manifest_index,
+            &store,
+            &mut budget,
+            FetchStage::Everything,
+        );
+
+        assert!(
+            outcome.requested.is_empty(),
+            "a chunk bigger than the memory budget should not be requested"
+        );
+        assert!(
+            outcome.state.some_chunks_too_big,
+            "the state should say some chunks are too big"
+        );
+    }
+
     /// With a duration cap on `Similar`, only chunks the time cursor would reach
     /// within that duration get fetched. Chunks further ahead on the timeline
     /// stay untouched until a later pass asks for them.
@@ -1825,5 +2362,121 @@ mod tests {
             chunks[..5].iter().map(|c| c.id()).collect();
         assert!(inside_loop_and_required.is_subset(&requested));
         assert!(!requested.contains(&chunks[5].id()));
+    }
+
+    /// An active recording misses a required chunk that uses up the on-wire budget. In a stage
+    /// above the preview stage it has a loaded chunk ahead of the time cursor, and a chunk in
+    /// transit after that. A preview recording has loaded chunks within the preview stage. The
+    /// memory budget doesn't fit all loaded chunks, so the preview's chunks stay protected and
+    /// the active recording's chunk ahead of the time cursor doesn't.
+    #[test]
+    fn preview_stage_is_protected_before_later_active_stages() {
+        let tl = Timeline::new_sequence("frame");
+
+        // All three chunks are on the same entity, so a missing chunk makes the other two part
+        // of a `Similar` stage. The loaded chunk and the chunk in transit are above
+        // `FetchStage::MAX_PREVIEW`, and the loaded chunk comes first in the priority order.
+        let missing_chunk = build_temporal_chunk("/entity", tl, 100);
+        let ahead_chunk = build_temporal_chunk("/entity", tl, 2000);
+        let in_transit_chunk = build_temporal_chunk("/entity", tl, 2500);
+        let (mut active_store, mut active_index) = setup_test_recording(&[
+            Arc::clone(&missing_chunk),
+            Arc::clone(&ahead_chunk),
+            Arc::clone(&in_transit_chunk),
+        ]);
+        let events = active_store.insert_chunk(&ahead_chunk).unwrap();
+        active_index.on_events(&active_store, &events);
+
+        let options = ChunkPrefetchOptions::default();
+        let time_cursor = time_cursor_at_zero(tl);
+        let (load, requested) = recording_load_fn();
+
+        // Room for a single chunk on the wire.
+        active_store.report_missing_virtual_chunk_id(in_transit_chunk.id());
+        active_index
+            .prefetch_chunks(
+                &active_store,
+                &options,
+                Some(time_cursor),
+                &mut RemainingByteBudget::new(u64::MAX, 1),
+                &load,
+            )
+            .unwrap();
+        assert_eq!(*requested.lock(), vec![in_transit_chunk.id()]);
+        requested.lock().clear();
+
+        active_store.report_missing_virtual_chunk_id(missing_chunk.id());
+
+        // Static chunks are in the `Indicated` stage, below `FetchStage::MAX_PREVIEW`.
+        // Different entity paths keep the chunks from getting merged.
+        let preview_chunks: Vec<Arc<Chunk>> = (0..2)
+            .map(|i| build_static_chunk(&format!("/static_{i}")))
+            .collect();
+        let (mut preview_store, mut preview_index) = setup_test_recording(&preview_chunks);
+        for chunk in &preview_chunks {
+            let events = preview_store.insert_chunk(chunk).unwrap();
+            preview_index.on_events(&preview_store, &events);
+        }
+
+        let manifest = active_index.manifest().unwrap();
+        let missing_row = manifest
+            .col_chunk_ids()
+            .iter()
+            .position(|id| *id == missing_chunk.id())
+            .expect("missing chunk should be in the manifest");
+        let missing_chunk_bytes = manifest.col_chunk_byte_size_uncompressed()[missing_row];
+        let ahead_chunk_bytes: u64 = active_store
+            .iter_physical_chunks()
+            .map(|c| Chunk::total_size_bytes(c.as_ref()))
+            .sum();
+        let preview_bytes: u64 = preview_store
+            .iter_physical_chunks()
+            .map(|c| Chunk::total_size_bytes(c.as_ref()))
+            .sum();
+        assert!(
+            ahead_chunk_bytes <= preview_bytes,
+            "the memory budget should fit the missing chunk and the chunk ahead of the time cursor"
+        );
+
+        // Room for a single chunk on the wire. The memory budget fits the missing chunk and
+        // the preview's chunks with one byte to spare.
+        let mut budget = RemainingByteBudget::new(missing_chunk_bytes + preview_bytes + 1, 1);
+
+        let mut active = active_index
+            .prepare_chunk_fetcher(&active_store, &options, Some(time_cursor), &mut budget)
+            .unwrap();
+        let mut preview = preview_index
+            .prepare_chunk_fetcher(&preview_store, &options, None, &mut budget)
+            .unwrap();
+
+        ChunkFetcher::fetch_for_recordings(
+            &mut [&mut active],
+            &mut [&mut preview],
+            &mut [],
+            &mut budget,
+            options.max_fetch_stage,
+        );
+
+        assert_eq!(
+            finish_and_take_requested([active, preview]),
+            vec![missing_chunk.id()],
+            "only the missing chunk should be requested"
+        );
+
+        let expected_preview: ahash::HashSet<ChunkId> =
+            preview_chunks.iter().map(|c| c.id()).collect();
+        assert_eq!(
+            preview_index
+                .chunk_prioritizer()
+                .protected_chunks()
+                .physical,
+            expected_preview,
+            "every preview chunk should be protected"
+        );
+        assert_eq!(
+            active_index.chunk_prioritizer().protected_chunks().physical,
+            ahash::HashSet::default(),
+            "the active recording's chunk ahead of the time cursor should not be protected"
+        );
     }
 }

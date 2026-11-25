@@ -1,8 +1,7 @@
 //! The backend for an agent harness: a subprocess that speaks ACP over stdio.
 
-use agent_client_protocol::{
-    AcpAgent, AcpAgentConfig, Agent, Client, ConnectionTo, Error, JsonRpcResponse,
-};
+use agent_client_protocol::v1::ConnectionTo;
+use agent_client_protocol::{AcpAgent, AcpAgentConfig, Agent, Client, Error, JsonRpcResponse};
 use agent_client_protocol_schema::ProtocolVersion;
 use agent_client_protocol_schema::v1::{
     AuthMethod, AuthenticateRequest, BooleanConfigOptionCapabilities, CancelNotification,
@@ -74,7 +73,7 @@ fn finish_turn(
 /// drops the receiver, which [`Responder::is_cancelled`] then reports.
 /// The task never fails, since a failed task shuts the whole connection down.
 pub fn forward_answer<T: JsonRpcResponse + Send + 'static>(
-    acp_responder: agent_client_protocol::Responder<T>,
+    acp_responder: agent_client_protocol::v1::Responder<T>,
 ) -> (
     Responder<T>,
     impl Future<Output = Result<(), Error>> + Send + 'static,
@@ -83,11 +82,17 @@ pub fn forward_answer<T: JsonRpcResponse + Send + 'static>(
     let task = async move {
         let cancellation = acp_responder.cancellation();
         let cancelled = std::pin::pin!(cancellation.cancelled());
-        // An answer that never comes, or comes after cancellation, leaves the request unanswered.
-        if let futures::future::Either::Left((Ok(response), _)) =
-            futures::future::select(answer, cancelled).await
-            && let Err(err) = acp_responder.respond(response)
-        {
+        // Answer every request explicitly: the SDK warns when a responder is dropped unanswered.
+        let sent = match futures::future::select(answer, cancelled).await {
+            futures::future::Either::Left((Ok(response), _)) => acp_responder.respond(response),
+            futures::future::Either::Left((Err(_ui_dropped_its_responder), _)) => {
+                acp_responder.respond_with_error(Error::internal_error())
+            }
+            futures::future::Either::Right(((), _)) => {
+                acp_responder.respond_with_error(Error::request_cancelled())
+            }
+        };
+        if let Err(err) = sent {
             re_log::debug!("Failed to answer the agent: {}", describe_error(&err));
         }
         Ok(())
@@ -127,7 +132,7 @@ fn run(
 
     let result = futures::executor::block_on(
         Client
-            .builder()
+            .v1()
             .name("re_agent_ui")
             .on_receive_notification(
                 async move |notification: SessionNotification, _cx| {
@@ -352,20 +357,23 @@ async fn start_session(
 
     match opened {
         Ok(mut opened) => {
-            let saved_model = opened
-                .config_options
-                .as_deref()
-                .unwrap_or_default()
-                .iter()
-                .find(|option| option.category == Some(SessionConfigOptionCategory::Model))
-                .and_then(|option| config.preferences.get(option.id.clone()))
-                .and_then(SessionConfigOptionValue::as_value_id);
+            let options = opened.config_options.as_deref().unwrap_or_default();
             let mut preferences = config.preferences.clone();
-            if let Some((config_id, value)) = pick_model(
-                opened.config_options.as_deref().unwrap_or_default(),
-                saved_model,
-                &config.model_preferences,
-            ) {
+            // The model to restore, and the category to pick from when it is not offered.
+            let (saved_model, category) = match config.model_preselect {
+                crate::ModelPreselect::Previous => (
+                    saved_model(options, &preferences),
+                    crate::ModelCategory::default(),
+                ),
+                crate::ModelPreselect::Category(category) => {
+                    forget_model_and_effort(&mut preferences, options);
+                    (None, category)
+                }
+            };
+            let model_preferences = category.preferences();
+            if let Some((config_id, value)) =
+                pick_model(options, saved_model.as_ref(), &model_preferences)
+            {
                 preferences.set(config_id, value);
             }
             let mut attempted = std::collections::HashSet::new();
@@ -430,6 +438,34 @@ async fn new_session(
         config_options: response.config_options,
         origin: SessionOrigin::New,
     })
+}
+
+/// The model the user picked last, if `options` has a model selector.
+fn saved_model(
+    options: &[SessionConfigOption],
+    preferences: &crate::AgentPreferences,
+) -> Option<SessionConfigValueId> {
+    options
+        .iter()
+        .find(|option| option.category == Some(SessionConfigOptionCategory::Model))
+        .and_then(|option| preferences.get(option.id.clone()))
+        .and_then(SessionConfigOptionValue::as_value_id)
+        .cloned()
+}
+
+/// Removes the saved selections of the model and effort options among `options`.
+fn forget_model_and_effort(
+    preferences: &mut crate::AgentPreferences,
+    options: &[SessionConfigOption],
+) {
+    for option in options {
+        if matches!(
+            option.category,
+            Some(SessionConfigOptionCategory::Model | SessionConfigOptionCategory::ThoughtLevel)
+        ) {
+            preferences.config_options.remove(&option.id);
+        }
+    }
 }
 
 /// Re-read options after each accepted change: it can add or change dependent choices.
@@ -504,8 +540,9 @@ fn pick_model(
 mod tests {
     use agent_client_protocol::Channel;
     use agent_client_protocol_schema::v1::{
-        NewSessionResponse, SessionConfigSelectGroup, SessionConfigSelectOption,
-        SetSessionConfigOptionResponse,
+        NewSessionResponse, PermissionOption, PermissionOptionKind, SessionConfigSelectGroup,
+        SessionConfigSelectOption, SetSessionConfigOptionResponse, ToolCallUpdate,
+        ToolCallUpdateFields,
     };
 
     use super::*;
@@ -613,6 +650,22 @@ mod tests {
             SessionConfigOption::select("effort", "Effort", current.to_owned(), levels)
                 .category(SessionConfigOptionCategory::ThoughtLevel),
         ]
+    }
+
+    /// The fast preselect forgets the model and effort, but keeps unrelated settings.
+    #[test]
+    fn fast_preselect_forgets_only_model_and_effort() {
+        let options = [claude_models("opus"), claude_effort("high")].concat();
+        let mut preferences = crate::AgentPreferences::default();
+        preferences.set("model", "opus");
+        preferences.set("effort", "high");
+        preferences.set("brave_mode", true);
+
+        forget_model_and_effort(&mut preferences, &options);
+
+        assert_eq!(preferences.get("model"), None);
+        assert_eq!(preferences.get("effort"), None);
+        assert!(preferences.get("brave_mode").is_some());
     }
 
     #[test]
@@ -851,7 +904,7 @@ mod tests {
             mcp_servers: Vec::new(),
             log_protocol: false,
             preamble: None,
-            model_preferences: Vec::new(),
+            model_preselect: crate::ModelPreselect::Previous,
             preferences: crate::AgentPreferences {
                 config_options: [
                     ("model".into(), "chosen".into()),
@@ -881,7 +934,7 @@ mod tests {
 
         futures::executor::block_on(async {
             let agent = Agent
-                .builder()
+                .v1()
                 .on_receive_request(
                     async move |_request: NewSessionRequest, responder, _cx| {
                         responder.respond(
@@ -913,15 +966,15 @@ mod tests {
                     done_rx.await.expect("startup completed");
                     Ok::<_, Error>(())
                 });
-            let client = Client.builder().connect_with(
-                client_channel,
-                async move |cx: ConnectionTo<Agent>| {
-                    let session_id = start_session(&cx, &config, &events, &init, None).await;
-                    assert_eq!(session_id.unwrap().0.as_ref(), "test-session");
-                    done_tx.send(()).expect("agent waiting");
-                    Ok::<_, Error>(())
-                },
-            );
+            let client =
+                Client
+                    .v1()
+                    .connect_with(client_channel, async move |cx: ConnectionTo<Agent>| {
+                        let session_id = start_session(&cx, &config, &events, &init, None).await;
+                        assert_eq!(session_id.unwrap().0.as_ref(), "test-session");
+                        done_tx.send(()).expect("agent waiting");
+                        Ok::<_, Error>(())
+                    });
             let (client, agent) = futures::join!(client, agent);
             client.expect("client connection");
             agent.expect("agent connection");
@@ -938,5 +991,56 @@ mod tests {
             _ => None,
         });
         assert_eq!(started, Some(confirmed));
+    }
+
+    /// The agent gets the cancellation error it expects, with no answer from the UI.
+    #[test]
+    fn an_agent_that_cancels_a_permission_request_gets_a_cancellation_error() {
+        let (client_channel, agent_channel) = Channel::duplex();
+        let (pending_tx, mut pending_rx) = futures::channel::mpsc::unbounded();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+
+        let agent_error = futures::executor::block_on(async {
+            let client = Client
+                .v1()
+                .on_receive_request(
+                    async move |_request: RequestPermissionRequest, acp_responder, cx| {
+                        let (responder, task) = forward_answer(acp_responder);
+                        pending_tx
+                            .unbounded_send(responder)
+                            .expect("test holds the receiver");
+                        cx.spawn(task)
+                    },
+                    agent_client_protocol::on_receive_request!(),
+                )
+                .connect_with(client_channel, async move |_cx| {
+                    done_rx.await.expect("agent finished");
+                    Ok::<_, Error>(())
+                });
+            let agent = Agent.v1().connect_with(agent_channel, async move |cx| {
+                let request = RequestPermissionRequest::new(
+                    "test-session",
+                    ToolCallUpdate::new("call", ToolCallUpdateFields::new()),
+                    vec![PermissionOption::new(
+                        "allow",
+                        "Allow",
+                        PermissionOptionKind::AllowOnce,
+                    )],
+                );
+                let sent = cx.send_request(request);
+                let cancellation = sent.cancellation_handle();
+                let unanswered = pending_rx.next().await.expect("the UI got the request");
+                cancellation.cancel()?;
+                let result = sent.block_task().await;
+                drop(unanswered);
+                done_tx.send(()).expect("client waiting");
+                Ok::<_, Error>(result.expect_err("the request was cancelled"))
+            });
+            let (client, agent) = futures::join!(client, agent);
+            client.expect("client connection");
+            agent.expect("agent connection")
+        });
+
+        assert_eq!(agent_error.code, Error::request_cancelled().code);
     }
 }

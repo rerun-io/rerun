@@ -40,7 +40,7 @@ Orienting and placing capsules forms a separate transform that is applied prior 
 
 ## API reference links
  * 🌊 [C++ API docs for `Capsules3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Capsules3D.html)
- * 🐍 [Python API docs for `Capsules3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Capsules3D)
+ * 🐍 [Python API docs for `Capsules3D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Capsules3D)
  * 🦀 [Rust API docs for `Capsules3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Capsules3D.html)
 
 ## Example

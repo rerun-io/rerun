@@ -88,7 +88,7 @@ These are [_entity paths_](data-model/entity-component.md), which uniquely ident
 ### Component batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once.
-[Component batches](data-model/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+Logging a [component batch](data-model/batches.md) at once is cheaper than logging each element separately, and batches come with dedicated features.
 You're looking at one of these dedicated features right now: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
@@ -135,7 +135,7 @@ Even so, if you look at your [Timeline View](../viewer/ui/timeline.md) right now
 Unfortunately, the logging time isn't particularly helpful to us in this case: we can't have our beads animate depending on the logging time, else they would move at different speeds depending on the performance of the logging process!
 For that, we need to introduce our own custom timeline that uses a deterministic clock which we control.
 
-Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ the timeline(s). You will find a lot of flexibility in there.
+Rerun supports concurrent or disjoint timelines, out-of-order insertions, and even data that lives _outside_ the timeline(s).
 
 Replace the section that logs the beads with a loop that logs them at different timestamps:
 
@@ -144,7 +144,7 @@ snippet: tutorials/dna[time_loop]
 A call to `set_time` (or `set_duration_secs` in Rust / `set_time_duration` in C++) creates our new `Timeline` and makes sure that any logging calls that follow get assigned that time.
 You can add as many timelines and timestamps as you want when logging data.
 
-> [!WARNING]
+> [!NOTE]
 > If you run this code as is, the result will be… surprising: the beads are animating as expected, but everything we've logged until that point is gone!
 
 <picture>
@@ -181,7 +181,7 @@ _Rerun always reasons in terms of "latest" data: for a given entity, it retrieve
 
 There's only one thing left: our original scene had the abacus rotate along its principal axis.
 
-As was the case with time, (hierarchical) space transformations are first-class citizens in Rerun.
+As with time, Rerun has built-in support for (hierarchical) space transformations.
 Now it's just a matter of combining the two: we need to log the transform of the scaffolding at each timestamp.
 
 Either expand the previous loop to include logging transforms or simply add a second loop like this:
@@ -216,28 +216,28 @@ To view data from a remote machine, a Docker container, or over SSH, see [View d
 
 Sometimes, sending data over the network is not an option. Maybe you'd like to share the data, attach it to a bug report, etc.
 
-Rerun has you covered: each SDK exposes a `save` method (Python: [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.save), Rust: [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save), C++: [`RecordingStream::save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918)) that streams all logged data to disk. View the resulting file with `rerun path/to/recording.rrd`.
+Rerun has you covered: each SDK exposes a `save` method (Python: [`rr.save`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.save), Rust: [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save), C++: [`RecordingStream::save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918)) that streams all logged data to disk.
+View the resulting file with `rerun path/to/recording.rrd`.
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 
 ### RRD file backwards compatibility
 
-RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
-For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
-
-> [!WARNING]
-> At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
+RRD files saved with Rerun 0.23 or later can be opened with any newer Rerun version.
+An older Viewer is not guaranteed to open files written by a newer SDK.
+See [RRD format stability](chunks-and-rrd/rrd-format.md#stability) for details.
 
 ### Rust-only: showing the Viewer in-process
 
 The Rust SDK can host the Viewer directly inside your application via [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html), which expects a complete recording from memory rather than a live stream. This requires enabling the `native_viewer` feature in `Cargo.toml`. The Viewer blocks the main thread until closed; see the Rust API docs for details.
 
-## Closing
-
-This closes our whirlwind tour of logging with Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty of pointers to start experimenting.
-
-As a next step, browse through our [example gallery](https://rerun.io/examples) for some more realistic example use-cases, browse the [Types](../reference/types.md) section for more simple examples of how to use the main encodings, or dig deeper into [querying your logged data](../query-and-transform/tutorial.md).
-
-## Opening files
+### Opening files
 
 You can also open existing files (RRD, MCAP, images, video, point clouds, etc.) directly with the Viewer — see [Opening files](import/open-any-file.md).
+
+## Closing
+
+This closes our tour of logging with Rerun.
+It covers a small part of what's possible, but gives you pointers to start experimenting.
+
+As a next step, browse through our [example gallery](https://rerun.io/examples) for some more realistic example use-cases, browse the [Types](../reference/types.md) section for more simple examples of how to use the main encodings, or dig deeper into [querying your logged data](../query-and-transform/tutorial.md).

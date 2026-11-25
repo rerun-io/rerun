@@ -11,11 +11,7 @@ pub fn identify(
     app_env: &AppEnvironment,
 ) -> Identify {
     let (rust_version, llvm_version, python_version) = match app_env {
-        AppEnvironment::RustSdk {
-            rustc_version,
-            llvm_version,
-        }
-        | AppEnvironment::RerunCli {
+        AppEnvironment::RerunCli {
             rustc_version,
             llvm_version,
         } => (Some(rustc_version), Some(llvm_version), None),
@@ -102,7 +98,7 @@ pub fn open_recording(
             S::Unknown => "unknown".to_owned(),
             S::CSdk => "c_sdk".to_owned(),
             S::PythonSdk(_version) => "python_sdk".to_owned(),
-            S::RustSdk { .. } => "rust_sdk".to_owned(),
+            S::RustSdk => "rust_sdk".to_owned(),
             S::File { file_source } => match file_source {
                 re_log_msg::FileSource::Cli => "file_cli".to_owned(),
                 re_log_msg::FileSource::Uri => "file_uri".to_owned(),
@@ -130,18 +126,11 @@ pub fn open_recording(
                 rust_version_preprocessed = Some(env!("RE_BUILD_RUSTC_VERSION").to_owned());
                 llvm_version_preprocessed = Some(env!("RE_BUILD_LLVM_VERSION").to_owned());
             }
-            S::RustSdk {
-                rustc_version: rustc,
-                llvm_version: llvm,
-            } => {
-                rust_version_preprocessed = Some(rustc.clone());
-                llvm_version_preprocessed = Some(llvm.clone());
-            }
             S::PythonSdk(version) => {
                 python_version_preprocessed = Some(version.to_string());
             }
             // TODO(andreas): Send C SDK version and set it.
-            S::CSdk | S::Unknown | S::Viewer | S::Other(_) => {}
+            S::RustSdk | S::CSdk | S::Unknown | S::Viewer | S::Other(_) => {}
         }
 
         StoreInfo {

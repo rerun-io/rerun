@@ -20,7 +20,10 @@ use crate::commands::DownloadCommand;
 use crate::commands::DumpPuffinCommand;
 #[cfg(feature = "importers")]
 use crate::commands::McapCommands;
+#[cfg(feature = "native_viewer")]
+use crate::commands::McpCommand;
 use crate::commands::RrdCommands;
+use crate::commands::ServersCommands;
 
 use super::cli_data_source::local_recordings_for_assets;
 
@@ -33,53 +36,108 @@ The Rerun command-line interface:
 * Inspect, edit and filter Rerun recordings.
 "#;
 
-// Place the important help _last_, to make it most visible in the terminal.
-const ENVIRONMENT_VARIABLES_AND_EXAMPLES: &str = r#"
-Environment variables:
-    RERUN_CHUNK_MAX_BYTES     Maximum chunk size threshold for the compactor.
-    RERUN_CHUNK_MAX_ROWS      Maximum chunk row count threshold for the compactor (sorted chunks).
-    RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
-                              Maximum chunk row count threshold for the compactor (unsorted chunks).
-    RERUN_SHADER_PATH         The search path for shader/shader-imports. Only available in developer builds.
-    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer.
-                              WARNING: slows down the viewer by a lot!
-    RERUN_MAPBOX_ACCESS_TOKEN The Mapbox access token to use the Mapbox-provided backgrounds in the map view.
-    RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
-    WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.
-                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is
-                              supported depends on your OS.
-    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high`
-                              or `low`. (Default is `high`)
+/// `(name, description)` pairs, shown in `rerun --help` and in the generated CLI manual.
+///
+/// A description may span several lines; the manual joins them.
+const ENVIRONMENT_VARIABLES: &[(&str, &str)] = &[
+    (
+        "RERUN_CHUNK_MAX_BYTES",
+        "Maximum chunk size threshold for the compactor.",
+    ),
+    (
+        "RERUN_CHUNK_MAX_ROWS",
+        "Maximum chunk row count threshold for the compactor (sorted chunks).",
+    ),
+    (
+        "RERUN_CHUNK_MAX_ROWS_IF_UNSORTED",
+        "Maximum chunk row count threshold for the compactor (unsorted chunks).",
+    ),
+    (
+        "RERUN_SHADER_PATH",
+        "The search path for shader/shader-imports. Only available in developer builds.",
+    ),
+    (
+        "RERUN_TRACK_ALLOCATIONS",
+        "Track memory allocations to diagnose memory leaks in the viewer.\nWARNING: slows down the viewer by a lot!",
+    ),
+    (
+        "RERUN_MAPBOX_ACCESS_TOKEN",
+        "The Mapbox access token to use the Mapbox-provided backgrounds in the map view.",
+    ),
+    (
+        "RUST_LOG",
+        "Change the log level of the viewer, e.g. `RUST_LOG=debug`.",
+    ),
+    (
+        "WGPU_BACKEND",
+        "Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.\nDefault is `vulkan` everywhere except on Mac where we use `metal`. What is\nsupported depends on your OS.",
+    ),
+    (
+        "WGPU_POWER_PREF",
+        "Overwrites the power setting used for choosing a graphics adapter, must be `high`\nor `low`. (Default is `high`)",
+    ),
+];
 
+/// `(description, command)` pairs, shown in `rerun --help` and in the generated CLI manual.
+const EXAMPLES: &[(&str, &str)] = &[
+    (
+        "Open a Rerun Viewer that listens for incoming SDK connections",
+        "rerun",
+    ),
+    (
+        "Load some files and show them in the Rerun Viewer",
+        "rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd",
+    ),
+    (
+        "Open an .rrd file and stream it to a Web Viewer",
+        "rerun recording.rrd --web-viewer",
+    ),
+    (
+        "Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results",
+        "rerun --serve-web",
+    ),
+    (
+        "Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers",
+        "rerun --serve-web recording.rrd",
+    ),
+    (
+        "Host a Rerun gRPC server without spawning a Viewer",
+        "rerun --serve-grpc",
+    ),
+    (
+        "Open a Viewer connected to the default message proxy, while hosting its Viewer server on a free port",
+        "rerun --connect",
+    ),
+    (
+        "Connect to a Rerun Server",
+        "rerun rerun+http://localhost:9877/proxy",
+    ),
+    (
+        "Listen for incoming gRPC connections from the logging SDK and stream the results to disk",
+        "rerun --save new_recording.rrd",
+    ),
+];
 
-Examples:
-    Open a Rerun Viewer that listens for incoming SDK connections:
-        rerun
+fn environment_variables_and_examples() -> String {
+    const NAME_WIDTH: usize = 25;
+    let indent = " ".repeat(4 + NAME_WIDTH + 1);
 
-    Load some files and show them in the Rerun Viewer:
-        rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd
+    let mut out = String::from("\nEnvironment variables:\n");
+    for (name, description) in ENVIRONMENT_VARIABLES {
+        let description = description.lines().join(&format!("\n{indent}"));
+        if name.len() <= NAME_WIDTH {
+            writeln!(out, "    {name:<NAME_WIDTH$} {description}").ok();
+        } else {
+            writeln!(out, "    {name}\n{indent}{description}").ok();
+        }
+    }
 
-    Open an .rrd file and stream it to a Web Viewer:
-        rerun recording.rrd --web-viewer
-
-    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results:
-        rerun --serve-web
-
-    Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers:
-        rerun --serve-web recording.rrd
-
-    Host a Rerun gRPC server without spawning a Viewer:
-        rerun --serve-grpc
-
-    Open a Viewer connected to the default message proxy, while hosting its Viewer server on a free port:
-        rerun --connect
-
-    Connect to a Rerun Server:
-        rerun rerun+http://localhost:9877/proxy
-
-    Listen for incoming gRPC connections from the logging SDK and stream the results to disk:
-        rerun --save new_recording.rrd
-"#;
+    out += "\n\nExamples:\n";
+    for (description, command) in EXAMPLES {
+        write!(out, "    {description}:\n        {command}\n\n").ok();
+    }
+    out
+}
 
 const DEFAULT_VIEWER_SERVER_PORT: u16 = 9876;
 
@@ -137,7 +195,7 @@ impl std::str::FromStr for PortArg {
 #[clap(
     long_about = LONG_ABOUT,
     // Place most of the help last, as that is most visible in the terminal.
-    after_long_help = ENVIRONMENT_VARIABLES_AND_EXAMPLES
+    after_long_help = environment_variables_and_examples()
 )]
 struct Args {
     // Note: arguments are sorted lexicographically for nicer `--help` message.
@@ -476,6 +534,33 @@ impl Args {
             .trim()
             .to_owned();
 
+            // Flags like `bool` switches report `true`/`false` as possible values,
+            // but they take no value on the command line.
+            let possible_values = if arg.get_action().takes_values() {
+                arg.get_possible_values()
+                    .into_iter()
+                    .filter(|pv| !pv.is_hide_set())
+                    .collect_vec()
+            } else {
+                Vec::new()
+            };
+            let rendered = if possible_values.is_empty() {
+                rendered
+            } else {
+                let possible_values = possible_values
+                    .iter()
+                    .map(|pv| {
+                        if let Some(help) = pv.get_help() {
+                            format!("> * `{}`: {help}", pv.get_name())
+                        } else {
+                            format!("> * `{}`", pv.get_name())
+                        }
+                    })
+                    .collect_vec()
+                    .join("\n");
+                format!("{rendered}\n>\n> Possible values:\n>\n{possible_values}")
+            };
+
             let defaults = arg.get_default_values();
             if defaults.is_empty() {
                 rendered
@@ -615,11 +700,39 @@ impl Args {
                 format!("**Options**\n\n{options}")
             });
 
-            *out += &[Some(header), Some(usage), commands, positionals, floatings]
-                .into_iter()
-                .flatten()
-                .collect_vec()
-                .join("\n\n");
+            let is_root = full_name.len() == 1;
+
+            let environment_variables = is_root.then(|| {
+                let variables = ENVIRONMENT_VARIABLES
+                    .iter()
+                    .map(|(name, description)| {
+                        format!("* `{name}`: {}", description.lines().join(" "))
+                    })
+                    .join("\n");
+                format!("**Environment variables**\n\n{variables}")
+            });
+
+            let examples = is_root.then(|| {
+                let examples = EXAMPLES
+                    .iter()
+                    .map(|(description, command)| format!("# {description}\n{command}"))
+                    .join("\n\n");
+                format!("**Examples**\n\n```sh\n{examples}\n```")
+            });
+
+            *out += &[
+                Some(header),
+                Some(usage),
+                commands,
+                positionals,
+                floatings,
+                environment_variables,
+                examples,
+            ]
+            .into_iter()
+            .flatten()
+            .collect_vec()
+            .join("\n\n");
 
             *out += "\n\n";
 
@@ -645,7 +758,7 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
-    /// Authentication with the redap.
+    /// Log in to Rerun Hub and manage access tokens.
     #[cfg(feature = "auth")]
     #[command(subcommand)]
     Auth(AuthCommands),
@@ -671,7 +784,7 @@ enum Command {
     #[command(subcommand)]
     Mcap(McapCommands),
 
-    /// Run an MCP server that controls a running Rerun Viewer.
+    /// Run an MCP server that lets an agent drive a running Rerun Viewer and read a catalog.
     ///
     /// Register it with your agent using `claude mcp add rerun -- rerun mcp` or
     /// `codex mcp add rerun -- rerun mcp`, or add an `mcp.json` entry with
@@ -680,20 +793,7 @@ enum Command {
     /// See <https://rerun.io/docs/viewer/extend/mcp> for details.
     #[cfg(feature = "native_viewer")]
     #[command(name = "mcp")]
-    Mcp {
-        /// gRPC endpoint of the viewer to connect to on startup, e.g. `http://127.0.0.1:9876`.
-        ///
-        /// Without it, the server starts unconnected and the agent picks a viewer with its
-        /// `connect` tool.
-        #[arg(long)]
-        endpoint: Option<url::Url>,
-
-        /// Marks a server started by the viewer's agent panel.
-        ///
-        /// Only analytics reads it, the server behaves the same either way.
-        #[arg(long, hide = true)]
-        from_agent_panel: bool,
-    },
+    Mcp(McpCommand),
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -711,6 +811,10 @@ enum Command {
     #[cfg(feature = "oss_server")]
     #[command(name = "server")]
     Server(re_server::Args),
+
+    /// Manage the catalog servers that the Viewer, the CLI, and `rerun mcp` remember.
+    #[command(subcommand)]
+    Servers(ServersCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -859,12 +963,7 @@ where
             Command::Mcap(mcap) => mcap.run(),
 
             #[cfg(feature = "native_viewer")]
-            Command::Mcp {
-                endpoint,
-                from_agent_panel: _,
-            } => tokio_runtime.block_on(re_rerun_mcp::serve(re_rerun_mcp::Config {
-                viewer: Some(re_rerun_mcp::ViewerConfig { endpoint }),
-            })),
+            Command::Mcp(mcp) => mcp.run(&tokio_runtime),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -873,6 +972,8 @@ where
 
             #[cfg(feature = "oss_server")]
             Command::Server(server) => tokio_runtime.block_on(server.run_async(build_info)),
+
+            Command::Servers(servers) => servers.run(),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -1722,7 +1823,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
             match msg.payload {
                 SmartMessagePayload::Msg(msg) => {
                     match msg {
-                        DataSourceMessage::RrdManifest(store_id, manifest) => {
+                        DataSourceMessage::RrdManifest { store_id, manifest } => {
                             let mut_db = match store_id.kind() {
                                 re_log_types::StoreKind::Recording => {
                                     rec.get_or_insert_with(|| {
@@ -2150,11 +2251,10 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
     let mcp_launcher = cfg_select! {
         feature = "native_viewer" => match command {
-            Some(Command::Mcp {
-                from_agent_panel: true,
-                ..
-            }) => Some(re_analytics::event::McpLauncher::AgentPanel),
-            Some(Command::Mcp { .. }) => Some(re_analytics::event::McpLauncher::Unknown),
+            Some(Command::Mcp(mcp)) if mcp.from_agent_panel => {
+                Some(re_analytics::event::McpLauncher::AgentPanel)
+            }
+            Some(Command::Mcp(_)) => Some(re_analytics::event::McpLauncher::Unknown),
             _ => None,
         },
         _ => None,
@@ -2198,7 +2298,7 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         }
 
         #[cfg(feature = "native_viewer")]
-        Some(Command::Mcp { .. }) => ("mcp", None),
+        Some(Command::Mcp(_)) => ("mcp", None),
 
         Some(Command::Download(_)) => ("download", None),
 
@@ -2226,6 +2326,15 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
         #[cfg(feature = "oss_server")]
         Some(Command::Server(_)) => ("server", None),
+
+        Some(Command::Servers(cmd)) => {
+            let subcommand = match cmd {
+                ServersCommands::List => "list",
+                ServersCommands::Add { .. } => "add",
+                ServersCommands::Remove { .. } => "remove",
+            };
+            ("servers", Some(subcommand))
+        }
 
         None => ("viewer", None),
     };
@@ -2375,33 +2484,7 @@ mod cli_data_source_tests {
 mod tests {
     use super::*;
 
-    use std::assert_matches;
-
     use clap::Parser as _;
-
-    #[test]
-    fn mcp_parses_from_agent_panel() {
-        let args = Args::try_parse_from(["rerun", "mcp", "--from-agent-panel"]).unwrap();
-        assert_matches!(
-            args.command,
-            Some(Command::Mcp {
-                from_agent_panel: true,
-                ..
-            })
-        );
-    }
-
-    #[test]
-    fn mcp_is_not_from_agent_panel_by_default() {
-        let args = Args::try_parse_from(["rerun", "mcp"]).unwrap();
-        assert_matches!(
-            args.command,
-            Some(Command::Mcp {
-                from_agent_panel: false,
-                ..
-            })
-        );
-    }
 
     #[test]
     fn detach_relaunches_a_native_viewer_exactly_once() {

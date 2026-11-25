@@ -106,6 +106,25 @@ pub trait UiExt {
         crate::debug_only::debug_only_badge_ui(self.ui_mut())
     }
 
+    /// Small orange "Experimental" pill, marking a feature as experimental.
+    fn experimental_tag(&mut self) -> egui::WidgetAtomResponse {
+        let ui = self.ui_mut();
+        let tokens = ui.tokens();
+        let alert = &tokens.alert_warning;
+        egui::WidgetAtom::new(
+            egui::RichText::new("Experimental")
+                .small()
+                .color(alert.icon),
+        )
+        .frame(
+            egui::Frame::new()
+                .fill(alert.fill)
+                .corner_radius(tokens.normal_corner_radius())
+                .inner_margin(egui::Margin::symmetric(6, 1)),
+        )
+        .show(ui)
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If the text has a details section (see [`re_error::StructuredError`]), the details are

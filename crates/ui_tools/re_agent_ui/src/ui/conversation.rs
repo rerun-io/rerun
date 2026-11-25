@@ -6,9 +6,10 @@ use std::sync::Arc;
 
 use re_agent::{
     AgentEntry, AgentLaunch, AgentPreferences, AgentProfileId, AgentSession, AgentSettings,
-    AgentToolbox, ModelApiProvider, Phase, Prompt, SavedConversation, SessionContext,
+    ModelApiProvider, ModelPreselect, Phase, Prompt, SavedConversation, SessionContext,
     SessionReports,
 };
+use re_agent_tools::AgentToolbox;
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_ui::UiExt as _;
 use web_time::SystemTime;
@@ -61,6 +62,12 @@ pub struct Conversation {
     /// Overrides the panel's shared context. See [`super::AgentPanel::open_conversation`].
     pub context: Option<SessionContext>,
 
+    /// The model that the next start of its agent preselects.
+    ///
+    /// Back to [`ModelPreselect::Previous`] once the agent has started, so that a restart does not
+    /// undo a model the user picked in the conversation.
+    pub model_preselect: ModelPreselect,
+
     /// Prompts waiting for the agent to be ready, e.g. sent from the command palette.
     pub pending_prompts: VecDeque<Prompt>,
 
@@ -94,6 +101,7 @@ impl Conversation {
                 Screen::Setup
             },
             context: None,
+            model_preselect: ModelPreselect::Previous,
             pending_prompts: Default::default(),
             saved: None,
         }
@@ -151,7 +159,10 @@ impl Conversation {
         context: &SessionContext,
         agents: &[AgentEntry],
     ) {
-        let context = self.context.as_ref().unwrap_or(context);
+        let context = &SessionContext {
+            model_preselect: self.model_preselect,
+            ..self.context.clone().unwrap_or_else(|| context.clone())
+        };
         let launched = if let Some(saved) = &self.saved
             && saved.profile_id != settings.profile_id
         {
@@ -163,6 +174,7 @@ impl Conversation {
         };
         match launched {
             Ok(mut launch) => {
+                self.model_preselect = ModelPreselect::Previous;
                 match &mut launch {
                     AgentLaunch::AgentHarness(config) => {
                         if let Some(saved) = &self.saved {
@@ -398,7 +410,7 @@ impl Conversation {
         let next_screen = egui::CentralPanel::default()
             .frame(egui::Frame::new())
             .show(ui, |ui| {
-                setup_ui(ui, settings, agents, &self.available_model_apis)
+                setup_ui(ui, settings, context, agents, &self.available_model_apis)
             })
             .inner;
 

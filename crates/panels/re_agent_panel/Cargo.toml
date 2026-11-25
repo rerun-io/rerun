@@ -14,14 +14,8 @@ include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
-  "agent_context/**/*.cpp",
-  "agent_context/**/*.in",
   "agent_context/**/*.md",
   "agent_context/**/*.py",
-  "agent_context/**/*.rs",
-  "agent_context/**/*.toml",
-  "agent_context/**/*.txt",
-  "agent_context/**/*.yaml",
   "Cargo.toml",
 ]
 
@@ -35,22 +29,24 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [features]
 default = []
 
-## Embed the Rerun skills and documentation for the agent panel to hand its agent.
-##
-## Costs a couple of megabytes of binary size, and does nothing on the web.
-agent_context = []
+## Embed the Rerun skills for the agent panel to hand its agent.
+agent_skills = []
 
 [dependencies]
 re_agent.workspace = true
+re_agent_tools.workspace = true
 re_agent_ui.workspace = true
 re_analytics.workspace = true
 re_async.workspace = true
+re_catalog_tools.workspace = true
 re_log.workspace = true
 re_log_channel.workspace = true
 re_protos.workspace = true
+re_redap_client.workspace = true
 re_sdk_types.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
+re_uri.workspace = true
 re_viewer_context.workspace = true
 re_viewer_control_tools.workspace = true
 
@@ -69,6 +65,7 @@ tempfile.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [build-dependencies]
 cfg_aliases.workspace = true

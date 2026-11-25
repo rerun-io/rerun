@@ -56,29 +56,20 @@ pub fn filter_asset_segments(
     Ok(())
 }
 
-/// The asset dataset of a dataset, and every asset segment within it.
-pub(crate) struct AssetSegments {
-    pub dataset_id: EntryId,
-    pub segment_ids: Vec<SegmentId>,
-}
-
-/// The assets registered for a dataset, or `None` when it has none or they could not be fetched.
+/// The assets registered in an asset dataset, or none when they could not be fetched.
 pub(crate) async fn asset_segments(
     client: &mut ConnectionClient,
-    dataset_id: EntryId,
+    asset_dataset_id: EntryId,
     segment_id: &SegmentId,
-) -> Option<AssetSegments> {
+) -> Vec<SegmentId> {
     match client
-        .get_assets_for_segment(dataset_id, Some(segment_id.clone()))
+        .get_assets_for_segment(asset_dataset_id, Some(segment_id))
         .await
     {
-        Ok(assets) => assets.map(|(dataset_id, segment_ids)| AssetSegments {
-            dataset_id,
-            segment_ids,
-        }),
+        Ok(segment_ids) => segment_ids,
         Err(err) => {
             re_log::warn!("Failed to fetch assets: {err}");
-            None
+            Vec::new()
         }
     }
 }

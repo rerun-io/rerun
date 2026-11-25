@@ -20,7 +20,7 @@ Filter for rows to display in the view.
 Formatting options for the text log view.
 
 ## API reference links
- * 🐍 [Python API docs for `TextLogView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextLogView)
+ * 🐍 [Python API docs for `TextLogView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.TextLogView)
 
 ## Example
 

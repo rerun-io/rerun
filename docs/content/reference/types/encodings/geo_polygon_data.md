@@ -30,7 +30,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `GeoPolygonData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1GeoPolygonData.html)
- * 🐍 [Python API docs for `GeoPolygonData`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.GeoPolygonData)
+ * 🐍 [Python API docs for `GeoPolygonData`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.GeoPolygonData)
  * 🦀 [Rust API docs for `GeoPolygonData`](https://docs.rs/rerun/latest/rerun/encodings/struct.GeoPolygonData.html)
 
 

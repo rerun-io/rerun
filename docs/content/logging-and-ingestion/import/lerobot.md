@@ -23,22 +23,7 @@ snippet: howto/load_lerobot
 
 To query a LeRobot dataset on a [catalog server](../../query-and-transform/catalog/get-data-out.md) or train on it with the Rerun [dataloader](../../train/dataloader.md), convert each episode to its own `.rrd` file with [`LeRobotReader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.LeRobotReader):
 
-```python
-from pathlib import Path
-
-import rerun as rr
-
-Path("rrd").mkdir(exist_ok=True)
-profile = rr.chunk.OptimizationProfile.OBJECT_STORE
-
-reader = rr.experimental.LeRobotReader("path/to/lerobot_dataset")
-for episode in reader.episodes():
-    reader.stream(episode).collect(optimize=profile).write_rrd(
-        f"rrd/episode_{episode}.rrd",
-        application_id="my_dataset",
-        recording_id=f"episode_{episode}",
-    )
-```
+snippet: howto/lerobot_to_rrd[convert]
 
 - The `recording_id` becomes the [segment](../../query-and-transform/catalog/catalog-object-model.md#datasets) ID once the file is registered, unless `register()` is given another `segment_id`, so pick one that names the episode.
 - `collect(optimize=profile)` merges chunks into [larger ones for catalog queries](../chunks-and-rrd/optimize-chunks.md#compacting-chunks-with-the-chunk-processing-api), at the cost of holding the episode in memory.
@@ -47,7 +32,7 @@ for episode in reader.episodes():
   H.264 or H.265 with B-frames is re-encoded, and a v3.0 episode that starts mid-GOP has its first GOP re-encoded.
   Both need `ffmpeg` on the `PATH`.
 
-Then load the folder into a local catalog with `rerun server -d my_dataset=rrd`, or register the files to an existing [dataset](../../query-and-transform/catalog/catalog-object-model.md#datasets).
+Then load the folder into a local catalog with `rerun server -d my_dataset=rrd`, or register the files to an existing [dataset](../../query-and-transform/catalog/catalog-object-model.md#datasets), for example on [Rerun Hub](../../hub.md).
 
 ## Data model
 

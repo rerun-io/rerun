@@ -6,11 +6,11 @@ description: Embed the web Viewer via iframe, JavaScript package, or Gradio
 
 For the full JavaScript API, see the [Web Viewer API reference](https://ref.rerun.io/docs/js/).
 
-Integrating the Rerun Viewer into your web application can be accomplished either by [utilizing an iframe](#embedding-apprerunio-using-an-iframe) or by using our [JavaScript package](#using-the-javascript-package).
+You can embed the Viewer with an [iframe](#embedding-apprerunio-using-an-iframe) or with the [JavaScript package](#using-the-javascript-package).
 
 ## Embedding `app.rerun.io` using an `<iframe>`
 
-This approach is straightforward and requires minimal setup. However, the drawback is that it lacks programmable control over the web viewer.
+An iframe needs only a URL, but your page cannot control the web viewer from code.
 
 ```html
 <iframe src="https://app.rerun.io/version/{RERUN_VERSION}/index.html?url={RRD_URL}"></iframe>
@@ -31,18 +31,17 @@ For instance:
 ```
 
 Choose a Viewer version that can read your recordings.
-RRD files written by Rerun 0.23 or later can be opened by newer Viewers, but compatibility is only guaranteed across adjacent minor versions (see [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility)).
+RRD files written by Rerun 0.23 or later can be opened by any newer Viewer (see [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility)).
 `latest` changes with every release, so pin a version if the files you show will not be regenerated.
 
 ### Matching the host page's theme
 
-By default, the embedded viewer follows the user's OS theme (`prefers-color-scheme`). If your host page has its own theme toggle, you can pin the viewer to match by passing `theme=dark`, `theme=light`, or `theme=system`:
+By default, the embedded viewer follows the user's OS theme (`prefers-color-scheme`).
+If your host page has its own theme toggle, pin the viewer to match by passing `theme=dark`, `theme=light`, or `theme=system`:
 
 ```html
 <iframe src="https://app.rerun.io/version/{RERUN_VERSION}/?url={RRD_URL}&theme=dark"></iframe>
 ```
-
-This is useful for sites whose theme can differ from the OS preference — without it, a user on a light-mode OS visiting your dark-mode page would see a bright viewer panel against a dark background.
 
 ## Using the JavaScript package
 
@@ -54,8 +53,7 @@ Various packages are available:
 
 > [!NOTE]
 > The package version matches the Rerun SDK version.
-> The Viewer in the package reads data from the same version, and from older versions as described in [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility).
-> To be safe, use the same version for the package and for the SDK that writes your data.
+> The Viewer in the package reads `.rrd` files written by the same SDK version, or by any older version from 0.23 on, as described in [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility).
 
 ### Basic example
 

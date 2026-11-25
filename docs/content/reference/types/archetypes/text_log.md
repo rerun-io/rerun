@@ -23,7 +23,7 @@ A log entry in a text log, comprised of a text body and its log level.
 
 ## API reference links
  * 🌊 [C++ API docs for `TextLog`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextLog.html)
- * 🐍 [Python API docs for `TextLog`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextLog)
+ * 🐍 [Python API docs for `TextLog`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.TextLog)
  * 🦀 [Rust API docs for `TextLog`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TextLog.html)
 
 ## Example

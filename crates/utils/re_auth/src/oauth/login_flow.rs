@@ -93,6 +93,7 @@ impl OauthLoginFlow {
 
         // Store and return credentials
         let credentials = Credentials::from_auth_response(auth.into())?.ensure_stored()?;
+        crate::credentials::oauth::clear_cache_async().await;
         Ok(Some(credentials))
     }
 }
@@ -182,13 +183,15 @@ impl DeviceCodeFlow {
                     access_token,
                     refresh_token,
                 } => {
-                    return Ok(Credentials::from_auth_response(RefreshResponse {
+                    let credentials = Credentials::from_auth_response(RefreshResponse {
                         user,
                         organization_id,
                         access_token,
                         refresh_token,
                     })?
-                    .ensure_stored()?);
+                    .ensure_stored()?;
+                    crate::credentials::oauth::clear_cache_async().await;
+                    return Ok(credentials);
                 }
                 AuthenticateWithDeviceCodeResponse::Error {
                     error,

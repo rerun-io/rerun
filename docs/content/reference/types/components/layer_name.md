@@ -17,7 +17,7 @@ Utf8
 
 ## API reference links
  * 🌊 [C++ API docs for `LayerName`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LayerName.html)
- * 🐍 [Python API docs for `LayerName`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.LayerName)
+ * 🐍 [Python API docs for `LayerName`](https://ref.rerun.io/docs/python/stable/components#rerun.components.LayerName)
  * 🦀 [Rust API docs for `LayerName`](https://docs.rs/rerun/latest/rerun/components/struct.LayerName.html)
 
 

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import tracemalloc
+from dataclasses import dataclass
+from itertools import pairwise
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 import numpy as np
 import pytest
@@ -12,12 +15,14 @@ from rerun.experimental.dataloader._shuffle import (
     NoShuffle,
     SampleShuffle,
     ShuffleBuffer,
-    _contiguous_shard,
-    _fetch_blocks,
+    ShuffleStrategy,
+    _MaterializedWorkOrder,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    import numpy.typing as npt
 
 
 def _sample_index(*num_samples: int) -> SampleIndex:
@@ -32,6 +37,147 @@ def _blocks(indices: np.ndarray, block_bounds: np.ndarray) -> list[np.ndarray]:
     return [
         indices[start:end] for start, end in zip(np.concatenate([[0], block_bounds[:-1]]), block_bounds, strict=True)
     ]
+
+
+@dataclass(frozen=True)
+class GroupShuffle(ShuffleStrategy):
+    """Yield temporally spread groups from each segment in random group order."""
+
+    RECIPE_TAG: ClassVar[str] = "group"
+
+    group_size: int
+    groups_per_episode: int | None = None
+    spacing: Literal["random", "even"] = "random"
+    num_shards: int = 1
+
+    def epoch_order(
+        self,
+        sample_index: SampleIndex,
+        *,
+        fetch_block_size: int,
+        seed: int,
+    ) -> tuple[npt.NDArray[np.int64], npt.NDArray[np.int64]]:
+        del fetch_block_size
+        rng = np.random.default_rng(seed=seed)
+
+        groups: list[npt.NDArray[np.int64]] = []
+        for start, end in pairwise(sample_index.segment_offsets):
+            parts = np.array_split(np.arange(start, end, dtype=np.int64), self.group_size)
+            fit = len(parts[-1])
+            num_groups = fit if self.groups_per_episode is None else min(self.groups_per_episode, fit)
+            if num_groups == 0:
+                continue
+            if self.spacing == "even":
+                offsets = rng.choice(fit, size=num_groups, replace=False)
+                picks = np.stack([part[offsets] for part in parts])
+            else:
+                picks = np.stack([rng.choice(part, size=num_groups, replace=False) for part in parts])
+            groups.extend(picks.T)
+
+        order = rng.permutation(len(groups))
+        order = order[: len(order) - len(order) % self.num_shards]
+        if len(order) == 0:
+            return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
+        indices = np.concatenate([groups[i] for i in order])
+        block_bounds = np.arange(self.group_size, len(indices) + 1, self.group_size, dtype=np.int64)
+        return indices, block_bounds
+
+
+def _materialized_block_order_reference(
+    sample_index: SampleIndex,
+    *,
+    block_size: int,
+    shuffle: bool,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Materialized reference that pins the established block ordering."""
+    offsets = sample_index.segment_offsets
+    total = int(offsets[-1])
+    if total == 0:
+        return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
+
+    block_ids = np.empty(total, dtype=np.int64)
+    num_blocks = 0
+    for start, end in pairwise(offsets):
+        block_ids[start:end] = num_blocks + np.arange(end - start, dtype=np.int64) // block_size
+        num_blocks += (end - start + block_size - 1) // block_size
+
+    if shuffle:
+        emitted_blocks = np.random.default_rng(seed=seed).permutation(num_blocks)
+    else:
+        emitted_blocks = np.arange(num_blocks)
+
+    block_position = np.empty(num_blocks, dtype=np.int64)
+    block_position[emitted_blocks] = np.arange(num_blocks)
+    indices = np.argsort(block_position[block_ids], kind="stable").astype(np.int64)
+    block_bounds = np.cumsum(np.bincount(block_ids, minlength=num_blocks)[emitted_blocks])
+    return indices, block_bounds
+
+
+def _materialized_epoch_order_reference(
+    strategy: SampleShuffle | BlockShuffle | NoShuffle,
+    sample_index: SampleIndex,
+    *,
+    fetch_block_size: int,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    if isinstance(strategy, BlockShuffle):
+        return _materialized_block_order_reference(
+            sample_index,
+            block_size=fetch_block_size,
+            shuffle=True,
+            seed=seed,
+        )
+    if isinstance(strategy, NoShuffle):
+        return _materialized_block_order_reference(
+            sample_index,
+            block_size=fetch_block_size,
+            shuffle=False,
+            seed=seed,
+        )
+    return strategy.epoch_order(sample_index, fetch_block_size=fetch_block_size, seed=seed)
+
+
+def _materialized_contiguous_shard_reference(
+    indices: np.ndarray,
+    block_bounds: np.ndarray,
+    *,
+    rank: int,
+    world_size: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Materialized reference that pins nested rank and worker sharding."""
+    per_shard = len(indices) // world_size
+    start = rank * per_shard
+    end = start + per_shard if rank < world_size - 1 else len(indices)
+    inner_bounds = block_bounds[(block_bounds > start) & (block_bounds < end)] - start
+    return indices[start:end], np.append(inner_bounds, end - start)
+
+
+def _materialized_fetch_blocks_reference(
+    indices: np.ndarray,
+    block_bounds: np.ndarray,
+    *,
+    fetch_block_size: int,
+) -> list[np.ndarray]:
+    """Materialized reference that pins fetch packing and block splitting."""
+    fetch_blocks: list[np.ndarray] = []
+    fetch_start = 0
+    packed_end = 0
+    for raw_bound in block_bounds:
+        bound = int(raw_bound)
+        if bound - fetch_start <= fetch_block_size:
+            packed_end = bound
+            continue
+        if packed_end > fetch_start:
+            fetch_blocks.append(indices[fetch_start:packed_end])
+            fetch_start = packed_end
+        while bound - fetch_start > fetch_block_size:
+            fetch_blocks.append(indices[fetch_start : fetch_start + fetch_block_size])
+            fetch_start += fetch_block_size
+        packed_end = bound
+    if fetch_start < len(indices):
+        fetch_blocks.append(indices[fetch_start:])
+    return fetch_blocks
 
 
 def _assert_blocks_segment_local(
@@ -67,9 +213,13 @@ def test_epoch_order_is_a_permutation(strategy: SampleShuffle | BlockShuffle | N
 
 @pytest.mark.parametrize("strategy", [SampleShuffle(), BlockShuffle(), BlockShuffle(buffer_size=6), NoShuffle()])
 def test_epoch_order_empty(strategy: SampleShuffle | BlockShuffle | NoShuffle) -> None:
-    indices, block_bounds = strategy.epoch_order(_sample_index(), fetch_block_size=16, seed=0)
+    sample_index = _sample_index()
+    indices, block_bounds = strategy.epoch_order(sample_index, fetch_block_size=16, seed=0)
+    work_order = strategy._work_order(sample_index, fetch_block_size=16, seed=0).compact()
     assert len(indices) == 0
     assert len(block_bounds) == 0
+    assert work_order.num_samples == 0
+    assert list(work_order.fetch_blocks(fetch_block_size=16)) == []
 
 
 def test_no_shuffle_is_natural_order() -> None:
@@ -85,6 +235,167 @@ def test_sample_shuffle_seed_determinism() -> None:
     order_c, _ = SampleShuffle().epoch_order(sample_index, fetch_block_size=16, seed=2)
     assert np.array_equal(order_a, order_b)
     assert not np.array_equal(order_a, order_c)
+
+
+@pytest.mark.parametrize("strategy", [SampleShuffle(), BlockShuffle(), NoShuffle()])
+@pytest.mark.parametrize("seed", [0, 1, 4, 123])
+@pytest.mark.parametrize("sizes", [(100, 33, 1, 50), (7,), (16, 16), (3, 0, 40)])
+def test_work_order_matches_materialized_reference(
+    strategy: SampleShuffle | BlockShuffle | NoShuffle,
+    seed: int,
+    sizes: tuple[int, ...],
+) -> None:
+    sample_index = _sample_index(*sizes)
+    expected_indices, expected_bounds = _materialized_epoch_order_reference(
+        strategy,
+        sample_index,
+        fetch_block_size=16,
+        seed=seed,
+    )
+
+    epoch_indices, epoch_bounds = strategy.epoch_order(sample_index, fetch_block_size=16, seed=seed)
+    assert np.array_equal(epoch_indices, expected_indices)
+    assert np.array_equal(epoch_bounds, expected_bounds)
+
+    work_order = strategy._work_order(sample_index, fetch_block_size=16, seed=seed)
+    actual_indices, actual_bounds = work_order.materialize()
+    assert np.array_equal(actual_indices, expected_indices)
+    assert np.array_equal(actual_bounds, expected_bounds)
+    assert [block.tolist() for block in work_order.fetch_blocks(fetch_block_size=16)] == [
+        block.tolist()
+        for block in _materialized_fetch_blocks_reference(
+            expected_indices,
+            expected_bounds,
+            fetch_block_size=16,
+        )
+    ]
+
+
+def test_block_shuffle_order_depends_on_seed() -> None:
+    sample_index = _sample_index(100, 33, 1, 50)
+    order_a, _ = BlockShuffle()._work_order(sample_index, fetch_block_size=16, seed=1).materialize()
+    order_b, _ = BlockShuffle()._work_order(sample_index, fetch_block_size=16, seed=1).materialize()
+    order_c, _ = BlockShuffle()._work_order(sample_index, fetch_block_size=16, seed=2).materialize()
+
+    assert np.array_equal(order_a, order_b)
+    assert not np.array_equal(order_a, order_c)
+
+
+def test_custom_group_shuffle_preserves_groups_through_nested_sharding() -> None:
+    sample_index = _sample_index(12, 20, 3)
+    strategy = GroupShuffle(group_size=4, groups_per_episode=2, num_shards=4)
+    indices, block_bounds = strategy.epoch_order(sample_index, fetch_block_size=6, seed=7)
+    expected_groups = _blocks(indices, block_bounds)
+
+    assert len(indices) < sample_index.total_samples
+    assert len(expected_groups) == 4
+    assert all(len(group) == strategy.group_size for group in expected_groups)
+    assert all(np.all(np.diff(group) > 0) for group in expected_groups)
+    _assert_blocks_segment_local(sample_index, indices, block_bounds, contiguous=False)
+
+    work_order = strategy._work_order(sample_index, fetch_block_size=6, seed=7)
+    materialized_indices, materialized_bounds = work_order.materialize()
+    assert np.array_equal(materialized_indices, indices)
+    assert np.array_equal(materialized_bounds, block_bounds)
+    assert [block.tolist() for block in work_order.fetch_blocks(fetch_block_size=6)] == [
+        group.tolist() for group in expected_groups
+    ]
+
+    shard_blocks = []
+    for rank in range(2):
+        rank_order = work_order.shard(rank=rank, world_size=2)
+        for worker in range(2):
+            worker_order = rank_order.shard(rank=worker, world_size=2).compact()
+            blocks = list(worker_order.fetch_blocks(fetch_block_size=6))
+            assert len(blocks) == 1
+            assert len(blocks[0]) == strategy.group_size
+            shard_blocks.extend(blocks)
+
+    assert np.array_equal(np.concatenate(shard_blocks), indices)
+
+
+@pytest.mark.parametrize("strategy", [SampleShuffle(), BlockShuffle(), NoShuffle()])
+@pytest.mark.parametrize(
+    ("sizes", "ddp_world_size", "num_workers"),
+    [
+        ((100, 33, 1, 50), 3, 2),
+        ((100, 33, 1, 50), 1, 5),
+        ((5,), 4, 3),
+        ((40, 3), 2, 7),
+    ],
+)
+def test_per_shard_fetch_blocks_match_materialized_reference(
+    strategy: SampleShuffle | BlockShuffle | NoShuffle,
+    sizes: tuple[int, ...],
+    ddp_world_size: int,
+    num_workers: int,
+) -> None:
+    sample_index = _sample_index(*sizes)
+    fetch_block_size = 16
+    expected_indices, expected_bounds = _materialized_epoch_order_reference(
+        strategy,
+        sample_index,
+        fetch_block_size=fetch_block_size,
+        seed=4,
+    )
+    work_order = strategy._work_order(sample_index, fetch_block_size=fetch_block_size, seed=4)
+
+    for rank in range(ddp_world_size):
+        if ddp_world_size > 1:
+            rank_order = work_order.shard(rank=rank, world_size=ddp_world_size)
+            rank_reference = _materialized_contiguous_shard_reference(
+                expected_indices,
+                expected_bounds,
+                rank=rank,
+                world_size=ddp_world_size,
+            )
+        else:
+            rank_order = work_order
+            rank_reference = expected_indices, expected_bounds
+
+        for worker in range(num_workers):
+            worker_order = rank_order.shard(rank=worker, world_size=num_workers).compact()
+            worker_reference = _materialized_contiguous_shard_reference(
+                *rank_reference,
+                rank=worker,
+                world_size=num_workers,
+            )
+            expected_blocks = _materialized_fetch_blocks_reference(
+                *worker_reference,
+                fetch_block_size=fetch_block_size,
+            )
+            actual_blocks = list(worker_order.fetch_blocks(fetch_block_size=fetch_block_size))
+
+            assert [block.tolist() for block in actual_blocks] == [block.tolist() for block in expected_blocks]
+            assert worker_order.num_samples == len(worker_reference[0])
+
+
+@pytest.mark.parametrize("strategy", [BlockShuffle(), NoShuffle()])
+def test_work_order_does_not_allocate_sample_sized_arrays(strategy: BlockShuffle | NoShuffle) -> None:
+    # Four million int64 sample indices need about 32 MiB; descriptor-only orders stay well below 4 MiB.
+    sample_index = _sample_index(1_500_000, 1_000_003, 1_500_000)
+
+    tracemalloc.start()
+    try:
+        work_order = strategy._work_order(sample_index, fetch_block_size=1024, seed=3)
+        work_order = work_order.shard(rank=1, world_size=2).shard(rank=0, world_size=3).compact()
+        first_block = next(iter(work_order.fetch_blocks(fetch_block_size=1024)))
+        _, peak_bytes = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    assert len(first_block) <= 1024
+    assert peak_bytes < 4 * 1024 * 1024, f"Peak traced allocation was {peak_bytes} bytes"
+
+
+def test_compacting_shards_that_share_one_block_clips_each_shard() -> None:
+    sample_index = _sample_index(10)
+    work_order = BlockShuffle()._work_order(sample_index, fetch_block_size=128, seed=0)
+
+    shards = [work_order.shard(rank=rank, world_size=4).compact() for rank in range(4)]
+    actual = np.concatenate([np.concatenate(list(shard.fetch_blocks(fetch_block_size=128))) for shard in shards])
+
+    assert np.array_equal(actual, np.arange(10))
 
 
 def test_block_shuffle_blocks_are_fetch_block_sized() -> None:
@@ -109,33 +420,14 @@ def test_block_shuffle_keeps_natural_order_within_blocks() -> None:
         assert np.array_equal(block, np.arange(block[0], block[0] + len(block)))
 
 
-def test_contiguous_shard_partitions_evenly() -> None:
-    sample_index = _sample_index(100, 33, 50)
-    indices, block_bounds = BlockShuffle().epoch_order(sample_index, fetch_block_size=8, seed=0)
-
-    world_size = 4
-    shards = [_contiguous_shard(indices, block_bounds, rank=rank, world_size=world_size) for rank in range(world_size)]
-
-    sizes = [len(shard_indices) for shard_indices, _ in shards]
-    assert max(sizes) - min(sizes) <= world_size - 1
-    assert np.array_equal(np.sort(np.concatenate([shard_indices for shard_indices, _ in shards])), np.sort(indices))
-    for shard_indices, shard_bounds in shards:
-        assert shard_bounds[-1] == len(shard_indices)
-        # Pieces of a block cut at the shard boundary stay within the block's
-        # span (and thus one segment), but are no longer gap-free themselves.
-        _assert_blocks_segment_local(sample_index, shard_indices, shard_bounds, contiguous=False)
-        for block in _blocks(shard_indices, shard_bounds):
-            assert block.max() - block.min() < 8, "shard block pieces must stay within one block span"
-
-
 def test_fetch_blocks_respect_block_bounds() -> None:
-    # Drive `_fetch_blocks` directly: it must split a block wider than a fetch and greedily pack
-    # whole small blocks up to fetch_block_size. A 20-wide block (wider than fetch_block_size=16) then blocks
-    # of 2, 2, 6 exercises both paths in one go.
+    # A materialized order must split a block wider than a fetch and greedily pack whole small blocks.
+    # A 20-wide block followed by blocks of 2, 2, and 6 exercises both paths.
     indices = np.arange(30, dtype=np.int64)
     block_bounds = np.array([20, 22, 24, 30], dtype=np.int64)
 
-    fetch_blocks = _fetch_blocks(indices, block_bounds, fetch_block_size=16)
+    work_order = _MaterializedWorkOrder(indices, block_bounds, 0, len(indices))
+    fetch_blocks = list(work_order.fetch_blocks(fetch_block_size=16))
 
     assert all(len(fetch_block) <= 16 for fetch_block in fetch_blocks)
     assert np.array_equal(np.concatenate(fetch_blocks), indices)
@@ -257,8 +549,8 @@ _SEGMENT_OF = np.array([0] * _LOC_SEG_A + [1] * _LOC_SEG_B)
 def _loc_fetch_blocks(strategy: SampleShuffle | BlockShuffle | NoShuffle) -> list[list[int]]:
     """The server fetches a strategy produces for one epoch of the two-segment dataset."""
     sample_index = _sample_index(_LOC_SEG_A, _LOC_SEG_B)
-    indices, bounds = strategy.epoch_order(sample_index, fetch_block_size=_LOC_FETCH, seed=_LOC_SEED)
-    return [c.tolist() for c in _fetch_blocks(indices, bounds, fetch_block_size=_LOC_FETCH)]
+    work_order = strategy._work_order(sample_index, fetch_block_size=_LOC_FETCH, seed=_LOC_SEED)
+    return [block.tolist() for block in work_order.fetch_blocks(fetch_block_size=_LOC_FETCH)]
 
 
 def _contiguous_fetches(fetch_blocks: list[list[int]]) -> int:

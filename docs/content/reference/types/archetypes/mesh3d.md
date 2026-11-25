@@ -40,7 +40,7 @@ front faces are assumed to be those with counter clockwise triangle winding orde
 
 ## API reference links
  * 🌊 [C++ API docs for `Mesh3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Mesh3D.html)
- * 🐍 [Python API docs for `Mesh3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Mesh3D)
+ * 🐍 [Python API docs for `Mesh3D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Mesh3D)
  * 🦀 [Rust API docs for `Mesh3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Mesh3D.html)
 
 ## Examples

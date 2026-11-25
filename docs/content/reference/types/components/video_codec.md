@@ -70,7 +70,7 @@ UInt32
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoCodec`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `VideoCodec`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VideoCodec)
+ * 🐍 [Python API docs for `VideoCodec`](https://ref.rerun.io/docs/python/stable/components#rerun.components.VideoCodec)
  * 🦀 [Rust API docs for `VideoCodec`](https://docs.rs/rerun/latest/rerun/components/enum.VideoCodec.html)
 
 

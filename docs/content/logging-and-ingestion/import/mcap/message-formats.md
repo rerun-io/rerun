@@ -13,8 +13,6 @@ Rerun provides automatic visualization for common message types in MCAP files:
 
 This table shows an overview of the ROS 2 and Foxglove message schemas that are automatically converted to Rerun archetypes on import.
 
-We are continually adding support for more standard message types.
-
 | Modality | ROS 2 | Foxglove Protobuf | Rerun Archetypes |
 | --- | --- | --- | --- |
 | Raw image | `sensor_msgs/Image` | `RawImage` | [Image](../../../reference/types/archetypes/image.md), [DepthImage](../../../reference/types/archetypes/depth_image.md) |
@@ -43,7 +41,7 @@ For these messages, the heuristic blueprint sets up [component mappings](../../.
 * `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`
 * `sensor_msgs/MagneticField`
 
-All other ROS 2 messages, and all Foxglove messages, currently still need conversion.
+All other ROS 2 messages, and all Foxglove messages, need conversion.
 
 ### Timelines
 
@@ -66,10 +64,10 @@ Data from schemas containing a `.timestamp` field is put onto a `timestamp` time
 Transform messages are converted to [`Transform3D`](../../../reference/types/archetypes/transform3d.md), with `parent_frame` and `child_frame` set according to the `frame_id` and `child_frame_id` of each `geometry_msgs/TransformStamped` contained in the message's `transforms` list.
 The timestamps of the individual transforms are put onto the respective timelines, allowing the viewer to resolve the spatial relationships between frames over time similar to a TF buffer in ROS.
 
-> You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/logging-and-ingestion/data-model/transforms#named-transform-frames).
+> You can read more about how Rerun handles transforms and "TF-style" frame names [here](../../data-model/transforms.md#named-transform-frames).
 
 To see the transforms in the viewer, you can select the entity corresponding to the topic and add a visualizer for `TransformAxes3D` as shown in the video here.
-If you have transforms that correspond to joints in a robot model, you can also read more about how to load `URDF` models into a recording [here](https://rerun.io/docs/logging-and-ingestion/import/urdf#load-urdf-into-an-existing-recording).
+If you have transforms that correspond to joints in a robot model, you can also read more about how to load `URDF` models into a recording [here](../urdf.md#load-urdf-into-an-existing-recording).
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/83f26961023d5f554175ebc48d1292e218db1212_add_axes_visualizer.mp4" type="video/mp4" />

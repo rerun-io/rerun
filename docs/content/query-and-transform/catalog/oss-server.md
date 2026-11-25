@@ -7,7 +7,8 @@ description: What the local rerun server does, what it persists, and how Hub dif
 `rerun server` (or `rr.server.Server` in Python) runs an open-source [catalog](catalog-object-model.md) server on your machine.
 It serves datasets of `.rrd` files and Lance tables to the Viewer and to the catalog SDK.
 It is meant for local development and small setups.
-For persistent, shared storage, use [Rerun Hub](../../hub.md).
+For persistent, shared storage, use [Rerun Hub](../../hub.md), our commercial managed offering for production deployments. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+Code written against the open-source server also runs against Hub (see [Run the examples on Hub](../../hub.md#run-the-examples-on-hub)).
 
 ## Starting the server
 
@@ -15,18 +16,10 @@ For persistent, shared storage, use [Rerun Hub](../../hub.md).
 rerun server -d my_dataset=/path/to/recordings -t my_table=/path/to/table.lance
 ```
 
-You can run `rerun server` without any options.
-Without `-d` and `-t`, the server starts with an empty catalog, and you can create datasets from the SDK.
-
-- `-d, --dataset [NAME=]DIR` creates a dataset from every `.rrd` file in a directory.
-  Without `NAME=`, the dataset is named after the directory.
-  Can be repeated.
-- `-t, --table [NAME=]PATH` loads a Lance table.
-  Can be repeated.
-- `-p, --port` sets the port (default `51234`), and `--host` the address to listen on (default `0.0.0.0`).
-- `--cors-allow-origin` allows web Viewers on other origins than `localhost`, `127.0.0.1`, and `rerun.io` (and its subdomains).
-
-See the [CLI reference](../../reference/cli.md#rerun-server) for all options.
+`-d` creates a dataset from every `.rrd` file in a directory, and `-t` loads a Lance table.
+Both can be repeated.
+Without them, the server starts with an empty catalog, and you can create datasets from the SDK.
+See the [CLI reference](../../reference/cli.md#rerun-server) for the port, host, CORS, and all other options.
 
 In Python:
 
@@ -58,6 +51,7 @@ When it stops, everything you created or registered while it ran is gone.
 
 The `.rrd` files themselves stay on disk.
 Files that have a footer index are read from disk on demand; files without one are loaded into memory in full.
+Run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) on a file to add a footer before serving it.
 
 ## Directories are scanned once
 
@@ -77,15 +71,4 @@ dataset.register([Path("recording.rrd").resolve().as_uri()]).wait()
 ```
 
 URIs for object stores, such as `s3://` or `gs://`, are not supported.
-To register recordings from object storage, use Rerun Hub, or download the files first.
-
-## Compared to Rerun Hub
-
-|                  | Open-source server                  | Rerun Hub                                 |
-| ---------------- | ----------------------------------- | ----------------------------------------- |
-| Catalog storage  | In memory, lost on restart          | Persistent                                |
-| Registration     | Local `file://` paths only          | Object storage, such as `s3://`           |
-| Authentication   | None                                | Login or token (see `rerun auth`)         |
-| Deployment       | One process that you run yourself   | Managed service                           |
-
-See [Rerun Hub](../../hub.md) for more.
+To register recordings from object storage, use [Rerun Hub](../../hub.md), or download the files first.

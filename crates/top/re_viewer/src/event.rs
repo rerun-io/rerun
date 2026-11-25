@@ -292,10 +292,7 @@ impl ViewerEventDispatcher {
                     re_log_msg::StoreSource::Unknown => "unknown",
                     re_log_msg::StoreSource::CSdk => "cpp",
                     re_log_msg::StoreSource::PythonSdk(_python_version) => "python",
-                    re_log_msg::StoreSource::RustSdk {
-                        rustc_version: _,
-                        llvm_version: _,
-                    } => "rust",
+                    re_log_msg::StoreSource::RustSdk => "rust",
                     re_log_msg::StoreSource::File { file_source: _ } => "file",
                     re_log_msg::StoreSource::Viewer => "viewer",
                     re_log_msg::StoreSource::Other(v) => v.as_str(),

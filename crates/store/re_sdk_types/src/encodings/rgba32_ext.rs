@@ -23,6 +23,15 @@ impl Rgba32 {
         Self((r << 24) | (g << 16) | (b << 8) | a)
     }
 
+    /// From gamma-space sRGB values in 0-1 range, with a separate/unmultiplied alpha.
+    ///
+    /// Values outside 0-1 are clamped. This is a lossy conversion.
+    #[inline]
+    pub fn from_unmultiplied_rgba_f32(r: f32, g: f32, b: f32, a: f32) -> Self {
+        let to_u8 = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+        Self::from_unmultiplied_rgba(to_u8(r), to_u8(g), to_u8(b), to_u8(a))
+    }
+
     /// From linear-space sRGB values in 0-1 range, with a separate/unmultiplied alpha.
     ///
     /// This is a lossy conversion.

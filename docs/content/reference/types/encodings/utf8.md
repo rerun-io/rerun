@@ -13,7 +13,7 @@ Utf8
 
 ## API reference links
  * 🌊 [C++ API docs for `Utf8`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Utf8.html)
- * 🐍 [Python API docs for `Utf8`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Utf8)
+ * 🐍 [Python API docs for `Utf8`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.Utf8)
  * 🦀 [Rust API docs for `Utf8`](https://docs.rs/rerun/latest/rerun/encodings/struct.Utf8.html)
 
 

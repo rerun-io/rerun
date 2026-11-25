@@ -136,7 +136,7 @@ UInt8
 
 ## API reference links
  * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html)
- * 🐍 [Python API docs for `PixelFormat`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.PixelFormat)
+ * 🐍 [Python API docs for `PixelFormat`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.PixelFormat)
  * 🦀 [Rust API docs for `PixelFormat`](https://docs.rs/rerun/latest/rerun/encodings/enum.PixelFormat.html)
 
 

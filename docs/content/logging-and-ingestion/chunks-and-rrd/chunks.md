@@ -61,27 +61,22 @@ You can learn more about chunks and how they came to be in [this blog post](http
 
 ## Getting chunks into Rerun
 
-If you've used the Rerun SDK before, you know it doesn't actually force you to craft these chunks manually, which would be rather cumbersome!
-
-How does one create and store chunks in Rerun, then?
+You rarely build chunks by hand: each of the logging APIs below builds them for you from a different shape of input.
 
 
 ### The row-oriented logging: `log`
 
-The `log` API is generally [what we show in the getting-started guides](https://rerun.io/docs/logging-and-ingestion/tutorial#logging-our-first-points) since it's the easiest to use:
+The `log` API is [what we show in the getting-started guides](../tutorial.md#logging-our-first-points) since it's the easiest to use:
 
 snippet: archetypes/scalars_row_updates
 
-The `log` API makes it possible to send data into Rerun on a row-by-row basis, without requiring any extra effort.
-This row-oriented interface makes it very easy to integrate into existing codebase and just start logging data as it comes (hence the name).
+The `log` API sends data into Rerun row by row.
+This row-oriented interface makes it easy to integrate into an existing codebase and log data as it is produced.
 
 Reference:
-* [🐍 Python `log`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log)
+* [🐍 Python `log`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.log)
 * [🦀 Rust `log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log)
-* [🌊 C++ `log`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11)
-
-But if you're handing a bunch of rows of data over to Rerun, how does it end up neatly packaged in columnar chunks?
-
+* [🌊 C++ `log`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#abdd6ccd15ce0228cf5ccd9e49a8220af)
 
 #### How are these rows turned into columns?
 
@@ -122,7 +117,7 @@ If you already have data stored in something more *column-oriented*, it can be b
 
 This is what the `send_columns` API is for: it lets you efficiently update the state of an entity over time, sending data for multiple index and component columns in a single operation.
 
-> [!WARNING]
+> [!NOTE]
 > `send_columns` API bypasses the time context and [micro-batcher](../sinks-and-modes/micro-batching.md).
 >
 > In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../data-model/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
@@ -130,9 +125,9 @@ This is what the `send_columns` API is for: it lets you efficiently update the s
 snippet: archetypes/scalars_column_updates
 
 Reference:
-* [🐍 Python `send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
+* [🐍 Python `send_columns`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_columns)
 * [🦀 Rust `send_columns`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
-* [🌊 C++ `send_columns`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a7e326526d1473c02fcb2ed94afe6da69)
+* [🌊 C++ `send_columns`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#addc516744c330c5021352266fdc2bf92)
 
 
 ### Sending actual chunks: `send_chunks`
@@ -163,7 +158,7 @@ Reference:
 
 ### Dataframe logging: `Chunk.from_dataframe` and `send_dataframe`
 
-[`rr.send_dataframe`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_dataframe) and the related [`Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.Chunk.from_dataframe) extend the single record batch equivalent and accept a full PyArrow [`Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html) (or a [`RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html), or any Arrow-C-stream object such as a `datafusion.DataFrame`) carrying any number of entities, and yields the chunks of each record batch in turn.
+[`rr.send_dataframe`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_dataframe) and the related [`Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.Chunk.from_dataframe) extend the single record batch equivalent and accept a full PyArrow [`Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html) (or a [`RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html), or any Arrow-C-stream object such as a `datafusion.DataFrame`) carrying any number of entities, and yields the chunks of each record batch in turn.
 
 To map columns of the dataframe to Rerun timelines and components, either pass `index` and `entity_path` (see [Send dataframes to a recording](../send-data/send-dataframe.md)), or have the dataframe carry the same `rerun:*` metadata as above.
 For example, here we hand-craft a dataframe containing a Points3D entity:
@@ -185,5 +180,5 @@ It is instead meant to come from [dataframe queries](../../query-and-transform/d
 
 Reference:
 * [🐍 Python `Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.Chunk.from_dataframe)
-* [🐍 Python `send_dataframe`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_dataframe)
-* [🐍 Python `send_record_batch`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_record_batch)
+* [🐍 Python `send_dataframe`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_dataframe)
+* [🐍 Python `send_record_batch`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_record_batch)

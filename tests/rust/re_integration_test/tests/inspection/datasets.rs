@@ -57,11 +57,7 @@ pub async fn dataset_ui_test() {
         .click();
 
     harness.step_until("Dataset recording loaded", |harness| {
-        harness
-            .query_all_by_label_contains("new_recording_id")
-            .next()
-            .is_some()
-            && !harness.is_loading()
+        harness.has_label_contains("new_recording_id") && !harness.is_loading()
     });
 
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
@@ -80,11 +76,7 @@ pub async fn start_with_dataset_url() {
     });
 
     harness.step_until("Dataset recording loaded", |harness| {
-        harness
-            .query_all_by_label_contains("new_recording_id")
-            .next()
-            .is_some()
-            && !harness.is_loading()
+        harness.has_label_contains("new_recording_id") && !harness.is_loading()
     });
 
     let back_button = harness

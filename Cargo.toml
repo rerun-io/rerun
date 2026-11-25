@@ -118,6 +118,7 @@ re_viewport_blueprint = { path = "crates/viewer_support/re_viewport_blueprint", 
 
 # crates/store_app:
 re_catalog_client = { path = "crates/store_app/re_catalog_client", version = "=0.44.0-alpha.1", default-features = false }
+re_catalog_tools = { path = "crates/store_app/re_catalog_tools", version = "=0.44.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store_app/re_dataframe", version = "=0.44.0-alpha.1", default-features = false }
 re_datafusion = { path = "crates/store_app/re_datafusion", version = "=0.44.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store_app/re_entity_db", version = "=0.44.0-alpha.1", default-features = false }
@@ -175,6 +176,7 @@ re_workspace_hack = "0.0.0" # See `[patch.crates-io]`
 
 # crates/utils:
 re_agent = { path = "crates/utils/re_agent", version = "=0.44.0-alpha.1", default-features = false }
+re_agent_tools = { path = "crates/utils/re_agent_tools", version = "=0.44.0-alpha.1", default-features = false }
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.44.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.44.0-alpha.1", default-features = false }
 re_async = { path = "crates/utils/re_async", version = "=0.44.0-alpha.1", default-features = false }
@@ -207,7 +209,7 @@ re_web = { path = "crates/utils/re_web", version = "=0.44.0-alpha.1", default-fe
 re_dump_puffin = { path = "crates/utils/re_dump_puffin", version = "=0.44.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-quiver = { version = "0.6.2", default-features = false }
+quiver = { version = "0.6.2", default-features = false, features = ["derive"] }
 re_mp4 = "0.5.1"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
@@ -259,8 +261,8 @@ egui_tiles = "0.18.0" # https://github.com/rerun-io/egui_crates
 walkers = { package = "re_walkers", version = "0.63.1", default-features = false } # Temporary fork until https://github.com/podusowski/walkers/pull/643 is released.
 
 # All of our direct external dependencies should be found here:
-agent-client-protocol = "2.1"
-agent-client-protocol-schema = "1.9.1" # The version `agent-client-protocol` pins, so that both name the same types.
+agent-client-protocol = "5.4"
+agent-client-protocol-schema = "1.19.0" # The version `agent-client-protocol` pins, so that both name the same types.
 ahash = "0.8.12"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.19"
@@ -370,6 +372,7 @@ mimalloc = { version = "=0.1.48", features = [
 ] } # Waiting for fix from microsoft/mimalloc/issues/1287 to land in mimalloc crate
 mime_guess2 = "2.3" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
+mjcf-rs = "=0.36.0" # Young crate — pin exactly, bump deliberately.
 natord = "1.0"
 ndarray = "0.16.1" # pinned by `lance-index` (lance family) and `numpy` to 0.16; 0.17 would duplicate.
 never = "0.1.0"
@@ -466,9 +469,9 @@ rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 rig-core = { version = "0.45.0", default-features = false }
 rig-reqwest = { version = "0.45.0", default-features = false } # No `rustls` feature: it pulls in aws-lc-rs and the banned `cmake`. TLS goes through `reqwest013` with ring.
-rmcp = { version = "3.9", features = ["macros", "schemars", "server", "transport-io"] }
+rmcp = { version = "3.11", features = ["macros", "schemars", "server", "transport-io"] }
 ron = { version = "0.12.2", features = ["integer128"] }
-roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.
+roxmltree = "0.21.1"
 ring = "0.17.14"
 rustls = { version = "0.23.45", default-features = false }
 schemars = "1.2"
@@ -992,6 +995,23 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # crates.io has an empty stub of this, used by anyone outside this workspace (see its Cargo.toml):
 re_workspace_hack = { path = "crates/utils/re_workspace_hack" }
 
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_glow = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_inspection = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_system_font_provider = { git = "https://github.com/emilk/egui.git", branch = "main" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main" }
+epaint_default_fonts = { git = "https://github.com/emilk/egui.git", branch = "main" }
+
+egui_mcp = { git = "https://github.com/rerun-io/egui_crates.git", branch = "main" }
+egui_table = { git = "https://github.com/rerun-io/egui_crates.git", branch = "main" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_crates.git", branch = "main" }
 
 # datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
 # datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }

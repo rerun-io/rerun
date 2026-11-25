@@ -1,7 +1,7 @@
 use egui::os::OperatingSystem;
 use egui::{Id, Key, KeyboardShortcut, Modifiers};
 use re_log_types::StoreId;
-use re_ui::ContextExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 use smallvec::{SmallVec, smallvec};
 
 use super::CommandEnvironment;
@@ -67,6 +67,9 @@ pub enum RecordingCommandKind {
     /// Reset the active blueprint to a heuristic one.
     ResetBlueprintToHeuristic,
 
+    /// Discard all changes to the active blueprint.
+    ResetBlueprint,
+
     ToggleTimePanel,
 
     #[cfg(debug_assertions)]
@@ -116,6 +119,49 @@ impl RecordingCommand {
     ) -> egui::Response {
         let Self { recording_id, kind } = self;
         kind.menu_button_ui(ui, Some(&recording_id), command_sender)
+    }
+
+    /// Show this command as `button`.
+    ///
+    /// The button is disabled if there is a `disabled_reason`, which is then its hover text.
+    /// If clicked, enqueue the command.
+    pub fn button_ui(
+        self,
+        ui: &mut egui::Ui,
+        button: impl egui::Widget,
+        disabled_reason: Option<&str>,
+        command_sender: &impl RecordingCommandSender,
+    ) -> egui::Response {
+        let mut response = ui
+            .add_enabled(disabled_reason.is_none(), button)
+            .on_hover_text(self.kind.tooltip());
+        if let Some(disabled_reason) = disabled_reason {
+            response = response.on_disabled_hover_text(disabled_reason);
+        }
+
+        if response.clicked() {
+            command_sender.send_recording_command(self);
+        }
+
+        response
+    }
+
+    /// Show this command as a small icon button, see [`Self::button_ui`].
+    ///
+    /// The command needs an icon, see [`RecordingCommandKind::icon`].
+    pub fn icon_button_ui(
+        self,
+        ui: &mut egui::Ui,
+        disabled_reason: Option<&str>,
+        command_sender: &impl RecordingCommandSender,
+    ) -> Option<egui::Response> {
+        let Some(icon) = self.kind.icon() else {
+            re_log::debug_panic!("{:?} has no icon to show as a button", self.kind);
+            return None;
+        };
+
+        let button = ui.small_icon_button_widget(icon, self.kind.text());
+        Some(self.button_ui(ui, button, disabled_reason, command_sender))
     }
 }
 
@@ -210,6 +256,11 @@ impl RecordingCommandKind {
                 "Re-populate viewport with automatically chosen views using default visualizers",
             ),
 
+            Self::ResetBlueprint => (
+                "Reset current blueprint",
+                "Discard all changes made to the current blueprint",
+            ),
+
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
 
             #[cfg(debug_assertions)]
@@ -275,9 +326,9 @@ impl RecordingCommandKind {
     pub fn icon(self) -> Option<&'static re_ui::Icon> {
         match self {
             Self::OpenAddViewOrContainerDialog => Some(&re_ui::icons::ADD),
-            Self::ResetBlueprintToDefault | Self::ResetBlueprintToHeuristic => {
-                Some(&re_ui::icons::RESET)
-            }
+            Self::ResetBlueprintToDefault
+            | Self::ResetBlueprintToHeuristic
+            | Self::ResetBlueprint => Some(&re_ui::icons::RESET),
             _ => None,
         }
     }
@@ -320,6 +371,7 @@ impl RecordingCommandKind {
             Self::OpenAddViewOrContainerDialog => smallvec![],
             Self::ResetBlueprintToDefault => smallvec![],
             Self::ResetBlueprintToHeuristic => smallvec![],
+            Self::ResetBlueprint => smallvec![],
 
             Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
 

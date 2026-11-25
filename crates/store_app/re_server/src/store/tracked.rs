@@ -17,12 +17,9 @@ pub struct TrackedGuard<'a, T> {
 }
 
 impl<T> Tracked<T> {
-    /// Create a new tracked value with the current timestamp.
-    pub fn new(value: T) -> Self {
-        Self {
-            value,
-            updated_at: jiff::Timestamp::now(),
-        }
+    /// Wrap `value`, last modified at `updated_at`.
+    pub fn new(value: T, updated_at: jiff::Timestamp) -> Self {
+        Self { value, updated_at }
     }
 
     /// Get the last update timestamp.

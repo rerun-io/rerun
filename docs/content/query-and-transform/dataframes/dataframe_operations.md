@@ -4,18 +4,20 @@ order: 200
 description: Run joins, filters, and aggregations on Rerun data with DataFusion
 ---
 
-Dataframes are core to modern analytics workflows.
 Rerun provides a dataframe interface to your data via [DataFusion](https://datafusion.apache.org/python/).
-This example performs a series of joins, filters, etc that highlight a variety of common operations in context.
-Because datafusion has a lazy execution model it is generally more performant to use datafusion for processing,
-however datafusion does allow conversion to dataframes for popular tools (pandas, polars, pyarrow).
+This example runs joins, filters, and aggregations on a recording.
+DataFusion executes lazily, so processing data in DataFusion is usually faster than converting it first.
+You can still convert to dataframes for other tools (pandas, polars, pyarrow).
+
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
 
 The dependencies in this example are contained in `rerun-sdk[all]`.
 
 ## Setup
 
 Perform initial import and spawn local server for demonstration.
-In practice you'll connect to your cloud instance.
+In practice you'll connect to your catalog server, such as Rerun Hub.
 
 snippet: howto/dataframe_operations[setup]
 
@@ -30,8 +32,7 @@ snippet: howto/dataframe_operations[group_by]
 Some of our columns start much later than others.
 Find out how often this delay exceeds some threshold.
 
-> [!WARNING]
-> **Performance warning:**
+> [!NOTE]
 > Even though datafusion pulls data lazily, we don't currently decouple our payload from its timeline.
 > E.g. in this example this means that we have to pull the full camera data to inspect their min/max timestamps.
 > This works quickly when the data is already local and in memory, but can be a bottleneck on cloud at scale.

@@ -18,6 +18,8 @@ def read_h264_samples_from_rrd(
 
     server = rr.server.Server(datasets={"video_stream": [rrd_path]})
     client = server.client()
+    # On Rerun Hub, connect to your Hub instead:
+    # client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
     dataset = client.get_dataset("video_stream")
     df = dataset.filter_contents(video_entity).reader(index=timeline)
 

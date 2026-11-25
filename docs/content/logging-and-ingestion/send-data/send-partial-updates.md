@@ -6,7 +6,8 @@ description: Log only the components that change from one frame to the next
 
 Rerun allows you to log only the data that has changed in-between frames (or whatever atomic unit [your timeline](../data-model/timelines.md) is using), i.e. you can think of this as a sort of diffs or delta encodings.
 
-This is a natural consequence of how Rerun [ingests, stores](../chunks-and-rrd/chunks.md) and finally [queries](../../viewer/view-concepts/entity-path-filter.md) data: Rerun *always* operates that way, whether you're aware of it or not. Consider this simple snippet:
+This is a natural consequence of how Rerun [ingests, stores](../chunks-and-rrd/chunks.md) and finally [queries](../../viewer/view-concepts/entity-path-filter.md) data: every log call is a partial update.
+Consider this simple snippet:
 
 snippet: archetypes/points3d_simple
 
@@ -16,7 +17,7 @@ Here, only the positions of the points have been specified but, looking at the [
 > **Recommended** & **Optional**: [`Radius`](../../reference/types/components/radius.md), [`Color`](../../reference/types/components/color.md), [`Text`](../../reference/types/components/text.md), [`ShowLabels`](../../reference/types/components/show_labels.md), [`PointShading`](../../reference/types/components/point_shading.md), [`ClassId`](../../reference/types/components/class_id.md), [`KeypointId`](../../reference/types/components/keypoint_id.md)
 
 
-### Log only what changed
+## Log only what changed
 
 The SDK does not deduplicate: if you log the same value again, it is stored again.
 To save bandwidth and memory, skip values that did not change yourself.
@@ -29,9 +30,7 @@ if not np.array_equal(colors, last_colors):
 rr.log("points", rr.Points3D.from_fields(positions=positions))
 ```
 
-All three languages for which we provide logging SDKs (Python, Rust, C++) expose APIs that allow fine-grained control over which components of an archetype are logged, when, and how.
-
-The best way to learn about these APIs is to see them in action: check out the examples below.
+The Python, Rust, and C++ SDKs all let you choose which components of an archetype are logged, and when, as the examples below show.
 
 
 ## Examples

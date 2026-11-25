@@ -391,6 +391,18 @@ message ViewerControlRequest {
     // already on screen (`GetState`). No recording needs to be open.
     ListViewTypesRequest list_view_types = 24;
 
+    // Read the viewer's app settings as a JSON object, e.g. memory limit and video decoding.
+    //
+    // Pass parts of it to `set_settings` to change them.
+    GetSettingsRequest get_settings = 25;
+
+    // Change some of the viewer's app settings.
+    //
+    // The viewer saves them, so they outlive this session.
+    // Call `get_settings` first to see the names and current values.
+    // The FFmpeg path and the cache directory are read-only.
+    SetSettingsRequest set_settings = 26;
+
     // When adding an operation, decide whether agents may run it without asking the user:
     // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
   }
@@ -466,6 +478,12 @@ message ViewerControlResponse {
     GetSelectionResponse get_selection = 23;
     // Result of `list_view_types`.
     ListViewTypesResponse list_view_types = 24;
+
+    // Result of `get_settings`.
+    GetSettingsResponse get_settings = 25;
+
+    // Result of `set_settings`.
+    SetSettingsResponse set_settings = 26;
   }
 }
 
@@ -969,6 +987,36 @@ message Uuid {
 }
 
 // ----------------------------------------------------------------------------
+// GetSettings / SetSettings
+
+// Request for `GetSettings`.
+message GetSettingsRequest {}
+
+// Response for `GetSettings`.
+message GetSettingsResponse {
+  // All settings, as a JSON object.
+  //
+  // Secrets, such as access tokens, are left out.
+  string settings_json = 1;
+}
+
+// Request for `SetSettings`.
+message SetSettingsRequest {
+  // The settings to change, as a JSON object with the same shape as `GetSettingsResponse`.
+  //
+  // Keys that are left out keep their value, also in nested objects.
+  // Unknown keys, values of the wrong type, secrets, changes to read-only settings, and lowering
+  // the memory limit below 128 MiB are `INVALID_ARGUMENT`, and then nothing changes.
+  string settings_json = 1;
+}
+
+// Response for `SetSettings`.
+message SetSettingsResponse {
+  // All settings after the change, as `GetSettingsResponse` reports them.
+  string settings_json = 1;
+}
+
+// ----------------------------------------------------------------------------
 // GetSelection
 
 // Request for `GetSelection`.
@@ -1066,8 +1114,8 @@ message GetStateResponse {
 
   // Origin of the catalog server the viewer hosts, e.g. `rerun+http://127.0.0.1:9876`.
   //
-  // Clients (notably `re_rerun_mcp`) hand this to the Python `CatalogClient` to read the data
-  // behind the open recordings, which this service deliberately does not serve itself.
+  // Clients read the data behind the open recordings from it, e.g. `re_rerun_mcp`'s catalog
+  // tools or the Python `CatalogClient`, since this service deliberately does not serve it.
   // Unset if the viewer has no catalog, which on native is only the case before it starts up.
   optional string catalog_url = 4;
 

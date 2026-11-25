@@ -19,9 +19,27 @@ The constructors are discoverable (`dir(rrb)`,
 `help(rrb.Spatial3DView)`); this skill covers what you can't guess. Import as
 `import rerun.blueprint as rrb`.
 
+## Build first, then offer variations
+
+When asked to create or design a blueprint, don't ask what kind of blueprint the user wants.
+Pick the most useful blueprint for the data, write it, and verify it.
+Then say in one or two lines what you built, and offer two or three concrete variations to choose from.
+A first try on screen is easier to react to than a question about a blueprint the user cannot see.
+
+What to build first:
+- For a dataset, write the blueprint of its segment table: cards with a preview of the main camera, plus the property columns that tell segments apart, such as the task. See [Tables](#tables).
+- For a recording, lay out its views with steps 1–4 below.
+- For a plain table, hide empty and internal columns, and give the rest readable names.
+
+Writing over the blueprint on screen is safe, so do it without asking, even when the recording already has a full layout.
+The viewer only changes its own copy: the blueprints registered for a dataset stay as they are on the server, and the user can pick one of them again in the blueprint dropdown.
+Each write is also a step in the blueprint's undo history.
+When you report what you built, say that undo or the blueprint dropdown brings the old layout back.
+Ask before writing only when an edit could apply to several existing views (see below).
+
 ## Editing a recording's blueprint through MCP
 
-If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
+If a request could apply to multiple views and the intended view is unclear, ask the user which view they mean before editing, with elicitation if you have it.
 
 Without a target, `viewer_get_blueprint` and `viewer_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
 Use `{"recording": {}}` to target the active recording even when a table is shown.
@@ -98,6 +116,12 @@ Omitting `mode` or choosing `"full"` replaces the table blueprint.
 that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
 with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
 as `\\:` and `\\ `.
+
+Cards and previews need a dataset's segment table.
+A plain table, such as a catalog table entry, has no card layout.
+To tell which one is open, read the `location` from `viewer_get_state`: `/dataset/<id>` is a dataset.
+For `/entry/<id>`, find that id in the `url` of the `servers` entries and read its `kind`: `ENTRY_KIND_DATASET` or `ENTRY_KIND_TABLE`.
+When a plain table is open, say so in one line.
 
 For a vague request such as "table with previews", don't ask first.
 Write cards with one 2D preview of the first camera entity, then offer to change it.
@@ -226,6 +250,9 @@ was never materialized. Read the `CoordinateFrame:frame` values, target the one
 the main 3D content sits in, and exclude entities in unconnected frames.
 
 ## 5. Iterate from screenshots
+
+With the viewer MCP, iterate on the viewer the user is looking at: `viewer_set_blueprint`, then `viewer_save_screenshot`.
+The rest of this section is for building a blueprint in Python.
 
 Spawn the viewer and load the recording once, then re-send blueprints into the
 same viewer; each send + screenshot is one cheap iteration. Render, look, revise.

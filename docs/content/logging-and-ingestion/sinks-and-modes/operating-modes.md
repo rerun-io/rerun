@@ -30,7 +30,7 @@ This is the default behavior you get when running all of our C++/Python/Rust exa
 `RecordingStream::spawn` spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 #### Python
-Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) once at the start of your program to start a Rerun Viewer in an external process and stream all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
+Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.spawn) once at the start of your program to start a Rerun Viewer in an external process and stream all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 #### Rust
 [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
@@ -46,7 +46,7 @@ You will need to start a stand-alone Viewer first by typing `rerun` in your term
 `RecordingStream::connect_grpc`
 
 #### Python
-[`rr.connect_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect_grpc)
+[`rr.connect_grpc`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.connect_grpc)
 
 #### Rust
 [`RecordingStream::connect_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.connect_grpc)
@@ -64,11 +64,16 @@ snippet: howto/serve_web_viewer
 
 #### C++
 * [`RecordingStream::serve_grpc`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
-* TODO(#4638): `serve_web_viewer` is not available.
+* `serve_web_viewer` is not available ([#4638](https://github.com/rerun-io/rerun/issues/4638)).
+
+<!--
+Discoverable for scripts/zombie_todos.py:
+TODO(#4638): fix above if ticket is outdated.
+-->
 
 #### Python
-* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc)
-* [`rr.serve_web_viewer`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_web_viewer)
+* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.serve_grpc)
+* [`rr.serve_web_viewer`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.serve_web_viewer)
 
 #### Rust
 * [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc)
@@ -82,17 +87,14 @@ Streams all logging data into an `.rrd` file on disk, which can then be loaded i
 To view the saved file, use `rerun path/to/file.rrd`.
 
 > [!NOTE]
-> RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
-> For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
-
-> [!WARNING]
-> At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
+> RRD files saved with Rerun 0.23 or later can be opened with any newer Rerun version, but not necessarily with an older one.
+> See [RRD format stability](../chunks-and-rrd/rrd-format.md#stability).
 
 #### C++
 Use `RecordingStream::save`.
 
 #### Python
-Use [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.save).
+Use [`rr.save`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.save).
 
 #### Rust
 Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save).
@@ -110,7 +112,7 @@ Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/
 
 #### Python
 
-Use [`rr.stdout`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.stdout).
+Use [`rr.stdout`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.stdout).
 
 Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/python/stdio/stdio.py).
 
@@ -128,7 +130,7 @@ snippet: howto/set_sinks
 
 #### Python
 
-Use [`rr.set_sinks`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.set_sinks)
+Use [`rr.set_sinks`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.set_sinks)
 
 #### Rust
 
@@ -141,9 +143,9 @@ Use [`RecordingStream::set_sinks`](https://ref.rerun.io/docs/cpp/stable/classrer
 
 ## Adding the standard flags to your programs
 
-We provide helpers for both Python & Rust to effortlessly add and properly handle all of these flags in your programs.
+We provide helpers for both Python & Rust to add and handle all of these flags in your programs.
 
-- For Python, checkout the [`script_helpers`](https://ref.rerun.io/docs/python/stable/common/script_helpers/) module.
-- For Rust, checkout our [`clap` integration](https://docs.rs/rerun/latest/rerun/clap/index.html).
+- For Python, check out [`rr.script_add_args`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.script_add_args), [`rr.script_setup`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.script_setup), and [`rr.script_teardown`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.script_teardown).
+- For Rust, check out our [`clap` integration](https://docs.rs/rerun/latest/rerun/clap/index.html).
 
 Have a look at the [official examples](https://rerun.io/examples) to see these helpers in action.

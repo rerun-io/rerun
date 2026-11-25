@@ -61,7 +61,7 @@ In the following snippet, only the data from latest log call (in execution order
 
 snippet: concepts/static/log_static_10x
 
-In practice, the Rerun datastore will rely on these semantics to physically drop the superfluous static data where possible, therefore drastically reducing memory costs. See ["Understanding storage costs"](#understanding-storage-costs) for more information.
+In practice, the Rerun chunk store relies on these semantics to physically drop the superfluous static data where possible, therefore drastically reducing memory costs. See ["Understanding storage costs"](#understanding-storage-costs) for more information.
 
 
 ### Log once, move many times
@@ -105,7 +105,7 @@ If you wanted the recording file itself to only contain a single static value, y
 
 ### In the viewer
 
-The data store that backs the Rerun viewer natively understands these temporal/garbage-collected vs. static/overwritten semantics.
+The chunk store that backs the Rerun Viewer natively understands these temporal/garbage-collected vs. static/overwritten semantics.
 
 If you were to log the snippet above directly to the Rerun viewer (using e.g. `rr.connect_grpc()`), you'd notice that the viewer's memory usage stays constant: the data is automatically being overwritten as new updates come in.
 For data where you don't need to keep track of historical values, this effectively lets you log its new values indefinitely.

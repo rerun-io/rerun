@@ -4,7 +4,9 @@ order: 100
 description: How the catalog organizes datasets, segments, and entries
 ---
 
-This page covers the catalog server's object model. For logging and recording basics, see [Recordings](../../logging-and-ingestion/data-model/recordings.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).
+This page covers the catalog server's object model, which the open-source server and [Rerun Hub](../../hub.md) share; the page notes where they differ.
+For logging and recording basics, see [Recordings](../../logging-and-ingestion/data-model/recordings.md).
+For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/catalog/).
 
 
 ## Catalog
@@ -13,7 +15,6 @@ We refer to the contents stored in a given catalog server as the _catalog_.
 The catalog contains top-level objects called _entries_.
 
 There are currently two types of entries: **tables** and **datasets**.
-Each is described in more detail below.
 
 Entries share a few common properties:
 - **id**: a globally unique identifier
@@ -76,8 +77,8 @@ Pass `on_duplicate=OnDuplicateSegmentLayer.REPLACE` to `register()` to overwrite
 Additive registration can be achieved by using different layer names for different `.rrd`s registered under the same segment ID.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/6a9690740962bcda73b78a847c04862ba646461a_d2.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
-  <img class="d2-light" src="https://static.rerun.io/97520fa2e99046614f595be752eec7c48c405e51_d2-light.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
+  <img class="d2-dark" src="https://static.rerun.io/87994b13acba8b61778eca16b947454f6d4380d9_diagram-catalog-object-model-dark.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
+  <img class="d2-light" src="https://static.rerun.io/139785ff1666d48a7caf4ad48a7b4226a6f37011_diagram-catalog-object-model-light.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
 </div>
 
 Layers are immutable and can only be overwritten by registering a new `.rrd` file. In other words, datasets support the following mutation operations:
@@ -91,14 +92,7 @@ Use `DatasetEntry.segment()` to get a handle to a segment, inspect its current l
 Call `delete_layer()` to unregister one layer from that segment, then wait for the returned handle to track completion.
 Unregistering removes catalog references but does not delete the underlying source objects.
 
-```python
-segment = dataset.segment(segment_id)
-print(segment.layers())
-print(segment.url)
-
-unregistration = segment.delete_layer("predictions")
-unregistration.wait()
-```
+snippet: concepts/query-and-transform/catalog_object_model[segment_layers]
 
 To inspect a named layer across the dataset, use `dataset.layer(name).segment_ids()`.
 The layer handle reads current membership on each call, including registrations and removals made after the handle was created.
@@ -120,17 +114,11 @@ Use `segment.schema()` to fetch a snapshot of one segment's schema across its re
 Referenced assets are excluded from the segment's schema.
 Use `dataset.layer(name).schema()` to fetch the union of one layer's schemas across the segments that contain it.
 
-```python
-segment_schema = dataset.segment(segment_id).schema()
-print(segment_schema)
-print(dataset.layer("base").schema())
-print(dataset.schema())
-print(dataset.schema().to_arrow())
-```
+snippet: concepts/query-and-transform/catalog_object_model[schema]
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
-  <img class="d2-light" src="https://static.rerun.io/43ed31f276a37305d671c76e9ae4083667ccb988_d2-light.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
+  <img class="d2-dark" src="https://static.rerun.io/a2425d9909b1766edff1b2940d66331f8f54d512_diagram-schema-stack-dark.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
+  <img class="d2-light" src="https://static.rerun.io/df137081af950d481ad5b27ae900910d286a2ca3_diagram-schema-stack-light.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
 </div>
 
 Datasets maintain a minimal level of schema self-consistency.
@@ -141,10 +129,11 @@ Such an occurrence is rare, and practically impossible when using standard Rerun
 
 ### Blueprints
 
-A dataset can be assigned a blueprint.
-This is done by registering a `.rbl` blueprint file typically stored in object storage to the dataset.
-A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
-In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
+You can add blueprints to a dataset by registering `.rbl` blueprint files, typically stored in object storage.
+A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
+You can also set one as the default, which is then loaded with each segment of the dataset.
+
+The registered blueprints show up in the Viewer in a [dropdown in the top bar](../../viewer/ui/blueprint-panel.md#dataset-blueprints).
 
 A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded segment previews.
 See [Configure table layouts and segment previews](../../viewer/blueprints/configure-table-blueprints.md) for the complete save-and-register workflow.
@@ -158,17 +147,9 @@ Registering it once as an asset means it does not have to be copied into every r
 Like blueprints, assets live in their own dataset, owned by the dataset they belong to.
 Deleting the dataset also deletes its asset dataset and the asset storage.
 
-Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_asset):
+Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_asset):
 
-```python
-client = rr.catalog.CatalogClient(…)
-dataset = client.get_dataset("my_dataset")
-
-asset_id = dataset.register_asset("s3://bucket/robot_mesh.rrd")
-print(dataset.assets())
-
-dataset.unregister_asset(asset_id)
-```
+snippet: concepts/query-and-transform/catalog_object_model[assets]
 
 Asset datasets have some restrictions to keep them light, and the server rejects registrations that:
 - contain temporal data, since an asset may only contain static data
@@ -182,31 +163,14 @@ If the server accepts uploads, the viewer can also upload a `.rrd` from your mac
 
 Assets also show up in the [python chunk processing api](../../logging-and-ingestion/import/chunk-processing-api.md) if `include_assets` is `True`:
 
-```python
-segment_id = dataset.segment_ids()[0]
-
-# Covers the chunks of both the segment and the dataset's assets.
-store = dataset.segment_store(segment_id)
-for chunk in store.stream().to_chunks():
-    print(chunk.entity_path)
-
-# Covers only the segment, and no asset manifests are fetched.
-segment_only = dataset.segment_store(segment_id, include_assets=False)
-```
+snippet: concepts/query-and-transform/catalog_object_model[segment_store]
 
 Fetching an asset's manifest costs one request per asset, so `include_assets=False` is worth it when you only care about the segment's own data.
 
 The [dataframe query APIs](../dataframes/dataframe-queries.md) are the exception: they stay on the dataset's own segments, so assets never show up there.
-[`DatasetEntry.schema()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.schema), [`DatasetEntry.segment_ids()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_ids), [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_table) and [`DatasetEntry.reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.reader) all ignore the asset dataset.
-The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.CatalogClient.datasets) unless you pass `include_hidden=True`.
+[`DatasetEntry.schema()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.schema), [`DatasetEntry.segment_ids()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_ids), [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_table) and [`DatasetEntry.reader()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.reader) all ignore the asset dataset.
+The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.CatalogClient.datasets) unless you pass `include_hidden=True`.
 
 To query asset data, target the asset dataset itself, which is a regular dataset with one segment per registered asset:
 
-```python
-asset_dataset = dataset.asset_dataset()
-
-print(asset_dataset.schema())
-
-# Assets only hold static data, so there is no index to read along.
-df = asset_dataset.reader(index=None)
-```
+snippet: concepts/query-and-transform/catalog_object_model[asset_dataset]

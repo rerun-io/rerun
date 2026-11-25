@@ -34,7 +34,7 @@ Union(Dense,
 
 ## API reference links
  * 🌊 [C++ API docs for `TimeRangeBoundary`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TimeRangeBoundary.html)
- * 🐍 [Python API docs for `TimeRangeBoundary`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.TimeRangeBoundary)
+ * 🐍 [Python API docs for `TimeRangeBoundary`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.TimeRangeBoundary)
  * 🦀 [Rust API docs for `TimeRangeBoundary`](https://docs.rs/rerun/latest/rerun/encodings/enum.TimeRangeBoundary.html)
 
 

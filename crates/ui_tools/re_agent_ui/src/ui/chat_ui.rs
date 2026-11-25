@@ -365,16 +365,7 @@ fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prom
         .wrap(),
     );
 
-    let tokens = ui.tokens();
-    egui::WidgetAtom::new(RichText::new("Experimental").small())
-        .frame(
-            egui::Frame::new()
-                .fill(tokens.example_tag_bg_fill)
-                .stroke(tokens.example_tag_stroke)
-                .corner_radius(tokens.normal_corner_radius())
-                .inner_margin(egui::Margin::symmetric(8, 2)),
-        )
-        .show(ui);
+    super::experimental_tag_ui(ui);
 
     ui.add_space(ui.spacing().item_spacing.y);
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -611,7 +602,7 @@ fn config_menu_ui(
     // Our "recommended" label marks Rerun's preferred model, which may differ from
     // the model the provider calls "Default (recommended)".
     let recommended = if is_model {
-        re_agent::preferred_model(&choices, &re_agent::DEFAULT_MODEL_PREFERENCES)
+        re_agent::preferred_model(&choices, &re_agent::ModelCategory::default().preferences())
     } else {
         None
     };
@@ -980,7 +971,7 @@ fn auth_ui(
             });
             if !has_login_method && let Some(login_hint) = login_hint {
                 ui.weak("Log in from a terminal, then restart the agent:");
-                ui.push_id("login_hint", |ui| code_ui(ui, login_hint, None));
+                code_ui(ui, "login_hint", login_hint, None);
             }
             for method in &auth.methods {
                 match method {
@@ -991,7 +982,7 @@ fn auth_ui(
                         }
                         if !method.args.is_empty() {
                             ui.weak("Run this in a terminal, then restart the agent:");
-                            code_ui(ui, &method.args.join(" "), None);
+                            code_ui(ui, &method.id, &method.args.join(" "), None);
                         }
                     }
                     AuthMethod::Agent(method) => {
@@ -1069,7 +1060,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
 
             if let Some(command_input) = &command_input {
                 scroll_area.show(ui, |ui| {
-                    code_ui(ui, command_input.command, None);
+                    code_ui(ui, "command", command_input.command, None);
                     tool_fields_ui(ui, command_input.other_fields());
                 });
             } else if let Some(raw_input) = raw_input {

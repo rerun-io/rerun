@@ -8,7 +8,7 @@ By default, each visualizer reads its input components from its own archetype â€
 **Component mappings** let you override this, redirecting any visualizer input to a different component on the same entity.
 This makes it possible to store multiple variants of the same data and switch between them per view.
 
-To learn more about how visualizers are set up in general, also have a look at the [concept page on customizing Views](https://rerun.io/docs/viewer/view-concepts/customize-views).
+To learn more about how visualizers are set up in general, also have a look at the [concept page on customizing Views](customize-views.md).
 
 To log custom components, see [Logging custom data](../../logging-and-ingestion/send-data/custom-data.md#logging-custom-data).
 

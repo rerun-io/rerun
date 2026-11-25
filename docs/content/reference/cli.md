@@ -20,15 +20,16 @@ The Rerun command-line interface:
 **Commands**
 
 * `analytics`: Configure the behavior of our analytics.
-* `auth`: Authentication with the redap.
+* `auth`: Log in to Rerun Hub and manage access tokens.
 * `download`: Download recordings and save them as .rrd files.
 * `dump-puffin`: Dump a puffin profiler recording (`.puffin` file) as JSON.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
-* `mcp`: Run an MCP server that controls a running Rerun Viewer.
+* `mcp`: Run an MCP server that lets an agent drive a running Rerun Viewer and read a catalog.
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
 * `server`: Local Rerun catalog server.
+* `servers`: Manage the catalog servers that the Viewer, the CLI, and `rerun mcp` remember.
 
 **Arguments**
 
@@ -245,6 +246,49 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+**Environment variables**
+
+* `RERUN_CHUNK_MAX_BYTES`: Maximum chunk size threshold for the compactor.
+* `RERUN_CHUNK_MAX_ROWS`: Maximum chunk row count threshold for the compactor (sorted chunks).
+* `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`: Maximum chunk row count threshold for the compactor (unsorted chunks).
+* `RERUN_SHADER_PATH`: The search path for shader/shader-imports. Only available in developer builds.
+* `RERUN_TRACK_ALLOCATIONS`: Track memory allocations to diagnose memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+* `RERUN_MAPBOX_ACCESS_TOKEN`: The Mapbox access token to use the Mapbox-provided backgrounds in the map view.
+* `RUST_LOG`: Change the log level of the viewer, e.g. `RUST_LOG=debug`.
+* `WGPU_BACKEND`: Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`. Default is `vulkan` everywhere except on Mac where we use `metal`. What is supported depends on your OS.
+* `WGPU_POWER_PREF`: Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+
+**Examples**
+
+```sh
+# Open a Rerun Viewer that listens for incoming SDK connections
+rerun
+
+# Load some files and show them in the Rerun Viewer
+rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd
+
+# Open an .rrd file and stream it to a Web Viewer
+rerun recording.rrd --web-viewer
+
+# Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results
+rerun --serve-web
+
+# Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers
+rerun --serve-web recording.rrd
+
+# Host a Rerun gRPC server without spawning a Viewer
+rerun --serve-grpc
+
+# Open a Viewer connected to the default message proxy, while hosting its Viewer server on a free port
+rerun --connect
+
+# Connect to a Rerun Server
+rerun rerun+http://localhost:9877/proxy
+
+# Listen for incoming gRPC connections from the logging SDK and stream the results to disk
+rerun --save new_recording.rrd
+```
+
 ## rerun analytics
 
 Configure the behavior of our analytics.
@@ -272,7 +316,7 @@ Associate an email address with the current user.
 
 ## rerun auth
 
-Authentication with the redap.
+Log in to Rerun Hub and manage access tokens.
 
 **Usage**: `rerun auth <COMMAND>`
 
@@ -413,6 +457,20 @@ Convert an .mcap file to an .rrd.
 
 * `-d, --decoder <SELECTED_DECODERS>`
 > Specifies which decoders to apply during conversion.
+>
+> Possible values:
+>
+> * `attachments`
+> * `foxglove`
+> * `metadata`
+> * `protobuf`
+> * `raw`
+> * `recording_info`
+> * `ros2_reflection`
+> * `ros2msg`
+> * `schema`
+> * `stats`
+> * `urdf`
 
 * `--disable-raw-fallback <DISABLE_RAW_FALLBACK>`
 > Disable using the raw decoder as a fallback for unsupported channels. By default, channels that cannot be handled by semantic decoders (protobuf, ROS2) will be processed by the raw decoder.
@@ -435,6 +493,11 @@ Convert an .mcap file to an .rrd.
 > The timeline type to use for timestamp timelines.
 >
 > "timestamp" (default) creates `TimestampNs` timelines (nanoseconds since Unix epoch). "duration" creates `DurationNs` timelines (nanosecond durations).
+>
+> Possible values:
+>
+> * `timestamp`
+> * `duration`
 >
 > [Default: `timestamp`]
 
@@ -518,7 +581,7 @@ Reports timelines that disagree on row ordering, whole-topic ordering conflicts,
 
 ## rerun mcp
 
-Run an MCP server that controls a running Rerun Viewer.
+Run an MCP server that lets an agent drive a running Rerun Viewer and read a catalog.
 
 Register it with your agent using `claude mcp add rerun -- rerun mcp` or `codex mcp add rerun -- rerun mcp`, or add an `mcp.json` entry with `"command": "rerun"` and `"args": ["mcp"]`.
 
@@ -531,7 +594,27 @@ See <https://rerun.io/docs/viewer/extend/mcp> for details.
 * `--endpoint <ENDPOINT>`
 > gRPC endpoint of the viewer to connect to on startup, e.g. `http://127.0.0.1:9876`.
 >
-> Without it, the server starts unconnected and the agent picks a viewer with its `connect` tool.
+> Without it, the server starts unconnected and the agent picks a viewer with its `viewer_connect` tool.
+
+* `--catalog-url <CATALOG_URL>`
+> URL of the catalog server for the catalog tools, e.g. `rerun+http://127.0.0.1:51234`.
+>
+> Without it, they act on the catalog of the connected viewer if it runs on this machine, until the agent picks another one with its `catalog_connect` tool.
+
+* `--toolsets <TOOLSETS>`
+> The toolsets to offer, comma-separated.
+>
+> Possible values:
+>
+> * `viewer`: Drive a running Rerun Viewer
+> * `catalog`: Read and add to a Rerun catalog server. Every change asks the user first
+>
+> [Default: `viewer`, `catalog`]
+
+* `--catalog-read-only <CATALOG_READ_ONLY>`
+> Leave out the catalog tools that create, rename, or upload.
+>
+> [Default: `false`]
 
 ## rerun rrd
 
@@ -710,6 +793,11 @@ Examples:
 >
 > Per-knob flags and `RERUN_CHUNK_MAX_*` env vars override the profile's values. `RERUN_STORE_ENABLE_CHANGELOG` is ignored by this command — `rerun rrd optimize` is always headless.
 >
+> Possible values:
+>
+> * `live`: Small chunks tuned for the live Viewer workflow (at most 4 096 rows and 384 KiB per chunk)
+> * `object-store`: Larger chunks tuned for object-store-backed query and streaming (at most 65 536 rows and 2.0 MiB per chunk)
+>
 > [Default: `object-store`]
 
 * `--max-size <MAX_SIZE>`
@@ -806,18 +894,38 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 
 * `--continue-on-error <CONTINUE_ON_ERROR>`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
+>
+> Possible values:
+>
+> * `true`
+> * `false`
 
 * `--migrate <MIGRATE>`
 > Migrate chunks to latest version before printing?
+>
+> Possible values:
+>
+> * `true`
+> * `false`
 
 * `--full-metadata <FULL_METADATA>`
 > If true, includes `rerun.` prefixes on keys.
+>
+> Possible values:
+>
+> * `true`
+> * `false`
 
 * `--entity <ENTITY>`
 > Show only chunks belonging to this entity.
 
 * `--footers <FOOTERS>`
 > If true, displays all the parsed footers at the end.
+>
+> Possible values:
+>
+> * `true`
+> * `false`
 
 * `--footers-lod <FOOTERS_LOD>`
 > The level of detail to use when printing footers. Higher is more detailed.
@@ -832,6 +940,11 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 
 * `--transposed <TRANSPOSED>`
 > Transpose record batches before printing them?
+>
+> Possible values:
+>
+> * `true`
+> * `false`
 
 ## rerun rrd route
 
@@ -1003,3 +1116,39 @@ Local Rerun catalog server.
 
 * `-V, --version `
 > Print version.
+
+## rerun servers
+
+Manage the catalog servers that the Viewer, the CLI, and `rerun mcp` remember.
+
+**Usage**: `rerun servers <COMMAND>`
+
+**Commands**
+
+* `list`: List the catalog servers Rerun remembers.
+* `add`: Remember a catalog server, so `rerun mcp` offers it to agents, and the Viewer shows it the next time it starts.
+* `remove`: Forget a catalog server.
+
+## rerun servers add
+
+Remember a catalog server, so `rerun mcp` offers it to agents, and the Viewer shows it the next time it starts.
+
+**Usage**: `rerun servers add <URL>`
+
+**Arguments**
+
+* `<URL>`
+> The server's URL, e.g. `rerun+https://example.com` or `http://127.0.0.1:51234`.
+
+## rerun servers remove
+
+Forget a catalog server.
+
+A running Viewer keeps showing it until it restarts. A login the Viewer saved for it stays in the Viewer's settings; remove the server in the Viewer instead to drop that too.
+
+**Usage**: `rerun servers remove <URL>`
+
+**Arguments**
+
+* `<URL>`
+> The server's URL, as `rerun servers list` shows it.

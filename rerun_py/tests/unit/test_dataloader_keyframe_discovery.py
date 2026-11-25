@@ -7,10 +7,9 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import pyarrow as pa
 import pytest
-from datafusion import SessionContext
+from datafusion import SessionContext, col, functions as f
 from rerun.experimental.dataloader import Field, NumericDecoder, VideoFrameDecoder, _utils as utils
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata, _index_value_to_int
-from rerun.experimental.dataloader.manifest import _manifest_build as manifest_build
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -69,6 +68,12 @@ class _MarkerDataset:
         ]
         return self.ctx.create_dataframe([batches])
 
+    def get_index_ranges(self) -> DataFrame:
+        return self.ctx.from_arrow(self.table).aggregate(
+            [col("rerun_segment_id")],
+            [f.min(col("index")).alias("index:start"), f.max(col("index")).alias("index:end")],
+        )
+
 
 def _discover(
     dataset: _MarkerDataset,
@@ -87,19 +92,23 @@ def _assert_matches_full_scan(
     sample_index: SampleIndex,
     located: Sequence[tuple[SegmentMetadata, IndexValue]],
 ) -> dict[str, dict[str, np.ndarray]]:
-    expected = utils._fetch_prior_keyframes(
-        view=cast("DatasetEntry", dataset), index="index", fields=fields, located=located, sample_index=sample_index
-    )
-    dataset.calls.clear()
     actual = _discover(dataset, fields, sample_index, located)
     for segment, anchor in located:
         for key, field in fields.items():
             if field.prior_keyframe_path is None:
                 continue
             target = min(_index_value_to_int(value) for value in sample_index.output_index_values(anchor, field))
-            assert utils._prior_keyframe(actual[key].get(segment.segment_id), target) == utils._prior_keyframe(
-                expected[key].get(segment.segment_id), target
-            )
+            expected = [
+                value
+                for segment_id, value, marker in zip(
+                    dataset.table["rerun_segment_id"].to_pylist(),
+                    dataset.table["index"].cast(pa.int64()).to_pylist(),
+                    dataset.table[field.prior_keyframe_path].to_pylist(),
+                    strict=True,
+                )
+                if segment_id == segment.segment_id and value <= target and marker and marker[0] is True
+            ]
+            assert utils._prior_keyframe(actual[key].get(segment.segment_id), target) == max(expected, default=None)
     return actual
 
 
@@ -160,7 +169,7 @@ def test_discovery_reaches_raw_floor_before_global_window_trim(explicit_floor: b
         "video": Field("/left:VideoStream:sample", decode=VideoFrameDecoder()),
         "history": Field("/state:Scalars:scalars", decode=NumericDecoder(), window=(-100, 0)),
     }
-    dataset = _MarkerDataset({_LEFT: {("a", -20): [True]}})
+    dataset = _MarkerDataset({_LEFT: {("a", -50): [False], ("a", -20): [True]}})
 
     result = _discover(dataset, fields, SampleIndex([segment]), [(segment, 50)])
 
@@ -278,27 +287,3 @@ def test_fully_resolved_camera_is_not_projected_in_later_search_rounds() -> None
     assert result["right"]["a"].tolist() == [0]
     assert set(dataset.contents[0]) == {"/left/**", "/right/**"}
     assert all(paths == ["/right/**"] for paths in dataset.contents[1:])
-
-
-def test_manifest_scan_keeps_complete_history_without_adaptive_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
-    segment = SegmentMetadata("a", 0, 100, 101, index_min=0)
-    sample_index = SampleIndex([segment])
-    fields = {"video": Field("/left:VideoStream:sample", decode=VideoFrameDecoder())}
-    dataset = _MarkerDataset({_LEFT: {("a", index): [True] for index in (0, 30, 90)}})
-
-    def reject_adaptive(**_kwargs: object) -> None:
-        pytest.fail("Manifest scanning must retain the complete keyframe history")
-
-    monkeypatch.setattr(utils, "_discover_prior_keyframes", reject_adaptive)
-    scan = manifest_build._scan(
-        view=cast("DatasetEntry", dataset),
-        index="index",
-        fields=fields,
-        sample_index=sample_index,
-        segment_maxes=[(segment, 100)],
-        required={"video"},
-        max_workers=1,
-    )
-
-    assert scan.keyframes["video"]["a"].tolist() == [0, 30, 90]
-    assert len(dataset.calls) == 1 and "using_index_values" not in dataset.calls[0]

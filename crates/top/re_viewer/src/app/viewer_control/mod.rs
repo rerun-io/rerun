@@ -22,14 +22,15 @@ use re_protos::viewer_control::v1alpha1::{
     GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
     GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
     GetLogsRequest, GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
-    GetSelectionRequest, GetStateRequest, GetStateResponse, GetTableSchemaRequest,
-    GetTableSchemaResponse, HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
-    RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse,
-    ScreenRect, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
-    SetTimeCursorRequest, SetTimeCursorResponse, TableColumnSchema, TimeCursor,
-    ViewerControlRequest, ViewerControlResponse, ViewerLoadingSource, ViewerRecording,
-    ViewerReport, ViewerServer, ViewerServerEntry, ViewerSourceUrls, ViewerTimeline, ViewerView,
-    get_blueprint_request, set_blueprint_request, viewer_control_request,
+    GetSelectionRequest, GetSettingsRequest, GetStateRequest, GetStateResponse,
+    GetTableSchemaRequest, GetTableSchemaResponse, HighlightRectRequest, HighlightRectResponse,
+    OpenRequest, OpenResponse, RecordingComponentSchema, RecordingEntitySchema,
+    SaveScreenshotRequest, SaveScreenshotResponse, ScreenRect, SetBlueprintRequest,
+    SetBlueprintResponse, SetLocationRequest, SetLocationResponse, SetTimeCursorRequest,
+    SetTimeCursorResponse, TableColumnSchema, TimeCursor, ViewerControlRequest,
+    ViewerControlResponse, ViewerLoadingSource, ViewerRecording, ViewerReport, ViewerServer,
+    ViewerServerEntry, ViewerSourceUrls, ViewerTimeline, ViewerView, get_blueprint_request,
+    set_blueprint_request, viewer_control_request,
 };
 #[cfg(feature = "analytics")]
 use re_protos::viewer_control::v1alpha1::{SubmitFeedbackRequest, SubmitFeedbackResponse};
@@ -46,6 +47,7 @@ use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 mod blueprint;
 mod commands;
 mod selection;
+mod settings;
 mod transform_graph;
 mod view_types;
 
@@ -456,6 +458,14 @@ impl AppCore {
             }
             Kind::GetSelection(GetSelectionRequest {}) => {
                 on_done.call(Ok(self.collect_selection(store_hub).into()));
+            }
+            Kind::GetSettings(GetSettingsRequest {}) => {
+                on_done.call(settings::get_settings(self.state.app_options()).map(Into::into));
+            }
+            Kind::SetSettings(request) => {
+                on_done.call(
+                    settings::set_settings(self.state.app_options_mut(), request).map(Into::into),
+                );
             }
             Kind::GetState(GetStateRequest {}) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
@@ -1665,10 +1675,10 @@ impl AppCore {
         chunks: Vec<re_chunk::Chunk>,
     ) {
         self.command_sender
-            .send_system(SystemCommand::AppendToStore(
-                blueprint_db.store_id().clone(),
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint_db.store_id().clone(),
                 chunks,
-            ));
+            });
     }
 
     /// The active blueprint of `target`.

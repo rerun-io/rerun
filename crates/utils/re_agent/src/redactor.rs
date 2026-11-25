@@ -13,28 +13,13 @@ use web_time::Instant;
 
 #[cfg(agent_harness_backend)]
 use crate::AgentHarnessConfig;
-use crate::{AgentLaunch, AgentSession, HostedTools};
+use crate::{AgentLaunch, AgentSession, HostedTools, ModelCategory};
 
 /// How long the redacting agent gets before the redaction fails.
 const REDACTION_TIMEOUT: Duration = Duration::from_mins(2);
 
 /// Maximum number of requests waiting for redaction before new ones fail.
 const REDACTION_QUEUE_CAPACITY: usize = 1024;
-
-/// Models to redact with, best first, matched against whatever the user's agent offers.
-///
-/// Redaction is mechanical work on one short JSON object, so the cheapest capable model of each
-/// family is enough, and the user should not pay flagship prices for a background task.
-/// An agent that offers none of these keeps its default model.
-static REDACTION_MODELS: std::sync::LazyLock<Vec<crate::ModelPreference>> =
-    std::sync::LazyLock::new(|| {
-        vec![
-            crate::ModelPreference::new(&["haiku"]),
-            crate::ModelPreference::new(&["luna"]),
-            crate::ModelPreference::new(&["gemini", "flash"]),
-            crate::ModelPreference::new(&["gpt", "mini"]),
-        ]
-    });
 
 /// Instructions for removing sensitive data from agent analytics.
 const REDACTION_INSTRUCTIONS: &str = r#"# Redact analytics
@@ -348,12 +333,7 @@ impl Redactor {
             },
             AgentLaunch::ModelApi(mut config) => {
                 config.hosted_tools = HostedTools::NONE;
-                config.model = crate::model_recommendation::preferred_model_id(
-                    config.provider.models(),
-                    &REDACTION_MODELS,
-                )
-                .unwrap_or_else(|| config.provider.default_model())
-                .to_owned();
+                config.model = config.provider.model(ModelCategory::VeryFast).to_owned();
                 config.effort = None;
                 config.system_prompt = None;
                 config.toolbox = None;
@@ -385,7 +365,7 @@ impl Redactor {
         config.mcp_servers.clear();
         config.cwd = self.scratch.as_ref()?.path().to_owned();
         config.preferences = Default::default();
-        config.model_preferences = REDACTION_MODELS.clone();
+        config.model_preselect = ModelCategory::VeryFast.into();
         Some(config)
     }
 }
@@ -566,7 +546,7 @@ mod tests {
             }],
             log_protocol: false,
             preamble: None,
-            model_preferences: Vec::new(),
+            model_preselect: crate::ModelPreselect::Previous,
             preferences: crate::AgentPreferences {
                 config_options: [
                     ("model".into(), "opus".into()),
@@ -582,10 +562,7 @@ mod tests {
             .expect("a scratch directory");
         assert!(config.mcp_servers.is_empty());
         assert!(config.preferences.config_options.is_empty());
-        assert_eq!(
-            config.model_preferences.first(),
-            Some(&crate::ModelPreference::new(&["haiku"]))
-        );
+        assert_eq!(config.model_preselect, ModelCategory::VeryFast.into());
         assert_ne!(config.cwd, std::env::current_dir().expect("cwd"));
         assert!(config.cwd.is_dir());
         assert_eq!(std::fs::read_dir(&config.cwd).expect("read_dir").count(), 0);

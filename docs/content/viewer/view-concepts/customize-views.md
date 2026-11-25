@@ -4,7 +4,7 @@ order: 200
 description: Visualizers, overrides, and per-entity customization in views
 ---
 
-This section explains the process by which logged data is used to produce a visualization and how it can be customized via the user interface or code.
+This page explains how the Viewer turns logged data into a visualization, and how to change that per view, from the UI or from code.
 
 ## How are visualizations produced?
 
@@ -22,7 +22,7 @@ In the Rerun Viewer, visualizations happen within _views_, which are defined by 
 
 The first step for a view to display its content is to determine which entities are involved.
 This is determined by the [entity path filter](entity-path-filter.md), which is part of the view blueprint.
-The query is run against the data store to generate the list of view entities.
+The query is run against the chunk store to generate the list of view entities.
 
 Views rely on visualizers to display each of their entities.
 For example, [3D views](../../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
@@ -31,12 +31,14 @@ Which visualizers are available is highly dependent on the specific kind of view
 For example, the `SeriesLines` visualizer only exists for time series views — not, e.g., for 3D views.
 
 For a given view, each entity's components determine which visualizers are available.
+For most visualizers, this is decided by Arrow datatype.
+The visualizer is available when the entity has a component with the datatype of the visualizer's required input, whatever that component is named.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../../reference/types/archetypes.md).
 For example, in a 3D view, an entity logged with the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
 This happens because the components of an [archetype](../../reference/types/archetypes.md) are tagged with the archetype's name.
 With a few exceptions, archetypes are directly associated with a single visualizer, but it's also possible to add multiple visualizers of the same type to a given entity via blueprints or the UI.
 
-Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../../reference/types/components/position3d.md), [`Radius`](../../reference/types/components/radius.md), and [`Color`](../../reference/types/components/color.md) components.
+Then, each selected visualizer determines the values for its inputs. For example, the `Points3D` visualizer reads, among others, `Points3D:positions` ([`Position3D`](../../reference/types/components/position3d.md)), `Points3D:radii` ([`Radius`](../../reference/types/components/radius.md)), and `Points3D:colors` ([`Color`](../../reference/types/components/color.md)).
 
 <!-- It's a feature that we don't need to specify any details for the visualizers here. -->
 
@@ -60,8 +62,7 @@ The next section describes how to precisely control what data each visualizer op
 
 ## Component mappings
 
-Each visualizer takes various components as input. Values are automatically sourced from the data store. When no matching data exists (except for required components like point cloud positions or plot scalars), the Viewer generates sensible default values.
-The exact way this is done depends on the type of View, but may be influenced by a variety of circumstances.
+Each visualizer takes various components as input. Values are automatically sourced from the chunk store. When no matching data exists (except for required components like point cloud positions or plot scalars), the Viewer generates sensible default values, which depend on the view class.
 
 Component mappings let you customize this behavior, for example to:
 
@@ -78,7 +79,7 @@ In the UI this can be done via the visualizer UI, by clicking and modifying the 
 When such a customization is defined, it automatically changes the component's source for this visualizer to point to this new custom value.
 
 The Source dropdown menu allows quick toggling between the different input representations.
-By clicking on "Add custom" you can create a new custom component override:
+By clicking on "Add custom" you can set a custom value:
 
 <picture>
   <img src="https://static.rerun.io/viscomp-add-custom/ac6e0df27139c7be2f446c17981bed74509c0b31/full.png" alt="Source dropdown for the Boxes2D colors component, listing Boxes2D:colors, View default and the highlighted Add custom option">
@@ -103,7 +104,7 @@ snippet: concepts/viscomp-component-override
 
 <!-- TODO(andreas): Should we start lighter and first introduce the concept without arbitrary semantics? -->
 
-A powerful mechanism that is built into visualizers is the option to source components from data that was logged on the same entity but might have arbitrary semantics.
+Visualizers can source their components from other data logged on the same entity, even data with arbitrary semantics.
 
 Within a view, a visualizer can pick up any component that has the same datatype as the builtin type that it expects.
 For example, the `SeriesLines` and `SeriesPoints` visualizers can pick up any numerical data for their [`Scalar`](../../reference/types/components/scalar.md) component.

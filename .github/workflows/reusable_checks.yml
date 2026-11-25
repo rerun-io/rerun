@@ -265,6 +265,9 @@ jobs:
           pixi run mdlint --glob 'examples/cpp/*/README.md'
           pixi run mdlint --glob 'examples/rust/*/README.md'
 
+      - name: Check local links
+        run: pixi run link-check-local
+
   # ---------------------------------------------------------------------------
 
   spell-check:

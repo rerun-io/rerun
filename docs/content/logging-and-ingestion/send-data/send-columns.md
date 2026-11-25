@@ -9,7 +9,7 @@ If you already have data stored in something more *column-oriented*, it can be b
 
 This is what the `send_columns` API is for: it lets you efficiently update the state of an entity over time, sending data for multiple index and component columns in a single operation.
 
-> [!WARNING]
+> [!NOTE]
 > `send_columns` API bypasses the time context and [micro-batcher](../sinks-and-modes/micro-batching.md).
 >
 > In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../data-model/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
@@ -48,8 +48,8 @@ In Rust and C++, you set the fields with the builder methods and pass the row le
 
 ## Reference
 
-* [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
-* [🐍 Python](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
+* [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#addc516744c330c5021352266fdc2bf92)
+* [🐍 Python](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_columns)
 * [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 
@@ -114,9 +114,6 @@ snippet: archetypes/arrows3d_column_updates
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/1200w.png">
 </picture>
-
-Each row in the component column can be a batch of data, e.g. a batch of positions.
-This lets you log the evolution of a set of arrows over time efficiently.
 
 
 ### Updating a transform over time, in a single operation

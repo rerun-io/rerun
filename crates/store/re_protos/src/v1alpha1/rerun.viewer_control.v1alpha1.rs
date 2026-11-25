@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24, 25, 26"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -336,6 +336,18 @@ pub mod viewer_control_request {
         /// already on screen (`GetState`). No recording needs to be open.
         #[prost(message, tag = "24")]
         ListViewTypes(super::ListViewTypesRequest),
+        /// Read the viewer's app settings as a JSON object, e.g. memory limit and video decoding.
+        ///
+        /// Pass parts of it to `set_settings` to change them.
+        #[prost(message, tag = "25")]
+        GetSettings(super::GetSettingsRequest),
+        /// Change some of the viewer's app settings.
+        ///
+        /// The viewer saves them, so they outlive this session.
+        /// Call `get_settings` first to see the names and current values.
+        /// The FFmpeg path and the cache directory are read-only.
+        #[prost(message, tag = "26")]
+        SetSettings(super::SetSettingsRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -354,7 +366,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24, 25, 26"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -432,6 +444,12 @@ pub mod viewer_control_response {
         /// Result of `list_view_types`.
         #[prost(message, tag = "24")]
         ListViewTypes(super::ListViewTypesResponse),
+        /// Result of `get_settings`.
+        #[prost(message, tag = "25")]
+        GetSettings(super::GetSettingsResponse),
+        /// Result of `set_settings`.
+        #[prost(message, tag = "26")]
+        SetSettings(super::SetSettingsResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -1359,6 +1377,76 @@ impl ::prost::Name for Uuid {
         "/rerun.viewer_control.v1alpha1.Uuid".into()
     }
 }
+/// Request for `GetSettings`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSettingsRequest {}
+impl ::prost::Name for GetSettingsRequest {
+    const NAME: &'static str = "GetSettingsRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSettingsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSettingsRequest".into()
+    }
+}
+/// Response for `GetSettings`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSettingsResponse {
+    /// All settings, as a JSON object.
+    ///
+    /// Secrets, such as access tokens, are left out.
+    #[prost(string, tag = "1")]
+    pub settings_json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetSettingsResponse {
+    const NAME: &'static str = "GetSettingsResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSettingsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSettingsResponse".into()
+    }
+}
+/// Request for `SetSettings`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetSettingsRequest {
+    /// The settings to change, as a JSON object with the same shape as `GetSettingsResponse`.
+    ///
+    /// Keys that are left out keep their value, also in nested objects.
+    /// Unknown keys, values of the wrong type, secrets, changes to read-only settings, and lowering
+    /// the memory limit below 128 MiB are `INVALID_ARGUMENT`, and then nothing changes.
+    #[prost(string, tag = "1")]
+    pub settings_json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetSettingsRequest {
+    const NAME: &'static str = "SetSettingsRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetSettingsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetSettingsRequest".into()
+    }
+}
+/// Response for `SetSettings`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetSettingsResponse {
+    /// All settings after the change, as `GetSettingsResponse` reports them.
+    #[prost(string, tag = "1")]
+    pub settings_json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetSettingsResponse {
+    const NAME: &'static str = "SetSettingsResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetSettingsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetSettingsResponse".into()
+    }
+}
 /// Request for `GetSelection`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetSelectionRequest {}
@@ -1556,8 +1644,8 @@ pub struct GetStateResponse {
     pub recordings: ::prost::alloc::vec::Vec<ViewerRecording>,
     /// Origin of the catalog server the viewer hosts, e.g. `rerun+<http://127.0.0.1:9876`.>
     ///
-    /// Clients (notably `re_rerun_mcp`) hand this to the Python `CatalogClient` to read the data
-    /// behind the open recordings, which this service deliberately does not serve itself.
+    /// Clients read the data behind the open recordings from it, e.g. `re_rerun_mcp`'s catalog
+    /// tools or the Python `CatalogClient`, since this service deliberately does not serve it.
     /// Unset if the viewer has no catalog, which on native is only the case before it starts up.
     #[prost(string, optional, tag = "4")]
     pub catalog_url: ::core::option::Option<::prost::alloc::string::String>,

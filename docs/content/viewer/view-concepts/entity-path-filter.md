@@ -34,14 +34,7 @@ Set the view's `contents` parameter to a list or iterable of filter rules, with 
 The filter shown above would be written as:
 
 ```python
-(
-    rrb.Spatial3DView(
-        contents=[
-            "+ helix/**",
-            "- helix/structure/scaffolding",
-        ],
-    ),
-)
+rrb.Spatial3DView(contents=["+ helix/**", "- helix/structure/scaffolding"])
 ```
 
 ## `origin` substitution
@@ -51,15 +44,7 @@ Filter rules can use `$origin` to refer to the view's `origin`.
 For example, the filter above could be rewritten as:
 
 ```python
-(
-    rrb.Spatial3DView(
-        origin="helix",
-        contents=[
-            "+ $origin/**",
-            "- $origin/structure/scaffolding",
-        ],
-    ),
-)
+rrb.Spatial3DView(origin="helix", contents=["+ $origin/**", "- $origin/structure/scaffolding"])
 ```
 
 ## Recording properties are excluded by default

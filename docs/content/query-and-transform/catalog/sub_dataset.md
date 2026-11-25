@@ -7,12 +7,15 @@ description: Reference a subset of an existing dataset without copying
 When experimenting with new features it's often practical to work with a subset of data without modifying the original.
 A sub-dataset references the same underlying RRD files so no data is copied.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 The dependencies in this example are contained in `rerun-sdk[all]`.
 
 ## Setup
 
 Simplified setup to launch the local server for demonstration.
-In practice you'll connect to your cloud instance.
+In practice you'll connect to your catalog server, such as Rerun Hub.
 
 snippet: howto/sub_dataset[setup]
 

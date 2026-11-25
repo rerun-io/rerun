@@ -174,7 +174,10 @@ pub(crate) fn load_line_series_with_styling(
     ));
 
     // Wrap results for convenient error-reporting iteration
-    let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
+    let results = re_view::BlueprintResolvedResults::Range {
+        query: query.clone(),
+        results,
+    };
     let results = re_view::VisualizerInstructionQueryResults::new(instruction, &results, output);
 
     // If we have no scalars, we can't do anything.

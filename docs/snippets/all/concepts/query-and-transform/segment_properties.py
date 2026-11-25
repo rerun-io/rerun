@@ -44,6 +44,8 @@ for i, rrd_path in enumerate(rrd_paths):
 with rr.server.Server(datasets={"dataset": rrd_paths}) as server:
     # obtain a dataset from the catalog
     dataset = server.client().get_dataset("dataset")
+    # On Rerun Hub, connect to your Hub instead:
+    # dataset = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io").get_dataset("dataset")
 
     segment_table = dataset.segment_table()
 

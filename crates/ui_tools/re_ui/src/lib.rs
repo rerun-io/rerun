@@ -23,6 +23,7 @@ pub mod loading_indicator;
 mod markdown_utils;
 pub mod menu;
 pub mod modal;
+mod modifiers;
 mod motion;
 pub mod notifications;
 mod panel_title_bar;
@@ -72,6 +73,9 @@ pub use self::icon_text::*;
 pub use self::icons::Icon;
 pub use self::link_button::LinkButton;
 pub use self::markdown_utils::*;
+pub use self::modifiers::{
+    SELECTION_RANGE_MODIFIER, SELECTION_TOGGLE_MODIFIER, SHOW_EXTRAS_MODIFIER, SOLO_MODIFIER,
+};
 pub use self::notifications::Link;
 pub use self::panel_title_bar::PanelTitleBar;
 pub use self::progress_ring::ProgressRing;

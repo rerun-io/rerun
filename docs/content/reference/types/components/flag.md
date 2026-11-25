@@ -20,7 +20,7 @@ Boolean
 
 ## API reference links
  * 🌊 [C++ API docs for `Flag`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Flag.html)
- * 🐍 [Python API docs for `Flag`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Flag)
+ * 🐍 [Python API docs for `Flag`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Flag)
  * 🦀 [Rust API docs for `Flag`](https://docs.rs/rerun/latest/rerun/components/struct.Flag.html)
 
 

@@ -37,6 +37,7 @@ Markdown files with YAML frontmatter, organized hierarchically:
 docs/content/
   index.md                        # Entry point, redirects to getting-started
   getting-started/                # Quick start, install, project setup, how Rerun works
+  agents.md                       # Using Rerun with coding agents: skills, MCP server, agent panel
   logging-and-ingestion/          # Product area: tutorial, data model, sending data, sinks, video and audio, chunks and RRD files, importing
   viewer/                         # Product area: Viewer UI, blueprints, view types, shared view concepts, performance, extending
   query-and-transform/            # Product area: tutorial, catalog, dataframes, images and video, lenses
@@ -63,6 +64,10 @@ Every page needs YAML frontmatter:
 ---
 title: Examples    # Required: navigation title
 order: 6           # Required: sort order in navigation
+description: …     # Optional: one-line summary for meta tags, link unfurls, and index cards (else the first paragraph, truncated)
+index: true        # Optional: render a card grid of every child page that is not `hidden` or a `redirect`, from its title and description
+sort_children: alphabetical  # Optional: sort child pages (and `index` cards) by title instead of `order`
+cards: true        # Optional: render a top-level `- [Title](url) — Description` list as cards
 redirect: <url>    # Optional: redirect to this URL
 hidden: true       # Optional: hide from navigation
 expand: true       # Optional: expand sub-items in nav
@@ -70,6 +75,8 @@ ogImageUrl: <url>  # Optional: open-graph thumbnail
 keywords: a, b     # Optional: search terms (comma-separated or a list), not shown on the page
 ---
 ```
+
+On a section landing page, use `index: true` instead of a hand-written list of its child pages, which goes stale as pages are added or removed.
 
 ### Previewing and updating the live site
 

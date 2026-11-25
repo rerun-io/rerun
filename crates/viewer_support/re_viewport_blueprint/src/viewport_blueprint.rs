@@ -286,7 +286,7 @@ impl ViewportBlueprint {
         }
     }
 
-    fn enqueue_command(&self, action: ViewportCommand) {
+    pub(super) fn enqueue_command(&self, action: ViewportCommand) {
         self.deferred_commands.lock().push(action);
     }
 
@@ -641,7 +641,10 @@ impl ViewportBlueprint {
             return;
         }
 
-        self.enqueue_command(ViewportCommand::SetContainerKind(container_id, kind));
+        self.enqueue_command(ViewportCommand::SetContainerKind {
+            container_id,
+            container_kind: kind,
+        });
     }
 
     /// Simplify the container tree with the provided options.
@@ -650,10 +653,10 @@ impl ViewportBlueprint {
         container_id: &ContainerId,
         simplification_options: SimplificationOptions,
     ) {
-        self.enqueue_command(ViewportCommand::SimplifyContainer(
-            *container_id,
-            simplification_options,
-        ));
+        self.enqueue_command(ViewportCommand::SimplifyContainer {
+            container_id: *container_id,
+            options: simplification_options,
+        });
     }
 
     /// Make all children of the given container the same size.
@@ -818,13 +821,8 @@ impl ViewportBlueprint {
         }
     }
 
-    /// Save the current state of the viewport to the blueprint store.
-    /// This should only be called if the tree was edited.
-    pub fn save_tree_as_containers(&self, ctx: &ViewerContext<'_>) {
-        re_tracing::profile_function!();
-
-        re_log::trace!("Saving tree: {:#?}", self.tree);
-
+    /// Map live tiles to blueprint contents, including new containers and temporary tab wrappers.
+    pub(super) fn contents_from_tile_id(&self) -> HashMap<TileId, Contents> {
         // First, update the mapping for all the previously known containers.
         // These were inserted with their ids, so we want to keep these
         // constant if we find them again.
@@ -874,6 +872,18 @@ impl ViewportBlueprint {
                 }
             }
         }
+
+        contents_from_tile_id
+    }
+
+    /// Save the current state of the viewport to the blueprint store.
+    /// This should only be called if the tree was edited.
+    pub fn save_tree_as_containers(&self, ctx: &ViewerContext<'_>) {
+        re_tracing::profile_function!();
+
+        re_log::trace!("Saving tree: {:#?}", self.tree);
+
+        let contents_from_tile_id = self.contents_from_tile_id();
 
         // Clear any existing container blueprints that aren't referenced by any tiles,
         // allowing the GC to remove the previous (non-clear) data from the store (saving RAM).
@@ -983,6 +993,10 @@ fn apply_viewport_command(
             bp.tree = new_tree;
         }
 
+        ViewportCommand::DuplicateContainer { source, target } => {
+            bp.apply_duplicate_container(ctx, source, target);
+        }
+
         ViewportCommand::AddView {
             view,
             parent_container,
@@ -1051,7 +1065,10 @@ fn apply_viewport_command(
             }
         }
 
-        ViewportCommand::SetContainerKind(container_id, container_kind) => {
+        ViewportCommand::SetContainerKind {
+            container_id,
+            container_kind,
+        } => {
             if let Some(egui_tiles::Tile::Container(container)) = bp
                 .tree
                 .tiles
@@ -1107,7 +1124,10 @@ fn apply_viewport_command(
             }
         }
 
-        ViewportCommand::SimplifyContainer(container_id, options) => {
+        ViewportCommand::SimplifyContainer {
+            container_id,
+            options,
+        } => {
             re_log::trace!("Simplifying tree with options: {options:?}");
             let tile_id = blueprint_id_to_tile_id(&container_id);
             bp.tree.simplify_children_of_tile(tile_id, &options);

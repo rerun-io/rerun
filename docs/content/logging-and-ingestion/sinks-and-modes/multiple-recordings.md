@@ -14,20 +14,7 @@ To log to several recordings from one process, create one `RecordingStream` per 
 Each `RecordingStream` has its own application ID, recording ID, and sinks.
 Give each stream a distinct recording ID, otherwise their data ends up in the [same recording](../data-model/recordings.md).
 
-```python
-import uuid
-
-import rerun as rr
-
-rec_a = rr.RecordingStream("rerun_example_several_recordings", recording_id=uuid.uuid4())
-rec_b = rr.RecordingStream("rerun_example_several_recordings", recording_id=uuid.uuid4())
-
-rec_a.spawn()
-rec_b.connect_grpc()  # The Viewer started by `rec_a.spawn()` is now running.
-
-rec_a.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
-rec_b.log("points", rr.Points3D([[2, 2, 2], [3, 3, 3]]))
-```
+snippet: howto/multiple_recordings
 
 There are three ways to choose which recording a call goes to:
 
@@ -68,4 +55,4 @@ Use `set_global()` or `set_thread_local()` to make one of them the default.
 See also:
 - [Share recordings across multiple processes](shared-recordings.md)
 - [Recordings](../data-model/recordings.md)
-- [🐍 Python `RecordingStream` API](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream)
+- [🐍 Python `RecordingStream` API](https://ref.rerun.io/docs/python/stable/rerun/#rerun.RecordingStream)

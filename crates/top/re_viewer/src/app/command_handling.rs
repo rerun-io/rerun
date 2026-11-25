@@ -364,6 +364,9 @@ impl AppCore {
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
+            SystemCommand::TriggerPrompt { model, prompt } => {
+                self.ask_agent_in_new_conversation(model, prompt);
+            }
             SystemCommand::OpenSettings => {
                 let settings = Route::settings(self.navigation.routes.current());
                 self.navigation.routes.replace(settings);
@@ -562,6 +565,22 @@ impl AppCore {
                 store_hub.ensure_active_blueprint_for_app(store_id.application_id());
             }
 
+            SystemCommand::ActivateDatasetBlueprint {
+                application_id,
+                origin,
+                blueprint_dataset,
+                blueprint_segment,
+            } => {
+                self.activate_dataset_blueprint(
+                    store_hub,
+                    &application_id,
+                    origin,
+                    blueprint_dataset,
+                    blueprint_segment,
+                );
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }
@@ -571,7 +590,20 @@ impl AppCore {
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearActiveBlueprintAndEnableHeuristics => {
                 re_log::debug!("Clear and generate new blueprint");
+                self.remove_blueprint_to_activate_for_current_app();
                 store_hub.clear_active_blueprint_and_generate(self.navigation.routes.current());
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
+            }
+            SystemCommand::ActivateHeuristicBlueprint(application_id) => {
+                re_log::debug!("Activate heuristic blueprint");
+                self.blueprints_to_activate.remove(&application_id);
+                store_hub.activate_heuristic_blueprint(&application_id);
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
+            }
+            SystemCommand::ResetActiveBlueprint => {
+                re_log::debug!("Reset active blueprint");
+                self.remove_blueprint_to_activate_for_current_app();
+                store_hub.reset_active_blueprint(self.navigation.routes.current());
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::ClearActiveBlueprint => {
@@ -584,13 +616,14 @@ impl AppCore {
                         re_log::warn!("Failed to reset table blueprint: {err}");
                     }
                 } else {
+                    self.remove_blueprint_to_activate_for_current_app();
                     store_hub.clear_active_blueprint(self.navigation.routes.current());
                 }
 
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
 
-            SystemCommand::AppendToStore(store_id, chunks) => {
+            SystemCommand::AppendToStore { store_id, chunks } => {
                 re_log::trace!(
                     "{}:{} Update {} entities: {}",
                     sent_from.file(),
@@ -699,8 +732,11 @@ impl AppCore {
                 }
             }
 
-            SystemCommand::DropEntity(blueprint_id, entity_path) => {
-                let blueprint_db = store_hub.entity_db_entry(&blueprint_id);
+            SystemCommand::DropEntity {
+                store_id,
+                entity_path,
+            } => {
+                let blueprint_db = store_hub.entity_db_entry(&store_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
             }
 
@@ -1429,6 +1465,10 @@ impl AppCore {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
+            RecordingCommandKind::ResetBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ResetActiveBlueprint);
+            }
 
             RecordingCommandKind::ToggleTimePanel => {
                 app_blueprint.toggle_time_panel(&self.command_sender);
@@ -1604,7 +1644,17 @@ impl AppCore {
 
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset_viewer(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+        // The shared server list belongs to every Rerun program on the machine, not to this
+        // viewer's state, so it survives the reset.
+        #[cfg(not(target_arch = "wasm32"))]
+        let known_servers = self.state.redap_servers.known_servers().cloned();
         self.state = Default::default();
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(known) = known_servers
+            && let Err(err) = self.state.redap_servers.set_known_servers(known)
+        {
+            re_log::warn!("{err}");
+        }
         // The panel keeps its own copy of the settings, including typed-in API keys, which it
         // would otherwise write back into the state.
         self.agent_panel = Default::default();

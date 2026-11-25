@@ -20,6 +20,7 @@ all-features = true
 
 
 [dependencies]
+re_agent_tools.workspace = true
 re_arrow_ui.workspace = true
 re_async.workspace = true
 re_auth.workspace = true
@@ -48,7 +49,6 @@ egui_extras.workspace = true
 egui_table.workspace = true
 egui.workspace = true
 futures.workspace = true
-itertools.workspace = true
 rfd = { workspace = true, features = ["file-handle-inner"] }
 serde_json.workspace = true
 serde.workspace = true
@@ -57,10 +57,15 @@ url.workspace = true
 webbrowser.workspace = true
 
 [dev-dependencies]
+re_entity_db.workspace = true
+re_log_channel.workspace = true
+re_test_context.workspace = true
 re_ui = { workspace = true, features = ["testing"] }
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
 
 egui_kittest.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 re_web.workspace = true

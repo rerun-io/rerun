@@ -4,8 +4,7 @@ order: 0
 description: How to embed Rerun in notebooks like Jupyter, Colab, or marimo
 ---
 
-Rerun can embed the Rerun Viewer directly within IPython-style notebooks.
-This makes it easy to iterate on API calls as well as to share data with others.
+This page shows how to embed the Rerun Viewer in IPython-style notebooks, stream data to it, and react to its events from Python.
 
 Rerun has been tested with:
 
@@ -61,9 +60,10 @@ rr.notebook_show()
 
 This is similar to calling `rr.connect_grpc()` or `rr.serve_grpc()` in that it configures the Rerun SDK to send data to a viewer instance.
 
-Note that the call to `rr.notebook_show()` drains the recording of its data. This means that any subsequent calls to `rr.notebook_show()`
-will not result in the same data being displayed, because it has already been removed from the recording.
-Support for this is tracked in [#6612](https://github.com/rerun-io/rerun/issues/6612).
+> [!NOTE]
+> The call to `rr.notebook_show()` drains the recording of its data. This means that any subsequent calls to `rr.notebook_show()`
+> will not result in the same data being displayed, because it has already been removed from the recording.
+> Support for this is tracked in [#6612](https://github.com/rerun-io/rerun/issues/6612).
 
 If you wish to start a new recording, you can call `rr.init()` again.
 
@@ -249,7 +249,3 @@ To host the files yourself, `python -m rerun_notebook serve` starts a server for
 Browsers have limitations in the amount of memory usable by a single tab. If you are working with large datasets,
 you may run into browser tab crashes due to out-of-memory errors.
 If you encounter the issue, you can try to use the `save()` API to save the data to a file and share it as a standalone asset.
-
-## Future work
-
-We are actively working on improving the notebook experience and welcome any [feedback or suggestions](https://rerun.io/feedback).

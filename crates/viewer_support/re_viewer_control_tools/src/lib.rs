@@ -18,45 +18,10 @@ use prost_reflect::{
 };
 use serde_json::{Map, Value, json};
 
+use re_agent_tools::{ToolDefinition, ToolEffect};
 use re_protos::viewer_control::v1alpha1::{
     BlueprintUpdateMode, ViewerControlRequest, ViewerControlResponse,
 };
-
-/// One tool an agent can call: one operation of the service.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ToolDefinition {
-    /// The operation's name, e.g. `set_time_cursor`. Also the name of its `oneof` arm.
-    pub name: String,
-
-    /// What the operation does, taken from the `.proto` comments.
-    pub description: String,
-
-    /// JSON Schema of the arguments, as [`build_request`] takes them.
-    pub input_schema: Map<String, Value>,
-
-    /// What running the operation can change, which decides whether an agent asks first.
-    pub effect: ToolEffect,
-}
-
-/// What running a tool can change, in the terms of MCP's `readOnlyHint` and `destructiveHint`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ToolEffect {
-    /// Changes nothing.
-    ReadOnly,
-
-    /// Changes only what the viewer shows, in a way the user can easily undo.
-    NonDestructive,
-
-    /// Anything else, including every operation not classified yet.
-    Destructive,
-}
-
-impl ToolEffect {
-    /// Whether an agent should ask the user before running the tool.
-    pub fn requires_approval(self) -> bool {
-        self == Self::Destructive
-    }
-}
 
 /// Prefix on the name of every viewer-control tool an agent sees, as in `viewer_get_state`.
 ///
@@ -94,6 +59,7 @@ const READ_ONLY_OPERATIONS: &[&str] = &[
     "get_logs",
     "get_recording_schema",
     "get_selection",
+    "get_settings",
     "get_state",
     "get_table_schema",
     "get_transform_graph",
@@ -105,8 +71,9 @@ const READ_ONLY_OPERATIONS: &[&str] = &[
 ///
 /// Everything not listed here or in [`READ_ONLY_OPERATIONS`] asks first, including operations
 /// added later: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
-/// writes files, and `submit_feedback` sends text to Rerun. `run_command` asks too, since it runs
-/// any UI command, but a host that sees the arguments can let the undoable commands through.
+/// writes files, `set_settings` changes saved settings, and `submit_feedback` sends text to Rerun.
+/// `run_command` asks too, since it runs any UI command, but a host that sees the arguments can
+/// let the undoable commands through.
 const NON_DESTRUCTIVE_OPERATIONS: &[&str] = &[
     "highlight_rect",
     "set_blueprint",
@@ -153,6 +120,14 @@ pub enum ScreenshotDelivery {
 
 /// The blueprint operation, whose update modes use short names on the agent surface.
 const SET_BLUEPRINT_OPERATION: &str = "set_blueprint";
+
+/// The command operation, whose `id` lists the viewer's command ids when they are known.
+const RUN_COMMAND_OPERATION: &str = "run_command";
+
+/// The `id` description of `run_command` when its values are listed, which replaces the
+/// `.proto` one that sends the agent to `list_commands` for them.
+const RUN_COMMAND_ID_DESCRIPTION: &str = "Command id. \
+    `list_commands` says which commands can run right now, and describes them.";
 
 /// `max_size` for a screenshot request that sets none.
 ///
@@ -433,7 +408,14 @@ fn message_schema(
 }
 
 /// The tools this service offers, one per operation, in `.proto` order.
-pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
+///
+/// `command_ids` are every command the viewer can run, available right now or not, in any order.
+/// With them, `run_command` lists them as the values of its `id`, so an agent that has loaded the
+/// tool knows what it can run without calling `list_commands` first.
+pub fn tools(
+    screenshot: ScreenshotDelivery,
+    command_ids: Option<&[String]>,
+) -> Vec<ToolDefinition> {
     operation_oneof()
         .fields()
         .filter(|field| !HIDDEN_OPERATIONS.contains(&field.name()))
@@ -469,6 +451,18 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
             {
                 mode.insert("enum".to_owned(), json!(["full", "partial"]));
                 mode.insert("default".to_owned(), json!("full"));
+            }
+            if field.name() == RUN_COMMAND_OPERATION
+                && let Some(command_ids) = command_ids
+                && let Some(id) = schema
+                    .get_mut("properties")
+                    .and_then(|properties| properties.get_mut("id"))
+                    .and_then(Value::as_object_mut)
+            {
+                let mut command_ids = command_ids.to_vec();
+                command_ids.sort();
+                id.insert("enum".to_owned(), json!(command_ids));
+                id.insert("description".to_owned(), json!(RUN_COMMAND_ID_DESCRIPTION));
             }
             if field.name() == SCREENSHOT_OPERATION {
                 screenshot_schema(&mut schema, screenshot);
@@ -923,7 +917,7 @@ mod tests {
     #[test]
     fn a_screenshot_written_to_a_file_needs_approval() {
         let tool_effect = |screenshot| {
-            tools(screenshot)
+            tools(screenshot, None)
                 .into_iter()
                 .find(|tool| tool.name == SCREENSHOT_OPERATION)
                 .map(|tool| tool.effect)
@@ -951,13 +945,49 @@ mod tests {
         }
     }
 
+    #[test]
+    fn run_command_lists_known_command_ids() {
+        let run_command_id = |command_ids: Option<&[String]>| {
+            tools(ScreenshotDelivery::File, command_ids)
+                .into_iter()
+                .find(|tool| tool.name == RUN_COMMAND_OPERATION)
+                .map(|tool| tool.input_schema["properties"]["id"].clone())
+        };
+
+        let ids = [
+            "ui.quit".to_owned(),
+            "recording.toggle_play_pause".to_owned(),
+        ];
+        let listed = run_command_id(Some(&ids)).unwrap();
+        assert_eq!(
+            listed["enum"],
+            json!(["recording.toggle_play_pause", "ui.quit"]),
+            "sorted, whatever order the caller lists them in"
+        );
+
+        let unknown = run_command_id(None).unwrap();
+        assert_eq!(unknown.get("enum"), None);
+    }
+
+    #[test]
+    fn changing_settings_needs_approval_but_reading_them_does_not() {
+        assert_eq!(
+            call_effect("get_settings", &Map::new()),
+            ToolEffect::ReadOnly
+        );
+        assert_eq!(
+            call_effect("set_settings", &Map::new()),
+            ToolEffect::Destructive
+        );
+    }
+
     /// Checks the public mode names, the omitted default, and rejection of invalid modes.
     #[test]
     fn blueprint_update_modes_use_full_and_partial() {
         use re_protos::viewer_control::v1alpha1::viewer_control_request;
 
         // Advertise the short names rather than the protobuf enum names.
-        let tool = tools(ScreenshotDelivery::File)
+        let tool = tools(ScreenshotDelivery::File, None)
             .into_iter()
             .find(|tool| tool.name == SET_BLUEPRINT_OPERATION)
             .unwrap();
@@ -1007,7 +1037,7 @@ mod tests {
 
     #[test]
     fn offers_one_tool_per_visible_operation() {
-        let names: Vec<String> = tools(ScreenshotDelivery::File)
+        let names: Vec<String> = tools(ScreenshotDelivery::File, None)
             .into_iter()
             .map(|tool| tool.name)
             .collect();
@@ -1022,7 +1052,7 @@ mod tests {
 
     #[test]
     fn carries_the_proto_comments_into_the_descriptions() {
-        let tools = tools(ScreenshotDelivery::File);
+        let tools = tools(ScreenshotDelivery::File, None);
         let open_url = tools
             .iter()
             .find(|tool| tool.name == "open")
@@ -1042,7 +1072,7 @@ mod tests {
 
     #[test]
     fn marks_only_the_fields_the_proto_leaves_unoptional_as_required() {
-        let tools = tools(ScreenshotDelivery::File);
+        let tools = tools(ScreenshotDelivery::File, None);
         let required = |name: &str| -> Vec<String> {
             let tool = tools
                 .iter()
@@ -1090,7 +1120,7 @@ mod tests {
 
     #[test]
     fn carries_store_ids_as_documented_strings() {
-        let tools = tools(ScreenshotDelivery::File);
+        let tools = tools(ScreenshotDelivery::File, None);
         let close = tools
             .iter()
             .find(|tool| tool.name == "close")
@@ -1153,7 +1183,7 @@ mod tests {
         use re_protos::viewer_control::v1alpha1::viewer_control_request;
 
         for delivery in [ScreenshotDelivery::Inline, ScreenshotDelivery::File] {
-            let tool = tools(delivery)
+            let tool = tools(delivery, None)
                 .into_iter()
                 .find(|tool| tool.name == SCREENSHOT_OPERATION)
                 .ok_or("missing screenshot tool")?;
@@ -1283,7 +1313,7 @@ mod tests {
 
     #[test]
     fn constrains_oneof_selectors_to_true() {
-        let tools = tools(ScreenshotDelivery::File);
+        let tools = tools(ScreenshotDelivery::File, None);
         let close = tools
             .iter()
             .find(|tool| tool.name == "close")
@@ -1301,7 +1331,7 @@ mod tests {
     /// A top-level `oneOf`, `anyOf`, or `allOf` makes the model API reject every request.
     #[test]
     fn no_top_level_schema_combinators() {
-        for tool in tools(ScreenshotDelivery::File) {
+        for tool in tools(ScreenshotDelivery::File, None) {
             for keyword in TOP_LEVEL_SCHEMA_COMBINATORS {
                 assert!(
                     !tool.input_schema.contains_key(keyword),

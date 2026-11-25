@@ -1,23 +1,26 @@
 //! The agent panel: a chat with an agent that runs next to the viewer and drives it, through
-//! `rerun mcp` for an agent harness, or through the viewer-control tools for a model-API
-//! agent.
+//! `rerun mcp` for an agent harness, or through the viewer-control and catalog tools for a
+//! model-API agent.
 //!
 //! This crate holds everything that ties the agent to the Rerun Viewer: the preambles, the
-//! viewer-control toolbox, the harness setup, the embedded skills and docs, feedback, and
+//! viewer-control toolbox, the harness setup, the embedded skills, feedback, and
 //! analytics. Chat UI that any egui app could use goes in [`re_agent_ui`] instead.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::path::Path;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
 
 use re_agent::AgentSettings;
+use re_agent_tools::{AgentToolbox, CombinedToolbox};
 use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
+use re_redap_client::ConnectionRegistryHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
 mod agent_analytics;
+mod embedded;
 mod example_prompts;
 mod feedback;
 #[cfg(agent_harness_backend)]
@@ -27,6 +30,7 @@ mod product_feedback;
 mod reporting;
 #[cfg(agent_harness_backend)]
 mod self_improve;
+mod skills_toolbox;
 mod viewer_toolbox;
 
 pub use viewer_toolbox::ViewerControlCall;
@@ -38,10 +42,6 @@ const MCP_SERVER_NAME: &str = "rerun";
 /// Where the skills are unpacked inside the agent directory.
 #[cfg(agent_harness_backend)]
 const SKILLS_SUBDIR: &str = "agent_context/skills";
-
-/// Where the documentation and snippets are unpacked inside the agent directory.
-#[cfg(agent_harness_backend)]
-const DOCS_SUBDIR: &str = "agent_context/docs";
 
 /// Offered in an empty conversation while a recording is open.
 const RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
@@ -136,6 +136,10 @@ pub struct ViewerAgentPanel {
     /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
     pending_prompts: VecDeque<String>,
 
+    /// Conversations waiting for the agent panel to be created, each with its model and opening
+    /// prompt, see [`Self::start_conversation_with_model`].
+    pending_conversations: VecDeque<(re_agent::ModelPreselect, re_agent::Prompt)>,
+
     /// Contents of image files dropped onto the viewer, to attach to the prompt being composed.
     dropped_images: DroppedImages,
 
@@ -150,9 +154,31 @@ pub struct ViewerAgentPanel {
     /// Viewer-control operations that a model-API agent asked for, to be run on the UI thread.
     /// Set up with the panel.
     viewer_control_calls: Option<crossbeam::channel::Receiver<viewer_toolbox::QueuedCall>>,
+
+    /// The catalog servers the catalog tools list, as set by [`Self::set_known_servers`].
+    #[cfg(not(target_arch = "wasm32"))]
+    known_servers: Option<re_redap_client::KnownServers>,
+
+    /// The catalog tools of a model-API agent, which follow [`AgentSettings::catalog_access`]
+    /// as it changes. Set up with the panel.
+    catalog_tools: Option<re_catalog_tools::CatalogTools>,
+
+    // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+    /// Catalogs that a model-API agent changed, for the viewer to refresh.
+    changed_catalogs: Arc<parking_lot::Mutex<BTreeSet<re_uri::Origin>>>,
 }
 
 impl ViewerAgentPanel {
+    /// The catalog servers that a model-API agent's catalog tools list, if any.
+    ///
+    /// Only read when the panel is created, so cheap to call every frame.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn set_known_servers(&mut self, known_servers: Option<&re_redap_client::KnownServers>) {
+        if self.panel.is_none() {
+            self.known_servers = known_servers.cloned();
+        }
+    }
+
     /// Takes the viewer-control operations that the agent asked for since the last call.
     pub fn take_viewer_control_calls(&self) -> Vec<ViewerControlCall> {
         self.viewer_control_calls
@@ -164,6 +190,17 @@ impl ViewerAgentPanel {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    /// Takes the catalogs that the agent changed since the last call, so the viewer can refresh
+    /// them and show the change.
+    ///
+    /// Only for a model-API agent: an agent harness changes catalogs through `rerun mcp`, which
+    /// refreshes them in the viewer itself.
+    pub fn take_changed_catalogs(&self) -> Vec<re_uri::Origin> {
+        std::mem::take(&mut *self.changed_catalogs.lock())
+            .into_iter()
+            .collect()
     }
 
     /// Queue feedback that an agent sent about Rerun, to be sent.
@@ -193,6 +230,22 @@ impl ViewerAgentPanel {
         }
     }
 
+    /// Start a new conversation that preselects `model_preselect`, and send it `prompt` once its
+    /// agent is ready. Buffers it until the panel exists; the caller must open the panel.
+    pub fn start_conversation_with_model(
+        &mut self,
+        model_preselect: re_agent::ModelPreselect,
+        prompt: impl Into<re_agent::Prompt>,
+    ) {
+        let prompt = prompt.into();
+        if let Some(panel) = self.panel.as_mut() {
+            panel.open_conversation_with_model(model_preselect, prompt);
+        } else {
+            self.pending_conversations
+                .push_back((model_preselect, prompt));
+        }
+    }
+
     /// Where to drop image files to attach them to the prompt being composed.
     ///
     /// `None` while the panel is closed.
@@ -217,7 +270,7 @@ impl ViewerAgentPanel {
         open: &mut bool,
         settings: &mut AgentSettings,
         async_runtime: &AsyncRuntimeHandle,
-        viewer_endpoint: Option<&str>,
+        connection_registry: &ConnectionRegistryHandle,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
         shown_content: ShownContent,
@@ -229,7 +282,7 @@ impl ViewerAgentPanel {
                 ui.ctx(),
                 settings.clone(),
                 async_runtime,
-                viewer_endpoint,
+                connection_registry,
                 cache_dir,
                 is_in_rerun_workspace,
             );
@@ -240,6 +293,7 @@ impl ViewerAgentPanel {
             focus_input,
             example_prompts,
             pending_prompts,
+            pending_conversations,
             dropped_images,
             ..
         } = self;
@@ -261,6 +315,9 @@ impl ViewerAgentPanel {
             }
             for prompt in pending_prompts.drain(..) {
                 panel.queue_prompt(prompt);
+            }
+            for (model_preselect, prompt) in pending_conversations.drain(..) {
+                panel.open_conversation_with_model(model_preselect, prompt);
             }
             for EncodedImage(bytes) in dropped_images.take() {
                 if let Err(err) = panel.attach_image_file(&bytes) {
@@ -303,6 +360,9 @@ impl ViewerAgentPanel {
         };
         // Also while collapsed, since its conversations keep running and are saved as they go.
         settings.clone_from(panel.settings());
+        if let Some(catalog_tools) = &self.catalog_tools {
+            catalog_tools.set_access(settings.catalog_access);
+        }
         #[cfg(agent_harness_backend)]
         self.harness.handle_self_improve_request(panel);
         // Before the redactors run, so that turning sharing off drops what is queued before any
@@ -326,24 +386,29 @@ impl ViewerAgentPanel {
     /// Initialize the inner panel.
     ///
     /// `async_runtime` runs model-API agents, and `egui_ctx` is woken for their tool calls.
-    /// `viewer_endpoint`, `cache_dir`, and `is_in_rerun_workspace` only matter to agent
-    /// harnesses; see [`harness::Harness::new_panel`].
+    /// `connection_registry` reaches the catalogs for the catalog tools, and its internal catalog
+    /// is the viewer an agent harness connects to. `cache_dir` and `is_in_rerun_workspace` only
+    /// matter to agent harnesses; see [`harness::Harness::new_panel`].
     fn initialize(
         &mut self,
         egui_ctx: &egui::Context,
         settings: AgentSettings,
         async_runtime: &AsyncRuntimeHandle,
-        viewer_endpoint: Option<&str>,
+        connection_registry: &ConnectionRegistryHandle,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
     ) {
         re_tracing::profile_function!();
 
+        let viewer_endpoint = connection_registry
+            .internal_origin()
+            .map(|origin| origin.as_url());
+
         let mut panel = cfg_select! {
             agent_harness_backend => self.harness.new_panel(
                 settings,
                 async_runtime.clone(),
-                viewer_endpoint,
+                viewer_endpoint.as_deref(),
                 cache_dir,
                 is_in_rerun_workspace,
             ),
@@ -362,12 +427,112 @@ impl ViewerAgentPanel {
 
         let (calls_tx, calls_rx) = viewer_toolbox::calls_channel();
         self.viewer_control_calls = Some(calls_rx);
-        panel.set_toolbox(viewer_toolbox::ViewerToolbox::new(
-            calls_tx,
-            egui_ctx.ui_waker(),
-        ));
+        let viewer_tools = viewer_toolbox::ViewerToolbox::new(calls_tx, egui_ctx.ui_waker());
+        let catalog_tools = re_catalog_tools::CatalogTools::new(
+            connection_registry.clone(),
+            async_runtime.clone(),
+            connection_registry.internal_origin(),
+        );
+        #[cfg(not(target_arch = "wasm32"))]
+        let catalog_tools = catalog_tools.with_known_servers(self.known_servers.clone());
+        let changed_catalogs = Arc::clone(&self.changed_catalogs);
+        let ui_waker = egui_ctx.ui_waker();
+        catalog_tools.on_catalog_change(move |origin| {
+            changed_catalogs.lock().insert(origin.clone());
+            ui_waker.wake();
+        });
+        catalog_tools.set_access(panel.settings().catalog_access);
+        panel.set_toolbox(model_api_toolbox(viewer_tools, catalog_tools.clone()));
+        self.catalog_tools = Some(catalog_tools);
 
         self.panel = Some(panel);
+    }
+}
+
+/// The tools of a model-API agent: the viewer-control tools, the catalog tools, and the Rerun
+/// skills.
+fn model_api_toolbox(
+    viewer_tools: Arc<viewer_toolbox::ViewerToolbox>,
+    catalog_tools: re_catalog_tools::CatalogTools,
+) -> Arc<dyn AgentToolbox> {
+    let mut toolboxes: Vec<Arc<dyn AgentToolbox>> = vec![viewer_tools, Arc::new(catalog_tools)];
+    if let Some(skills) = skills_toolbox::SkillsToolbox::embedded() {
+        toolboxes.push(Arc::new(skills));
+    }
+    Arc::new(CombinedToolbox::new(
+        Some(MCP_SERVER_NAME.to_owned()),
+        toolboxes,
+    ))
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod toolbox_tests {
+    use serde_json::Map;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn a_model_api_agent_gets_viewer_and_catalog_tools() {
+        let (calls_tx, _calls_rx) = viewer_toolbox::calls_channel();
+        let catalog_tools = re_catalog_tools::CatalogTools::new(
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
+            None,
+        );
+        let toolbox = model_api_toolbox(
+            viewer_toolbox::ViewerToolbox::new(calls_tx, re_async::UiWaker::noop()),
+            catalog_tools.clone(),
+        );
+        let names: Vec<String> = toolbox
+            .definitions()
+            .into_iter()
+            .map(|definition| definition.name)
+            .collect();
+        assert!(names.iter().any(|name| name == "viewer_get_state"));
+        if cfg!(feature = "agent_skills") {
+            assert!(names.iter().any(|name| name == skills_toolbox::SKILL_READ));
+        }
+        for tool in re_catalog_tools::CatalogTool::available() {
+            assert!(names.iter().any(|name| name == tool.name()), "{tool:?}");
+        }
+        assert!(!toolbox.requires_approval("catalog_query_tables", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_connect", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_create_datasets", &Map::new()));
+
+        catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadOnly);
+        let names: Vec<String> = toolbox
+            .definitions()
+            .into_iter()
+            .map(|definition| definition.name)
+            .collect();
+        assert!(names.iter().any(|name| name == "catalog_list_entries"));
+        assert!(!names.iter().any(|name| name == "catalog_create_datasets"));
+    }
+
+    #[tokio::test]
+    async fn a_model_api_agent_started_read_only_gets_the_write_tools_once_allowed() {
+        let (calls_tx, _calls_rx) = viewer_toolbox::calls_channel();
+        let catalog_tools = re_catalog_tools::CatalogTools::new(
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
+            None,
+        );
+        catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadOnly);
+        let toolbox = model_api_toolbox(
+            viewer_toolbox::ViewerToolbox::new(calls_tx, re_async::UiWaker::noop()),
+            catalog_tools.clone(),
+        );
+        let offers_create = || {
+            toolbox
+                .definitions()
+                .iter()
+                .any(|definition| definition.name == "catalog_create_datasets")
+        };
+        assert!(!offers_create());
+
+        catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadWrite);
+        assert!(offers_create());
+        assert!(toolbox.requires_approval("catalog_create_datasets", &Map::new()));
     }
 }
 

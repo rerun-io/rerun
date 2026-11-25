@@ -43,11 +43,15 @@ server_url = _server.url()
 # `server_url` is the catalog URL — defaults to "rerun+http://127.0.0.1:51234"
 # when running `rerun server` locally.
 client = rr.catalog.CatalogClient(server_url)
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 # endregion: setup
 
 
 # region: ingest
 dataset = client.create_dataset("demo", exist_ok=True)
+# On Rerun Hub, register from object storage:
+# dataset.register(["s3://bucket/run-1.rrd"]).wait()
 dataset.register([Path("run-1.rrd").absolute().as_uri()]).wait()
 # endregion: ingest
 
@@ -61,6 +65,8 @@ with rr.RecordingStream(
         "episode", rr.AnyValues(success=True, task="pick_and_place")
     )
 
+# On Rerun Hub, register from object storage:
+# dataset.register(["s3://bucket/props.rrd"], layer_name="properties").wait()
 dataset.register(
     [Path("run-1-properties.rrd").absolute().as_uri()], layer_name="properties"
 ).wait()

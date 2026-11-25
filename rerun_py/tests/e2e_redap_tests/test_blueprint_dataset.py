@@ -52,7 +52,7 @@ def test_configure_blueprint_dataset(entry_factory: EntryFactory, resource_prefi
     second = ds.register_blueprint(rbl_uri2, set_default=False)
 
     assert len(bds.segment_ids()) == 2
-    assert set(ds.blueprints()) == {first, second}
+    assert ds.blueprints() == [first, second]
     assert ds.default_blueprint() == first
 
     ds.set_default_blueprint(second)

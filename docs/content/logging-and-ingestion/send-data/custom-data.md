@@ -6,25 +6,28 @@ description: Log your own data types with AnyValues and DynamicArchetype
 
 Rerun comes with many pre-built [Types](../../reference/types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
 
-For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity instance.
+For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity.
 For C++ a similar thing can be accomplished without the helpers.
 You find the documentation for these helpers here:
 
--   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues)
+-   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/rerun/#rerun.AnyValues)
 -   [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
 
 snippet: tutorials/any_values
 
 If your values should be grouped together and that grouping isn't referred to from many places that need to stay aligned we have a helper for this called `DynamicArchetype`, which adds some structural grouping to multiple values.
+`DynamicArchetype` stores the values under an [archetype](../data-model/archetypes.md) name of your choice.
+The `confidence` field of `MyArchetype` becomes the column `MyArchetype:confidence`.
+`AnyValues` stores no archetype name, so the same field becomes the column `confidence`.
 
 You find the documentation for these helpers here:
 
--   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DynamicArchetype)
+-   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/rerun/#rerun.DynamicArchetype)
 -   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html)
 
 snippet: tutorials/dynamic_archetype
 
-You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
+You can also make your own type loggable by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
 
 ## Logging custom data
 
@@ -51,27 +54,16 @@ Let's start with a simple example where you have your own point cloud class that
 @dataclass
 class LabeledPoints:
     points: np.ndarray
-    labels: List[str]
+    labels: list[str]
 ```
 
 If you implement `as_component_batches()` on `LabeledPoints`, you can pass it directly to `rr.log`. The simplest possible way is to use the matching Rerun archetype’s `as_component_batches` method.
 
-```python
-import rerun as rr  # pip install rerun-sdk
+snippet: tutorials/remap_to_archetype[labeled_points]
 
-@dataclass
-class LabeledPoints:
-    points: np.ndarray
-    labels: List[str]
+Then pass it to `rr.log` like any archetype:
 
-    def as_component_batches(self) -> list[rr.DescribedComponentBatch]:
-        return rr.Points3D(positions=self.points,
-                           labels=self.labels).as_component_batches()
-…
-# Somewhere deep in your code
-classified = my_points_classifier(…)  # type: LabeledPoints
-rr.log("points/classified", classified)
-```
+snippet: tutorials/remap_to_archetype[log]
 
 ## Custom archetypes and components
 
@@ -91,6 +83,8 @@ snippet: tutorials/custom_data
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1200w.png">
 </picture>
 
+The point clouds still show up in a 3D view, because `CustomPoints3D` also logs the components of the built-in `Points3D`.
+
 
 ## Creating/augmenting visualizations from custom data
 
@@ -99,5 +93,5 @@ For general information on component mapping see [component mappings](../../view
 for the common case of plotting see [plot any scalar](../../viewer/view-types/time-series.md#plot-any-scalar)
 
 > [!NOTE]
-> Complex mappings e.g. from scalars to colors are not yet possible, but will be supported in future versions
-> by exposing more functionality from [Lenses](../../query-and-transform/lenses.md) directly in the Viewer.
+> The Viewer does not support complex mappings, e.g. from scalars to colors.
+> To reshape data like this, apply [Lenses](../../query-and-transform/lenses.md) in the SDK before the data reaches the Viewer.

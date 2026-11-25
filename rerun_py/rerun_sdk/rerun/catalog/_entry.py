@@ -437,7 +437,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return blueprint
 
     def blueprints(self) -> list[RegisteredBlueprint]:
-        """Lists all blueprints currently registered with this dataset."""
+        """Lists all blueprints currently registered with this dataset, oldest registration first."""
 
         blueprint_dataset = self._internal.blueprint_dataset()
         if blueprint_dataset is None:
@@ -2301,7 +2301,7 @@ class TableEntry(Entry[TableEntryInternal]):
         return blueprint
 
     def blueprints(self) -> list[RegisteredBlueprint]:
-        """Lists all blueprints currently registered with this table."""
+        """Lists all blueprints currently registered with this table, oldest registration first."""
 
         return [
             _registered_blueprint_from_internal(self._internal, blueprint)

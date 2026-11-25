@@ -6,173 +6,23 @@
 # To add examples to the app itself, use the `channel` attribute in the example's readme's frontmatter.
 # See <https://github.com/rerun-io/rerun/tree/main/examples#adding-a-new-example> for more information.
 
-[categories.spatial-computing]
+[categories.experiment-loop]
 order = 1
-title = "Spatial computing and XR"
+title = "The experiment loop"
 prelude = """
-Examples related to spatial computing, augmented reality, virtual reality, and mixed reality.
+Collect, prepare, train, and evaluate: follow robot data through each step of the loop.
 """
+# Each example names the steps it covers with `steps` in its README frontmatter.
+# The website orders the examples by their first step, then by the order of `examples`.
+steps = ["collect", "prepare", "train", "evaluate"]
 examples = [
-  # display order, most interesting first
-  "arkit_scenes",
-  "limap",
-  "objectron",
-  "simplerecon",
-  "slahmr",
-  "vrs",
-  "widebaseline",
-  "arflow",
-]
-
-[categories.robotics]
-order = 2
-title = "Robotics"
-prelude = """
-Examples related to robotics, autonomous systems, and interfacing with sensor hardware.
-"""
-examples = [
-  # display order, most interesting first
-  "droid_dataset",
-  "droid_semantic_search",
-  "animated_urdf",
   "robot_data_preprocessing",
-  "rerun_export",
-  "ros_node",
-  "chess_robby_fischer",
-  "nuscenes_dataset",
-  "ros2_bridge",
-  "ros_bridge",
-  "kiss-icp",
-  "live_depth_sensor",
-  "lidar",
-  "rrt_star",
-  "rgbd",
-  "nv12",
-  "imu_signals",
-  "mcap",
-  "eye_control",
-  "ros_tf",
-  "any_scalar",
-]
-
-[categories.generative-vision]
-order = 3
-title = "Diffusion models, LLMs, and machine learning"
-prelude = """
-Examples using machine learning and generative AI methods such as diffusion and LLMs.
-"""
-examples = [
-  # display order, most interesting first
-  "controlnet",
-  "vista",
-  "mcc",
-  "lerobot",
-  "depth_compare",
-  "mini_nvs_solver",
-  "shape_pointe",
-  "llm_embedding_ner",
-  "tfrecord_loader",
-]
-
-[categories.video-image]
-order = 4
-title = "Image and video understanding"
-prelude = """
-Examples related to image and video processing, highlighting Rerun's 2D capabilities.
-"""
-examples = [
-  # display order, most interesting first
-  "detect_and_track_objects",
-  "face_tracking",
+  "droid_dataset",
+  "rrd_conversion",
+  "droid_semantic_search",
   "annotation_gradio",
-  "sam3d_body",
-  "prompt_depth_anything",
-  "sam2_depthanything",
-  "ocr",
-  "live_camera_edge_detection",
-  "segment_anything_model",
-  "tapir",
-  "ml_depth_pro",
-  "egoexo_forge",
-]
-
-[categories.3d-reconstruction] # NOLINT
-order = 5
-title = "3D reconstruction and modelling"
-prelude = """
-SLAM, photogrammetry and other 3D modelling examples.
-"""
-examples = [
-  # display order, most interesting first
-  "structure_from_motion",
-  "open_photogrammetry_format",
-  "kiss-icp",
-  "differentiable_blocks_world",
-  "mast3r_slam",
-  "stereo_vision_slam",
-  "glomap",
-  "hloc_glomap",
-  "instant_splat",
-  "raw_mesh",
-  "vistadream",
-]
-
-[categories.integrations]
-order = 6
-title = "Integrations"
-prelude = """
-Integration with 3rd party tools, formats, libraries, and APIs.
-"""
-examples = [
-  # display order, most interesting first
-  "ros_node",
-  "ros2_bridge",
-  "ros_bridge",
-  "notebook",
-  "notebook_neural_field_2d",
-  "lerobot_loader",
-  "vrs",
-  "revy",
-  "tfrecord_loader",
-  "eigen_opencv",
-  "dicom_mri",
-  "blueprint_stocks",
-  "arflow",
-  "air_traffic_data",
-  "mcap",
-  "ros_tf",
-]
-
-[categories.feature-showcase]
-order = 7
-title = "Feature showcase"
-prelude = """
-Showcase basic usage and specific features of Rerun.
-"""
-examples = [
-  # display order, most interesting first
-  "notebook",
-  "notebook_viewer",
-  "notebook_callbacks",
-  "clock",
-  "dna",
-  "graphs",
-  "camera_video_stream",
-  "log_file",
-  "lenses",
-  "openstreetmap_data",
-  "minimal",
-  "multiprocess_logging",
-  "multithreading",
-  "plots",
-  "state_timeline",
-  "live_scrolling_plot",
-  "raw_mesh",
-  "air_traffic_data",
-  "imu_signals",
-  "eye_control",
-  "webpage",
-  "any_scalar",
+  "rerun_export",
+  "lerobot",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included
@@ -214,4 +64,82 @@ examples = [
   # TODO(jleibs): We want to bring them back once opentelemtry is fixed
   "human_pose_tracking",
   "gesture_detection",
+
+  # Not part of the experiment loop.
+  "air_traffic_data",
+  "animated_urdf",
+  "any_scalar",
+  "arflow",
+  "arkit_scenes",
+  "blueprint_stocks",
+  "camera_video_stream",
+  "chess_robby_fischer",
+  "clock",
+  "controlnet",
+  "depth_compare",
+  "detect_and_track_objects",
+  "dicom_mri",
+  "differentiable_blocks_world",
+  "dna",
+  "egoexo_forge",
+  "eigen_opencv",
+  "eye_control",
+  "face_tracking",
+  "glomap",
+  "graphs",
+  "hloc_glomap",
+  "imu_signals",
+  "instant_splat",
+  "kiss-icp",
+  "lerobot_loader",
+  "lidar",
+  "limap",
+  "live_camera_edge_detection",
+  "live_depth_sensor",
+  "live_scrolling_plot",
+  "llm_embedding_ner",
+  "log_file",
+  "mast3r_slam",
+  "mcc",
+  "mini_nvs_solver",
+  "minimal",
+  "ml_depth_pro",
+  "multiprocess_logging",
+  "multithreading",
+  "notebook",
+  "notebook_callbacks",
+  "notebook_neural_field_2d",
+  "notebook_viewer",
+  "nuscenes_dataset",
+  "nv12",
+  "objectron",
+  "ocr",
+  "open_photogrammetry_format",
+  "openstreetmap_data",
+  "plots",
+  "prompt_depth_anything",
+  "raw_mesh",
+  "revy",
+  "rgbd",
+  "ros2_bridge",
+  "ros_bridge",
+  "ros_node",
+  "ros_tf",
+  "rrt_star",
+  "sam2_depthanything",
+  "sam3d_body",
+  "segment_anything_model",
+  "shape_pointe",
+  "simplerecon",
+  "slahmr",
+  "state_timeline",
+  "stereo_vision_slam",
+  "structure_from_motion",
+  "tapir",
+  "tfrecord_loader",
+  "vista",
+  "vistadream",
+  "vrs",
+  "webpage",
+  "widebaseline",
 ]

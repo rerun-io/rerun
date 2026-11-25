@@ -25,7 +25,7 @@ Log disjoint parts as separate polygon instances.
 
 ## API reference links
  * 🌊 [C++ API docs for `GeoPolygons`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoPolygons.html)
- * 🐍 [Python API docs for `GeoPolygons`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GeoPolygons)
+ * 🐍 [Python API docs for `GeoPolygons`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.GeoPolygons)
  * 🦀 [Rust API docs for `GeoPolygons`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoPolygons.html)
 
 ## Example

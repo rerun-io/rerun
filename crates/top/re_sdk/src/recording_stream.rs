@@ -690,10 +690,7 @@ impl RecordingStreamBuilder {
             application_id,
             recording_id.unwrap_or_else(RecordingId::random),
         );
-        let store_source = store_source.unwrap_or_else(|| StoreSource::RustSdk {
-            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-        });
+        let store_source = store_source.unwrap_or(StoreSource::RustSdk);
 
         let store_info = StoreInfo::new(store_id, store_source);
 

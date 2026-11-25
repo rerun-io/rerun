@@ -374,13 +374,13 @@ impl VideoStreamCache {
                     )
                 } else {
                     match &add.direct_lineage {
-                        ChunkDirectLineageReport::SplitFrom(original_chunk, siblings) => {
+                        ChunkDirectLineageReport::SplitFrom { parent, siblings } => {
                             handle_split_chunk_addition(
                                 timeline_name,
                                 &mut entry.known_chunk_ranges,
                                 video_data,
                                 chunk,
-                                original_chunk,
+                                parent,
                                 siblings,
                                 key.sample_component,
                             )

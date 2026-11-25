@@ -78,6 +78,15 @@ pub(crate) mod oauth {
         *CACHE.blocking_write() = None;
     }
 
+    /// Clear the credentials cache from async code, so the next token comes from disk.
+    ///
+    /// Call after storing new credentials: until the cached token expires, it would be used
+    /// instead.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) async fn clear_cache_async() {
+        *CACHE.write().await = None;
+    }
+
     /// Provider which uses `OAuth` credentials stored on the user's machine.
     #[derive(Debug, Default)]
     pub struct CliCredentialsProvider {

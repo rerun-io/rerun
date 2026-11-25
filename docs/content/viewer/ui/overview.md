@@ -5,18 +5,18 @@ description: The panels of the Rerun Viewer and where to find each piece of func
 ---
 The following sections give an overview of the basic UI concepts and where to find which functionality.
 
-Generally, the Viewer tries to be as self-explaining as possible - most items in the UI show a tooltip upon hovering which should give additional information.
-If you are missing a piece of information, don't hesitate to [file an issue](https://github.com/rerun-io/rerun/issues/new/choose)!
+Most items in the UI show a tooltip with more information when you hover them.
+If information is missing, [file an issue](https://github.com/rerun-io/rerun/issues/new/choose).
 
 Overview
 --------------------------
 ![screenshot of the Viewer with different parts annotated](https://static.rerun.io/a5e708e4bbd2c0b182f7f9103ab42c85e55f8982_viewer-overview.png)
 
 ### [Blueprint](blueprint-panel.md)
-The Blueprint view is where you see and edit the Blueprint for the whole viewer, i.e. what is shown in the Viewer (and how it is shown).
+The blueprint panel is where you see and edit the blueprint for the whole Viewer, i.e. what is shown in the Viewer (and how it is shown).
 
 ### [Selection](selection.md)
-The Selection view lets you see details and edit configurations of the current selection(s).
+The selection panel lets you see details and edit configurations of the current selection(s).
 
 ### [Timeline](timeline.md)
 The timeline panel gives you controls over what point in time you're looking at on which [timeline](../../logging-and-ingestion/data-model/timelines.md) for the rest of the viewer.
@@ -32,7 +32,7 @@ Use the buttons at the top right corner to hide/show parts of the viewer.
 
 Command Palette
 ----------------------------
-The command palette is a powerful tool to reach arbitrary actions from anywhere via a simple text search.
+The command palette lets you run any action from anywhere by searching for it by name.
 You reach it with `cmd/ctrl + K` or via the menu.
 
 <picture>
@@ -43,7 +43,8 @@ You reach it with `cmd/ctrl + K` or via the menu.
 
 Once it's open just start typing to filter and press `Enter` to execute the selected action or cancel with `Esc`.
 
-[TODO(#1132)](https://github.com/rerun-io/rerun/issues/1132): The command palette is too limited right now.
+The command palette does not yet cover every UI action ([#1132](https://github.com/rerun-io/rerun/issues/1132)).
+<!-- TODO(#1132): update this when the command palette covers all UI actions. -->
 
 Help icons
 ----------

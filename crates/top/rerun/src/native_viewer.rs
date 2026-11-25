@@ -14,15 +14,12 @@ pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> efr
         return Ok(());
     }
 
-    let store_source = re_log_msg::StoreSource::RustSdk {
-        rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-        llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-    };
-
     let runtime = tokio::runtime::Runtime::new() // relint: allow(tokio_runtime): the blocking viewer entrypoint owns this runtime
         .map_err(|err| eframe::Error::AppCreation(Box::new(err)))?;
 
     let startup_options = re_viewer::StartupOptions::default();
+
+    let store_source = re_log_msg::StoreSource::RustSdk;
 
     let (tx, rx) = re_log_channel::log_channel(log_source);
     for log_msg in msgs {

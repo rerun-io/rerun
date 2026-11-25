@@ -9,9 +9,6 @@ It is useful for inspecting GPS tracks, routes, and the geographic context of an
 
 See the [`MapView` reference](../../reference/types/views/map_view.md) for properties and examples.
 
-The [map view](../../reference/types/views/map_view.md) shows geospatial data (GPS coordinates) on top of a background map.
-This guide provides a short overview on how to use it.
-
 ## Coordinate system
 
 The map view uses the [EPSG:3857](https://epsg.io/3857) [spherical mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection) commonly used by web services such as [OpenStreetMap](https://www.openstreetmap.org/).
@@ -30,19 +27,18 @@ rr.log("eiffel_tower", rr.GeoPoints(lat_lon=[48.858222, 2.2945]))
 Both the latitude and longitude must be provided in degrees, with positive values corresponding to the North, resp. East directions.
 
 Note that Rerun always expects latitudes first and longitudes second.
-As there is [no accepted ordering standard](https://stackoverflow.com/questions/7309121/preferred-order-of-writing-latitude-longitude-tuples-in-gis-services), our APIs strive to make this ordering choice as explicit as possible.
-In this case, the `lat_lon` argument is keyword-only and must thus be explicitly named as a reminder of this order.
+As there is [no accepted ordering standard](https://stackoverflow.com/questions/7309121/preferred-order-of-writing-latitude-longitude-tuples-in-gis-services), the `lat_lon` argument is keyword-only, so its name states the order.
 
 
 ## Types of geometries
 
-Rerun currently supports two types of geometries:
+The map view supports two types of geometries:
 
 - [`GeoPoints`](../../reference/types/archetypes/geo_points.md): batch of individual points, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 - [`GeoLineStrings`](../../reference/types/archetypes/geo_line_strings.md): batch of line strings, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 
 > [!NOTE]
-> Polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
+> Polygons are not supported (see [#8066](https://github.com/rerun-io/rerun/issues/8066)).
 
 As in other views, radii may be expressed either as UI points (negative values) or scene units (positive values).
 For the latter case, the map view uses meters as scene units.
@@ -62,18 +58,7 @@ An access token may be freely obtained by creating a Mapbox account.
 
 Like other views, the map view can be configured using the [blueprint API](../blueprints.md#3-programmatically):
 
-```python
-import rerun.blueprint as rrb
-
-blueprint = rrb.Blueprint(
-    rrb.MapView(
-        origin="/robot/position",
-        name="map view",
-        zoom=16.0,
-        background=rrb.MapProvider.OpenStreetMap,
-    ),
-)
-```
+snippet: views/map
 
 Check the [map view](../../reference/types/views/map_view.md) reference for details.
 

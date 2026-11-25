@@ -7,25 +7,19 @@ description: Send tables as Arrow record batches and explore them in the Viewer
 > [!NOTE]
 > The `send_table` API is currently experimental and may change in future releases.
 
-Rerun now supports sending tabular data to the Rerun Viewer! This feature allows you to visualize and interact with dataframes (encoded as Arrow record batches) directly in the Rerun Viewer environment.
+This page shows how to send tabular data (dataframes encoded as Arrow record batches) to the Rerun Viewer, where you can view and interact with it.
 These tables are listed in the Sources panel, next to your recordings.
 To persist a table on a catalog server instead, see [Storing query results in catalog tables](../../query-and-transform/catalog/catalog-tables.md).
 To log a table as part of a recording, use [`rr.send_dataframe`](send-dataframe.md).
 
 ## Overview
 
-The `send_table` API provides a straightforward way to send tabular data to the Rerun Viewer. This is particularly useful for:
+The `send_table` API sends tabular data to the Rerun Viewer.
+This is useful for:
 
 - Debugging data processing pipelines
 - Presenting structured data in a readable format
 - Sorting and filtering tables interactively
-
-## References
-
-For complete examples of using `send_table`, please refer to:
-
-- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/send_table.ipynb)
-- [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)
 
 ## Prerequisites
 
@@ -44,44 +38,17 @@ pip install rerun-sdk[notebook] pyarrow pandas numpy
 
 ### Connecting to the Viewer
 
-```python
-from rerun.experimental import ViewerClient
-
-# Connect to a running Rerun Viewer
-client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
-```
+snippet: howto/send_table[connect]
 
 ### Sending a simple table
 
-```python
-import pyarrow as pa
-
-# Create a record batch from a Python dictionary
-record_batch = pa.RecordBatch.from_pydict({
-    "id": [1, 2, 3],
-    "url": ["https://www.rerun.io", "https://github.com/rerun-io/rerun", "https://crates.io/crates/rerun"],
-})
-
-# Send the table to the viewer with an identifier
-client.send_table("My Table", record_batch)
-```
+snippet: howto/send_table[simple_table]
 
 ### Using with Pandas dataframes
 
 You can also send Pandas dataframes by converting them to a record batch:
 
-```python
-import pandas as pd
-import numpy as np
-import pyarrow as pa
-
-# Create a sample DataFrame
-dates = pd.date_range("20230101", periods=6)
-df = pd.DataFrame(np.random.default_rng(0).standard_normal((6, 4)), index=dates, columns=list("ABCD"))
-
-# Convert to record batch and send to the viewer.
-client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
-```
+snippet: howto/send_table[pandas]
 
 ## Using in Jupyter notebooks
 
@@ -108,27 +75,17 @@ viewer.send_table(
 )
 ```
 
-You can also send tables to a native Viewer instead of the notebook widget:
-
-```python
-from rerun.experimental import ViewerClient
-
-# Connect to a running Rerun Viewer
-client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
-```
-
 ## Current limitations
 
 As this is an experimental API, there are several limitations to be aware of:
 
 - Multiple record batches (or a DataFusion DataFrame) can be passed, but they are merged into a single record batch before sending
-- Tables can't be saved/loaded from files yet (unlike `.rrd` files for recordings)
-- Integration with the rest of the Rerun API is still in progress
-- Rust and C++ support will be added after the API stabilizes
-- The API may undergo significant changes as we iterate based on user feedback
+- Tables can't be saved to or loaded from files (unlike `.rrd` files for recordings)
+- Only the Python SDK can send tables; the Rust and C++ SDKs cannot
 
-## What's next
+## References
 
-The `send_table` API is still evolving and we plan to tackle all of the limitations mentioned above.
+For complete examples of using `send_table`, please refer to:
 
-We welcome your [feedback and suggestions](https://rerun.io/feedback) as we continue to improve this feature!
+- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/send_table.ipynb)
+- [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)

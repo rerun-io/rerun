@@ -1,0 +1,449 @@
+---
+source: crates/store_app/re_catalog_tools/src/tool.rs
+expression: definitions
+---
+[
+  {
+    "name": "catalog_list_servers",
+    "description": "List the catalog servers the user has added, in the Rerun viewer or with `rerun servers add`, and the one the catalog tools act on now. Pass one to `catalog_connect`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_connect",
+    "description": "Connect to a Rerun catalog server, replacing any previous catalog connection. The other catalog tools act on this catalog. Returns the server's version.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "URL of the catalog server, e.g. `rerun+http://127.0.0.1:51234`. `http(s)://` works too."
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_login",
+    "description": "Log the user in on this machine, for a catalog server that needs a login. The first call returns a link: show it to the user and ask them to open it. Call again to wait until they are done, then call `catalog_connect` again. Returns `logged_in` at once if the user is already logged in.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_list_entries",
+    "description": "List the datasets and tables in the catalog, sorted by name, a page at a time, with their ids and names, and the catalog they are on.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "dataset",
+            "table",
+            null
+          ],
+          "description": "Only list entries of this kind. Lists datasets and tables when left out."
+        },
+        "offset": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many entries to skip.",
+          "default": 0
+        },
+        "limit": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many entries to return: 100 by default, at most 1000.",
+          "default": 100
+        }
+      }
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_get_dataset_info",
+    "description": "Summarize a dataset without reading its data: number of segments, total size, layers, timelines with their time ranges, number of entities and component columns, and the segment property columns.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        }
+      },
+      "required": [
+        "dataset"
+      ]
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_get_dataset_schema",
+    "description": "The entities of a dataset and their archetypes, merged over all its segments, 200 at a time (page on with `offset`). Pass `entity_path` for the components of one entity, with their Arrow datatypes. Entities under `/__properties` hold the static properties logged with each recording.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "entity_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "One entity to describe in full, e.g. `/camera/image`.",
+          "default": null
+        },
+        "offset": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "Without `entity_path`: how many entities to skip, to list those past the first 200.",
+          "default": 0
+        }
+      },
+      "required": [
+        "dataset"
+      ]
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_list_segments",
+    "description": "List the ids of a dataset's segments (its recordings), sorted, a page at a time.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "offset": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many segments to skip.",
+          "default": 0
+        },
+        "limit": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many segment ids to return: 100 by default, at most 1000.",
+          "default": 100
+        }
+      },
+      "required": [
+        "dataset"
+      ]
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_get_segment_properties",
+    "description": "The properties stored on the catalog for one segment, as `property:<key>:<component>` columns. Unlike the `/__properties` entities, these can change after the recording was registered.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "segment_id": {
+          "type": "string",
+          "description": "The segment's id, from `catalog_list_segments`."
+        }
+      },
+      "required": [
+        "dataset",
+        "segment_id"
+      ]
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_query_dataset",
+    "description": "Read the logged data of one dataset's recordings as a table: one row per index value per segment, with a `rerun_segment_id` column, the index column, and one column per component of the chosen entities. Narrow it with `segments`, `entity_paths`, and `sql`, which runs over that table. Rows are arrays in `columns` order; long values (images, point clouds) are cut short or left out. For the catalog's table entries, use `catalog_query_tables`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "index": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The timeline to index rows by, from `catalog_get_dataset_info`. May be left out when the\ndataset has a single timeline. A dataset without timelines returns its static data.",
+          "default": null
+        },
+        "segments": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The segments to query, from `catalog_list_segments`. All of them when left out.",
+          "default": null
+        },
+        "entity_paths": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The entities whose components become columns, from `catalog_get_dataset_schema`. All\nentities when left out.",
+          "default": null
+        },
+        "sql": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A DataFusion SQL query over the result, as a table named `dataset`, e.g.\n`SELECT rerun_segment_id, count(*) FROM dataset GROUP BY rerun_segment_id`.\nDefaults to `SELECT * FROM dataset`.",
+          "default": null
+        },
+        "max_rows": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The most rows to return: 50 by default, at most 1000.",
+          "default": 50
+        }
+      },
+      "required": [
+        "dataset"
+      ]
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_query_tables",
+    "description": "Run a read-only DataFusion SQL query over the catalog's table entries, by their names from `catalog_list_entries`, e.g. `__entries`, which lists every entry. Quote names with capitals or dots. Datasets are not table entries: read their data with `catalog_query_dataset`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sql": {
+          "type": "string",
+          "description": "A DataFusion SQL query over the catalog's table entries, by their names from\n`catalog_list_entries`, e.g. `SELECT * FROM my_table WHERE score > 0.5`."
+        },
+        "max_rows": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The most rows to return: 50 by default, at most 1000.",
+          "default": 50
+        }
+      },
+      "required": [
+        "sql"
+      ]
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_create_datasets",
+    "description": "Create empty datasets in the catalog. Put all of them in one call, so the user approves them at once. Checks every name first, then creates them in order, and stops at the first the server refuses. Fill them with `catalog_upload_recordings` or `catalog_register_recordings`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The new datasets' names, created in order, at most 1000."
+        }
+      },
+      "required": [
+        "names"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_rename_entries",
+    "description": "Rename datasets and tables in the catalog. Put all renames in one call, so the user approves them at once. Checks them all first, then renames in order, and stops at the first the server refuses.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "renames": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "description": "The dataset's or table's name or id, from `catalog_list_entries`.",
+                "type": "string"
+              },
+              "new_name": {
+                "description": "The name to give it.",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "entry",
+              "new_name"
+            ]
+          },
+          "description": "What to rename, done in order, at most 1000."
+        }
+      },
+      "required": [
+        "renames"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_upload_recordings",
+    "description": "Upload `.rrd` files on this machine into a dataset, and wait for the server to register their recordings as segments. Put all files in one call, so the user approves them at once. Checks every file first, then uploads them in order, and stops at the first that fails. Returns the segment ids, with `skip` also those already there. Large files take a while to upload.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Absolute paths of `.rrd` files on this machine, uploaded in order, at most 1000. Each\nrecording in them becomes a segment, named by its recording id."
+        },
+        "layer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The layer to register the recordings as, e.g. `labels`. Left out, the base layer.",
+          "default": null
+        },
+        "on_duplicate": {
+          "type": "string",
+          "enum": [
+            "error",
+            "skip"
+          ],
+          "description": "What to do when a segment already has this layer: `error` (the default), or `skip` to\nleave it as it is."
+        }
+      },
+      "required": [
+        "dataset",
+        "paths"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_register_recordings",
+    "description": "Register `.rrd` files that the catalog server can read, e.g. on S3, into a dataset, without copying them. Waits for the server to register their recordings as segments, and returns the segment ids, with `skip` also those already there. For files on this machine, use `catalog_upload_recordings`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "URLs of `.rrd` files the server can read, e.g. `s3://bucket/run.rrd`, at most 1000. Each\nrecording in them becomes a segment, named by its recording id."
+        },
+        "layer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The layer to register the recordings as, e.g. `labels`. Left out, the base layer.",
+          "default": null
+        },
+        "on_duplicate": {
+          "type": "string",
+          "enum": [
+            "error",
+            "skip"
+          ],
+          "description": "What to do when a segment already has this layer: `error` (the default), or `skip` to\nleave it as it is."
+        }
+      },
+      "required": [
+        "dataset",
+        "urls"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_register_table_blueprint",
+    "description": "Register an `.rbl` table blueprint that the catalog server can read, e.g. on S3, for a dataset's segment table, under a new name. With `set_default`, it also becomes the table's default for everyone who opens the dataset; the previous default stays registered. Never replaces a registered blueprint.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "url": {
+          "type": "string",
+          "description": "URL of an `.rbl` table blueprint the server can read, e.g. `s3://bucket/segments.rbl`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name to register the blueprint under. It must be new in this dataset."
+        },
+        "set_default": {
+          "type": "boolean",
+          "description": "Make it the default blueprint of the dataset's segment table, so it opens for everyone\nwho opens the dataset. `false` (the default) only registers it.",
+          "default": false
+        }
+      },
+      "required": [
+        "dataset",
+        "url",
+        "name"
+      ]
+    },
+    "effect": "NonDestructive"
+  }
+]

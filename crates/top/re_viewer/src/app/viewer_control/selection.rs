@@ -86,7 +86,7 @@ fn uuid(uuid: uuid::Uuid) -> Uuid {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::{EntityPath, StoreId, StoreKind};
+    use re_log_types::EntityPath;
     use re_viewer_context::DataResultInteractionAddress;
 
     use super::*;
@@ -114,6 +114,7 @@ mod tests {
     #[cfg(feature = "testing")]
     #[tokio::test]
     async fn reports_the_selection_in_order_with_the_active_recording() {
+        use re_log_types::{StoreId, StoreKind};
         use re_viewer_context::{ItemCollection, Route, SystemCommand, SystemCommandSender as _};
 
         let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());

@@ -16,7 +16,7 @@ FixedSizeList(2 x non-null Float64)
 
 ## API reference links
  * 🌊 [C++ API docs for `LatLon`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LatLon.html)
- * 🐍 [Python API docs for `LatLon`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.LatLon)
+ * 🐍 [Python API docs for `LatLon`](https://ref.rerun.io/docs/python/stable/components#rerun.components.LatLon)
  * 🦀 [Rust API docs for `LatLon`](https://docs.rs/rerun/latest/rerun/components/struct.LatLon.html)
 
 

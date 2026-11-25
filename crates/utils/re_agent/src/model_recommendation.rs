@@ -1,31 +1,5 @@
 use agent_client_protocol_schema::v1::SessionConfigSelectOption;
-
-/// Defines a preferred model through multiple tokens that are expected to appear in the model name.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ModelPreference {
-    tokens: Vec<String>,
-}
-
-impl ModelPreference {
-    /// Creates a preference from explicit tokens. An empty preference matches nothing.
-    pub fn new(tokens: &[&str]) -> Self {
-        Self {
-            tokens: tokens.iter().map(|token| (*token).to_owned()).collect(),
-        }
-    }
-
-    /// All tokens must occur in this one ID or name; partial words do not match.
-    /// Tokens are separated by non-ASCII-alphanumeric characters.
-    pub fn matches(&self, model: &str) -> bool {
-        !self.tokens.is_empty()
-            && self.tokens.iter().all(|word| {
-                !word.is_empty()
-                    && model
-                        .split(|c: char| !c.is_ascii_alphanumeric())
-                        .any(|token| token.eq_ignore_ascii_case(word))
-            })
-    }
-}
+use re_agent_tools::ModelPreference;
 
 /// The best offered model according to the ordered preferences.
 ///
@@ -153,7 +127,7 @@ mod tests {
         assert_eq!(
             preferred_model(
                 &[&gemini, &terra, &sonnet],
-                &crate::DEFAULT_MODEL_PREFERENCES
+                &crate::ModelCategory::Fast.preferences()
             )
             .map(|model| &model.value),
             Some(&sonnet.value)
@@ -162,16 +136,25 @@ mod tests {
         let gemini_pro = SessionConfigSelectOption::new("gemini-2.5-pro", "Gemini 2.5 Pro");
         let gpt_mini = SessionConfigSelectOption::new("gpt-4o-mini", "GPT-4o Mini");
         assert_eq!(
-            preferred_model(&[&glm, &gemini], &crate::DEFAULT_MODEL_PREFERENCES)
+            preferred_model(&[&glm, &gemini], &crate::ModelCategory::Fast.preferences())
                 .map(|model| &model.value),
             Some(&gemini.value)
         );
         assert_eq!(
-            preferred_model(&[&gemini_pro, &gpt_mini], &crate::DEFAULT_MODEL_PREFERENCES)
-                .map(|model| &model.value),
+            preferred_model(
+                &[&gemini_pro, &gpt_mini],
+                &crate::ModelCategory::Fast.preferences()
+            )
+            .map(|model| &model.value),
             Some(&gpt_mini.value)
         );
-        assert!(preferred_model(&[&glm, &gemini_pro], &crate::DEFAULT_MODEL_PREFERENCES).is_none());
+        assert!(
+            preferred_model(
+                &[&glm, &gemini_pro],
+                &crate::ModelCategory::Fast.preferences()
+            )
+            .is_none()
+        );
     }
 
     /// Versions compare numerically while same-version variants retain their offered order.

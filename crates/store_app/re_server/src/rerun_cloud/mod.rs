@@ -771,6 +771,8 @@ impl RerunCloudService for RerunCloudHandler {
                 capabilities: Some(re_protos::cloud::v1alpha1::ServerCapabilities {
                     capabilities: crate::capability_names(),
                 }),
+                client_deprecation: None,
+                protocol_level: crate::PROTOCOL_LEVEL.as_u32(),
             },
         ))
     }

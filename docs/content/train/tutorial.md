@@ -8,6 +8,8 @@ This page walks through streaming Rerun recordings directly into a PyTorch `Data
 For an explanation of the dataloader API itself — windowed action chunks, GOP-aware video decoding, DDP partitioning — see [Train PyTorch models with Rerun](dataloader.md).
 
 > [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../hub.md) ([how to switch](../hub.md#run-the-examples-on-hub)).
+>
 > The `rerun.experimental.dataloader` module is provisional and will change between releases.
 
 ## Run the example

@@ -31,7 +31,7 @@ Use this to control pan & zoom of the view.
 It is cleared when the dimensions shown as width or height change, or when the view fit changes.
 
 ## API reference links
- * 🐍 [Python API docs for `TensorView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TensorView)
+ * 🐍 [Python API docs for `TensorView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.TensorView)
 
 ## Example
 

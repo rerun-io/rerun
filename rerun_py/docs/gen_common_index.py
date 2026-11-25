@@ -59,9 +59,11 @@ DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
     "rerun.experimental.spans": ("Experimental", "Spans"),
     "rerun.server": ("Server",),
     "rerun.urdf": ("URDF Support",),
+    "rerun.mjcf": ("MJCF Support",),
     "rerun.notebook": ("Notebook",),
     "rerun.auth": ("Authentication",),
     "rerun.utilities": ("Utilities",),
+    "rerun.utilities.datafusion": ("Utilities", "DataFusion"),
 }
 
 # Subpackages/modules under `rerun.` that deliberately do NOT get a Track A
@@ -86,14 +88,9 @@ EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
     # `Visualizer`/`VisualizableArchetype` which are implementation contracts,
     # not user-facing API.
     "rerun.blueprint.visualizers",
-    # Namespace-only packages with empty `__init__.py`; users import
-    # deeper symbols (e.g. `from rerun.utilities.datafusion.collect import ...`).
-    # No aggregated surface to document at the namespace level.
-    "rerun.utilities.datafusion",
+    # Namespace-only package; its public symbols are re-exported from
+    # `rerun.utilities.datafusion` and documented there.
     "rerun.utilities.datafusion.functions",
-    # Sampling-manifest internals; its only public symbol (`Manifest`) is
-    # re-exported flat into `rerun.experimental.dataloader` and documented there.
-    "rerun.experimental.dataloader.manifest",
     # Column-decoder internals
     "rerun.experimental.dataloader.decoders",
     # Deprecated aliases for `rerun.encodings` / `rerun.blueprint.encodings`, which

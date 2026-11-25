@@ -125,6 +125,13 @@ impl ChunkRequests {
             .sum()
     }
 
+    /// The root chunks of all in-progress downloads.
+    pub fn pending_root_chunk_ids(&self) -> impl Iterator<Item = ChunkId> + '_ {
+        self.requests
+            .iter()
+            .flat_map(|b| b.info.root_chunk_ids.iter().copied())
+    }
+
     /// Average of bytes/second over recent history.
     pub fn bandwidth(&self) -> Option<f64> {
         self.download_size_history.bandwidth().map(|b| b.0)

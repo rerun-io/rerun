@@ -3,7 +3,7 @@ title: Roadmap
 order: 0
 description: Planned work on Rerun, and features that are still missing
 ---
-Rerun is building a data management and visualization engine for multimodal data that changes over time.
+Rerun is building a data management and visualization engine for multimodal data that changes over time. <!-- TODO(RR-6462): update this Rerun description to the new branding -->
 We aim to make it fast, simple to use, and easy to adapt and integrate into your existing workflows.
 
 Open an issue or pull request on [GitHub](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/Gcm8BbTaAj) to let the community know what you'd like to see.
@@ -15,7 +15,7 @@ This page gives a high-level overview of ongoing and planned work.
 - Performance improvements
 - UX & DX improvements
 - Supporting more data types
-- Rerun Hub features (commercial)
+- [Rerun Hub](../hub.md) features (commercial) <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
     - Get in touch on hi@rerun.io if you're interested in becoming a design partner
 
 ## Roadmap of major feature areas
@@ -30,7 +30,7 @@ This page gives a high-level overview of ongoing and planned work.
 ### Medium term
 - Better blueprint management, such as several blueprints per dataset
 - A composable Viewer toolkit, for building your own viewer from Rerun's UI building blocks
-- More mature data loaders, and more ready-made conversions of open robotics datasets
+- A more mature training dataloader, and more ready-made conversions of open robotics datasets
 - Richer filtering in the dataframe view (table views already have [filters](../viewer/blueprints/configure-table-blueprints.md#filtering-rows))
 - Dataset views that give zero-copy modified views into large datasets
 
@@ -59,8 +59,6 @@ This section lists features that users often ask for, with the best workaround w
 - User widgets (buttons, sliders) and callbacks into Python from the native Viewer. Workaround: use [callbacks](../viewer/extend/callbacks.md) in the web Viewer, in notebooks, or from Rust, or [extend the Viewer in Rust](../viewer/extend/extend-ui.md).
     - We are working on adding web views to the Viewer.
     - [#2691](https://github.com/rerun-io/rerun/issues/2691), [#3087](https://github.com/rerun-io/rerun/issues/3087)
-- Reading the current selection from Python: `rerun.experimental.ViewerClient.get_state()` has no selection. Workaround: selection events in the web Viewer and notebooks.
-    - [#12990](https://github.com/rerun-io/rerun/issues/12990)
 - Locking the 3D camera against user input, or limiting zoom and orbit.
     - [#2497](https://github.com/rerun-io/rerun/issues/2497)
 - Linking or highlighting different entities across views. Only the same entity path and instance link today.
@@ -139,7 +137,7 @@ This section lists features that users often ask for, with the best workaround w
 - Per-client sessions in the `serve_grpc` proxy: every connected Viewer gets the same stream. Workaround: one recording and port per client.
 - Watching a folder for new files, and registering data from object stores (S3, GCS) in the open-source `rerun server`. It only registers local files, either at startup with `--dataset` or later with `register`.
 - Live streams larger than RAM. Data streamed from the SDK to the Viewer is kept in memory, and the oldest data is dropped at the memory limit. Workaround: save to an `.rrd` file and open the file, which is read on demand (see [Limit memory usage](../viewer/performance/limit-ram.md)).
-- More memory in the web Viewer. It runs as 32-bit Wasm and is limited to about 2 GiB in practice. Workaround: use the native Viewer. Large local `.rrd` files are read on demand through the Viewer catalog (**Load files via Viewer catalog**, on by default), but `.rrd` files opened over HTTP are streamed into memory.
+- More memory in the web Viewer. It runs as 32-bit Wasm, which caps memory at 4 GiB, and browsers often allow less; by default the Viewer limits itself to 2.5 GB. Workaround: use the native Viewer. Large local `.rrd` files are read on demand through the Viewer catalog (**Load files via Viewer catalog**, on by default), but `.rrd` files opened over HTTP are streamed into memory.
 
 ### Integrations
 - A first-party Bevy integration. [Revy](https://github.com/rerun-io/revy) is a proof of concept.
