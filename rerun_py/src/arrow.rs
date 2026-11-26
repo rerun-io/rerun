@@ -3,8 +3,7 @@
 use std::borrow::Cow;
 
 use arrow::array::{
-    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
-    MutableArrayData as ArrowMutableArrayData, make_array,
+    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, make_array,
 };
 use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
 use arrow::datatypes::Field as ArrowField;
@@ -19,6 +18,7 @@ use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::{
     ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath, Timeline,
 };
+use re_span::Span;
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
@@ -71,10 +71,7 @@ fn own_if_small(array: ArrowArrayRef) -> ArrowArrayRef {
     if MAX_COPIED_ARRAY_BYTES < array.get_buffer_memory_size() {
         return array;
     }
-    let data = array.to_data();
-    let mut copy = ArrowMutableArrayData::new(vec![&data], false, data.len());
-    copy.extend(0, 0, data.len());
-    make_array(copy.freeze())
+    re_arrow_util::deep_slice_array_erased(&array, Span::from_start_len(0, array.len()))
 }
 
 /// Build a [`PendingRow`] given a '**kwargs'-style dictionary of component arrays.
