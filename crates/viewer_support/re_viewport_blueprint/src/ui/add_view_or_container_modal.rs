@@ -1,11 +1,21 @@
 //! Modal for adding a new view of container to an existing target container.
 
-use re_ui::UiExt as _;
+use egui::AtomExt as _;
+use re_ui::{ButtonExt as _, UiExt as _};
 use re_viewer_context::{
     ContainerId, ViewerContext, blueprint_id_to_tile_id, icon_for_container_kind,
 };
 
 use crate::{ViewBlueprint, ViewportBlueprint};
+
+const NUM_COLUMNS: usize = 4;
+const CARD_HEIGHT: f32 = 76.0;
+const CARD_SPACING: f32 = 8.0;
+const ICON_SIZE: egui::Vec2 = egui::Vec2::splat(20.0);
+const ICON_TITLE_GAP: f32 = 10.0;
+
+/// Text looks smaller than its bounding box, so centered content appears to sit too high.
+const OPTICAL_TOP_PADDING: i8 = 2;
 
 #[derive(Default)]
 pub struct AddViewOrContainerModal {
@@ -45,183 +55,116 @@ fn modal_ui(
     target_container: Option<ContainerId>,
 ) {
     let container_data = [
-        (
-            "Tabs",
-            "Create a new tabbed container.",
-            egui_tiles::ContainerKind::Tabs,
-        ),
-        (
-            "Horizontal",
-            "Create a new horizontal container.",
-            egui_tiles::ContainerKind::Horizontal,
-        ),
-        (
-            "Vertical",
-            "Create a new vertical container.",
-            egui_tiles::ContainerKind::Vertical,
-        ),
-        (
-            "Grid",
-            "Create a new grid container.",
-            egui_tiles::ContainerKind::Grid,
-        ),
+        ("Tabs", egui_tiles::ContainerKind::Tabs),
+        ("Horizontal", egui_tiles::ContainerKind::Horizontal),
+        ("Vertical", egui_tiles::ContainerKind::Vertical),
+        ("Grid", egui_tiles::ContainerKind::Grid),
     ];
 
-    for (title, subtitle, kind) in container_data {
-        let target_container_kind = target_container
-            .and_then(|container_id| {
-                viewport
-                    .tree
-                    .tiles
-                    .get(blueprint_id_to_tile_id(&container_id))
-            })
-            .and_then(|tile| tile.container_kind());
+    let target_container_kind = target_container
+        .and_then(|container_id| {
+            viewport
+                .tree
+                .tiles
+                .get(blueprint_id_to_tile_id(&container_id))
+        })
+        .and_then(|tile| tile.container_kind());
 
+    card_grid_ui(ui, "containers", container_data, |ui, (title, kind)| {
         // We disallow creating "linear" containers (horizontal/vertical) inside containers of the same kind, because
         // it's not useful and is automatically simplified away.
-        let disabled = Some(kind) == target_container_kind
-            && matches!(
-                kind,
-                egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical
-            );
+        let enabled = match kind {
+            egui_tiles::ContainerKind::Tabs | egui_tiles::ContainerKind::Grid => true,
+            egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {
+                Some(kind) != target_container_kind
+            }
+        };
 
-        let resp = ui
-            .add_enabled_ui(!disabled, |ui| {
-                row_ui(ui, icon_for_container_kind(&kind), title, subtitle)
-            })
-            .inner
+        let response = card_ui(ui, icon_for_container_kind(&kind), title, enabled)
             .on_disabled_hover_text(format!(
                 "Nested {title} containers in containers of the same type are disallowed and automatically simplified \
                 away as they are not useful."
             ));
 
-        if resp.clicked() {
+        if response.clicked() {
             viewport.add_container(kind, target_container);
             viewport.mark_user_interaction(ctx);
             ui.close();
         }
-    }
+    });
 
     ui.full_span_separator();
 
-    let add_view_row = |ui: &mut egui::Ui, view_class| {
-        let class = ctx.view_class_registry().get_class_or_log_error(view_class);
-        let icon = class.icon();
-        let title = class.display_name();
-        let subtitle = format!("Create a new {title} view.");
+    let view_classes = ctx
+        .view_class_registry()
+        .iter_registry()
+        .map(|entry| entry.identifier);
 
-        if row_ui(ui, icon, title, &subtitle).clicked() {
+    card_grid_ui(ui, "views", view_classes, |ui, view_class| {
+        let class = ctx.view_class_registry().get_class_or_log_error(view_class);
+
+        if card_ui(ui, class.icon(), class.display_name(), true).clicked() {
             let view = ViewBlueprint::new_for_user_request(ctx, view_class);
             viewport.add_views(std::iter::once(view), target_container, None);
             viewport.mark_user_interaction(ctx);
             ui.close();
         }
-    };
-
-    for entry in ctx.view_class_registry().iter_registry() {
-        add_view_row(ui, entry.identifier);
-    }
+    });
 }
 
-/// Draw a single row.
-///
-/// Each row must ensure its own spacing. Here is the geometry we target:
-/// ```text
-///          available_width (defined by `Modal`)
-///      │◀───────────────────────────────────────▶│
-///      │                                         │
-/// ┌───────────────────────────────────────────────────┐──▲
-/// │                                                   │  │  row_space/2
-/// │    ╔══════╦══════════════════════════════════╗────│──▼▲
-/// │    ║      ║                                  ║    │   │
-/// │    ║ Icon ║  Title and Subtitles             ║    │   │ row_height
-/// │    ║      ║                                  ║    │   │
-/// │    ╚══════╩══════════════════════════════════╝────│──▲▼
-/// │                                                   │  │  row_space/2
-/// └───────────────────────────────────────────────────┘──▼
-/// │                                                   │
-/// │◀─────────────────────────────────────────────────▶│
-///                       clip_rect
-/// ```
-fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) -> egui::Response {
-    //TODO(ab): use design tokens
-    let row_space = 14.0;
-    let row_height = 42.0;
-    let icon_size = egui::vec2(18.0, 18.0);
-    let thumbnail_rounding = 6;
-    let thumbnail_width = 62.0;
+/// Show one card per item, in a grid that fills the available width.
+fn card_grid_ui<T>(
+    ui: &mut egui::Ui,
+    id_salt: &str,
+    items: impl IntoIterator<Item = T>,
+    mut add_card: impl FnMut(&mut egui::Ui, T),
+) {
+    let column_width =
+        (ui.available_width() - (NUM_COLUMNS - 1) as f32 * CARD_SPACING) / NUM_COLUMNS as f32;
 
-    let top_left_corner = ui.cursor().min;
+    egui::Frame::new()
+        .inner_margin(egui::Margin::symmetric(0, ui.tokens().view_padding()))
+        .show(ui, |ui| {
+            egui::Grid::new(id_salt)
+                .num_columns(NUM_COLUMNS)
+                .min_col_width(column_width)
+                .max_col_width(column_width)
+                .min_row_height(CARD_HEIGHT)
+                .spacing(egui::Vec2::splat(CARD_SPACING))
+                .show(ui, |ui| {
+                    for (i, item) in items.into_iter().enumerate() {
+                        if 0 < i && i % NUM_COLUMNS == 0 {
+                            ui.end_row();
+                        }
+                        add_card(ui, item);
+                    }
+                });
+        });
+}
 
-    ui.add_space(row_space / 2.0);
+/// Show a button that fills its grid cell, with an icon above a title.
+fn card_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, enabled: bool) -> egui::Response {
+    // The button only styles its top-level atoms, so the nested icon has to be tinted here.
+    let icon = icon
+        .as_image()
+        .tint(re_ui::Variant::Secondary.visuals(ui.tokens()).text)
+        .atom_size(ICON_SIZE);
 
-    let resp = ui
-        .horizontal(|ui| {
-            ui.spacing_mut().item_spacing = egui::vec2(14.0, 10.0);
+    let content = egui::ContainerAtom::new((icon, title))
+        .direction(egui::Direction::TopDown)
+        .gap(ICON_TITLE_GAP)
+        .wrap_mode(egui::TextWrapMode::Truncate)
+        .frame(egui::Frame::new().inner_margin(egui::Margin {
+            top: OPTICAL_TOP_PADDING,
+            ..Default::default()
+        }));
 
-            // placeholder for the hover background
-            let background_frame = ui.painter().add(egui::Shape::Noop);
+    let button = egui::Button::new(content).secondary();
 
-            let thumbnail_content = |ui: &mut egui::Ui| {
-                let (rect, _) = ui.allocate_exact_size(icon_size, egui::Sense::hover());
-                icon.as_image()
-                    .tint(ui.visuals().widgets.active.fg_stroke.color)
-                    .paint_at(ui, rect);
-            };
-
-            egui::Frame {
-                inner_margin: egui::Margin::symmetric(
-                    ((thumbnail_width - icon_size.x) / 2.0) as i8,
-                    ((row_height - icon_size.y) / 2.0) as i8,
-                ), // should be 62x42 when combined with icon size
-                corner_radius: egui::CornerRadius::same(thumbnail_rounding),
-                fill: ui.tokens().thumbnail_background_color,
-                ..Default::default()
-            }
-            .show(ui, thumbnail_content);
-
-            ui.vertical(|ui| {
-                ui.strong(title);
-                ui.add_space(-5.0);
-                ui.add(egui::Label::new(subtitle).wrap_mode(egui::TextWrapMode::Extend));
-            });
-
-            let right_coord = ui.cursor().max.x;
-
-            // interact with the entire row
-            let interact_rect = egui::Rect::from_min_max(
-                top_left_corner,
-                egui::pos2(right_coord, top_left_corner.y + row_height + row_space),
-            );
-
-            let response = ui.interact(
-                interact_rect,
-                ui.make_persistent_id(title),
-                egui::Sense::click(),
-            );
-
-            if response.hovered() {
-                let clip_rect = ui.clip_rect();
-
-                let bg_rect = interact_rect
-                    .with_min_x(clip_rect.min.x)
-                    .with_max_x(clip_rect.max.x);
-
-                ui.painter().set(
-                    background_frame,
-                    egui::Shape::rect_filled(
-                        bg_rect,
-                        0.0,
-                        ui.visuals().widgets.hovered.weak_bg_fill,
-                    ),
-                );
-            }
-
-            response
-        })
-        .inner;
-
-    ui.add_space(row_space / 2.0);
-
-    resp
+    ui.add_enabled_ui(enabled, |ui| {
+        ui.add_sized(egui::vec2(ui.available_width(), CARD_HEIGHT), button)
+            // Nested atoms hide their text from accesskit, so the button has to be named here.
+            .accessible_name(title)
+    })
+    .inner
 }
