@@ -3,12 +3,14 @@ use egui::{Align2, Pos2, Rect, Shape, pos2, vec2};
 use re_chunk_store::MissingChunkReporter;
 use re_log::ResultExt as _;
 use re_math::IsoTransform;
+use re_plot::RulersLayout;
 use re_renderer::LineDrawableBuilder;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_sdk_types::blueprint::archetypes::{
-    Background, NearClipPlane, SpatialInformation, VisualBounds2D,
+    Background, NearClipPlane, Rulers, SpatialInformation, VisualBounds2D,
 };
 use re_sdk_types::blueprint::components::{self as blueprint_components, Enabled};
+use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_tf::TransformFrameIdHash;
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
@@ -138,11 +140,42 @@ impl SpatialView2D {
                     }
                 });
 
-        let (response, painter) =
-            ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+
+        let rulers = {
+            let property = ViewProperty::from_archetype::<Rulers>(&view_ctx);
+            let visible = **property.component_or_fallback::<Visible>(
+                &view_ctx,
+                Rulers::descriptor_visible().component,
+            )?;
+            if visible {
+                let name_x = property.component_or_fallback::<Name>(
+                    &view_ctx,
+                    Rulers::descriptor_name_x().component,
+                )?;
+                let name_y = property.component_or_fallback::<Name>(
+                    &view_ctx,
+                    Rulers::descriptor_name_y().component,
+                )?;
+                Some(re_plot::Rulers::new(
+                    ui.make_persistent_id(("rulers", query.view_id)),
+                    name_x.as_str(),
+                    name_y.as_str(),
+                ))
+            } else {
+                None
+            }
+        };
+
+        let full_rect = ui.available_rect_before_wrap();
+        let rulers_layout = rulers.and_then(|rulers| rulers.layout(ui, full_rect));
+        let content_rect = rulers_layout
+            .as_ref()
+            .map_or(full_rect, RulersLayout::content_rect);
+        let response = ui.allocate_rect(content_rect, egui::Sense::click_and_drag());
+        let painter = ui.painter_at(response.rect);
         let ui_rect = response.rect;
 
-        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(&view_ctx);
         let clip_property = ViewProperty::from_archetype::<NearClipPlane>(&view_ctx);
 
@@ -323,6 +356,10 @@ impl SpatialView2D {
 
         // Add egui-rendered labels on top of everything else:
         painter.extend(label_shapes);
+
+        if let Some(rulers_layout) = rulers_layout {
+            rulers_layout.paint(ui, &ui_from_scene);
+        }
 
         Ok(Default::default())
     }

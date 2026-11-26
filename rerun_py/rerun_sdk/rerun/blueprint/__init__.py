@@ -40,6 +40,7 @@ from .archetypes import (
     PlotLegend as PlotLegend,
     RawDataRows as RawDataRows,
     RawDataViewFormat as RawDataViewFormat,
+    Rulers as Rulers,
     ScalarAxis as ScalarAxis,
     SpatialInformation as SpatialInformation,
     TensorScalarMapping as TensorScalarMapping,

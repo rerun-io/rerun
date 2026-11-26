@@ -46,6 +46,8 @@ mod previews_config;
 mod raw_data_rows;
 #[path = "raw_data_view_format.def.rs"]
 mod raw_data_view_format;
+#[path = "rulers.def.rs"]
+mod rulers;
 #[path = "scalar_axis.def.rs"]
 mod scalar_axis;
 #[path = "spatial_information.def.rs"]
@@ -110,6 +112,7 @@ pub use self::plot_legend::*;
 pub use self::previews_config::*;
 pub use self::raw_data_rows::*;
 pub use self::raw_data_view_format::*;
+pub use self::rulers::*;
 pub use self::scalar_axis::*;
 pub use self::spatial_information::*;
 pub use self::table_blueprint::*;

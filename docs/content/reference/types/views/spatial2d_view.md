@@ -26,6 +26,12 @@ Configuration of spatial information shown in the view.
 * `show_bounding_box`: Whether the bounding box should be shown.
 * `show_axes`: Whether axes should be shown at the origin.
 * `axes`: Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
+### `rulers`
+Configuration for the rulers along the edges of the view.
+
+* `visible`: Whether the rulers are visible.
+* `name_x`: Name shown at the end of the horizontal ruler where X is highest.
+* `name_y`: Name shown at the end of the vertical ruler where Y is highest.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

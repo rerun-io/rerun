@@ -21,6 +21,9 @@ pub struct Spatial2DView {
     /// Configuration of spatial information shown in the view.
     pub spatial_information: rerun::blueprint::archetypes::SpatialInformation,
 
+    /// Configuration for the rulers along the edges of the view.
+    pub rulers: rerun::blueprint::archetypes::Rulers,
+
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///
     /// If not specified, the default is to show the latest state of each component.

@@ -5872,6 +5872,37 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.blueprint.archetypes.Rulers"),
+            ArchetypeReflection {
+                display_name: "Rulers",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "visible",
+                        display_name: "Visible",
+                        component_type: "rerun.components.Visible".into(),
+                        docstring_md: "Whether the rulers are visible.\n\nDefaults to false.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "name_x",
+                        display_name: "Name x",
+                        component_type: "rerun.components.Name".into(),
+                        docstring_md: "Name shown at the end of the horizontal ruler where X is highest.\n\nEmpty by default. An empty name is not shown.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "name_y",
+                        display_name: "Name y",
+                        component_type: "rerun.components.Name".into(),
+                        docstring_md: "Name shown at the end of the vertical ruler where Y is highest.\n\nEmpty by default. An empty name is not shown.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
@@ -6622,6 +6653,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.Background"),
                     ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D"),
                     ArchetypeName::from("rerun.blueprint.archetypes.SpatialInformation"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.Rulers"),
                     ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges")
                 ],
             },

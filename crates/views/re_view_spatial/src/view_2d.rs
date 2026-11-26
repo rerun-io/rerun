@@ -3,7 +3,7 @@ use re_chunk_store::MissingChunkReporter;
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::{
-    Background, NearClipPlane, SpatialInformation, VisualBounds2D,
+    Background, NearClipPlane, Rulers, SpatialInformation, VisualBounds2D,
 };
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
@@ -53,6 +53,19 @@ impl ViewClass for SpatialView2D {
         system_registry.register_fallback_provider(Background::descriptor_kind().component, |_| {
             re_sdk_types::blueprint::components::BackgroundKind::SolidColor
         });
+
+        system_registry.register_fallback_provider::<re_sdk_types::components::Visible>(
+            Rulers::descriptor_visible().component,
+            |_| false.into(),
+        );
+        system_registry.register_fallback_provider::<re_sdk_types::components::Name>(
+            Rulers::descriptor_name_x().component,
+            |_| "".into(),
+        );
+        system_registry.register_fallback_provider::<re_sdk_types::components::Name>(
+            Rulers::descriptor_name_y().component,
+            |_| "".into(),
+        );
 
         fn valid_bound(rect: &egui::Rect) -> bool {
             rect.is_finite() && rect.is_positive()
@@ -250,6 +263,7 @@ impl ViewClass for SpatialView2D {
                     ui,
                     &[SpatialInformation::descriptor_axes().component],
                 );
+                view_property_ui::<Rulers>(ctx, ui);
                 view_property_ui::<VisualBounds2D>(ctx, ui);
                 view_property_ui::<NearClipPlane>(ctx, ui);
                 view_property_ui::<Background>(ctx, ui);

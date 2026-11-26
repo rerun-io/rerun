@@ -10632,6 +10632,7 @@ dependencies = [
  "egui",
  "egui_plot",
  "indexmap 2.14.0",
+ "re_format",
  "re_ui",
  "re_workspace_hack",
 ]
@@ -11944,6 +11945,7 @@ dependencies = [
  "re_log_types",
  "re_math",
  "re_mp4",
+ "re_plot",
  "re_query",
  "re_renderer",
  "re_rvl",

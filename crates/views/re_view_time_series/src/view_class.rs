@@ -700,7 +700,7 @@ impl ViewClass for TimeSeriesView {
                 .custom_y_axes(vec![
                     egui_plot::AxisHints::new_y()
                         .min_thickness(min_axis_thickness)
-                        .formatter(move |mark, _| format_y_axis(mark)),
+                        .formatter(|mark, _| re_plot::format_axis_tick(mark.value, mark.step_size)),
                 ])
                 // Suppress egui_plot's built-in tooltip so we can render our own.
                 .show_x(false)
@@ -1897,15 +1897,6 @@ pub(crate) fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> V
         stepped.push(*last);
     }
     stepped
-}
-
-fn format_y_axis(mark: egui_plot::GridMark) -> String {
-    // Example: If the step to the next tick is `0.01`, we should use 2 decimals of precision:
-    let num_decimals = -mark.step_size.log10().round() as usize;
-
-    re_format::FloatFormatOptions::DEFAULT_f64
-        .with_decimals(num_decimals)
-        .format(mark.value)
 }
 
 fn nanos_grid_spacer(

@@ -26,6 +26,7 @@ ahash.workspace = true
 egui.workspace = true
 egui_plot.workspace = true
 indexmap.workspace = true
+re_format.workspace = true
 re_ui.workspace = true
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]
