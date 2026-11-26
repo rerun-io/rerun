@@ -26,6 +26,7 @@ mod partial_view_visibility;
 mod pinhole_camera;
 mod pinhole_draw_order;
 mod point_shading;
+mod points2d_default_framing;
 mod points2d_ui_radius;
 mod project_2d_and_3d;
 mod rulers;
