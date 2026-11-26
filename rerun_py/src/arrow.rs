@@ -20,6 +20,9 @@ use re_sdk::{
 };
 use re_span::Span;
 
+/// Arrays up to this size are copied into Rust-owned memory when logged, see [`own_if_small`].
+const MAX_COPIED_ARRAY_BYTES: usize = 4096;
+
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
     let py = component_descr.py();
@@ -59,16 +62,13 @@ pub fn array_to_rust(arrow_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> 
     Ok(make_array(py_array.0))
 }
 
-/// Arrays up to this size are copied into Rust-owned memory when logged, see [`own_if_small`].
-const MAX_COPIED_ARRAY_BYTES: usize = 4096;
-
 /// Copy small arrays out of Python-owned memory.
 ///
 /// Imported pyarrow arrays need the GIL to be freed, and that happens on the batcher thread,
 /// which then fights the logging thread for the GIL on every row.
 /// Large arrays stay zero-copy, since the copy would cost more than it saves.
 fn own_if_small(array: ArrowArrayRef) -> ArrowArrayRef {
-    if MAX_COPIED_ARRAY_BYTES < array.get_buffer_memory_size() {
+    if array.get_buffer_memory_size() > MAX_COPIED_ARRAY_BYTES {
         return array;
     }
     re_arrow_util::deep_slice_array_erased(&array, Span::from_start_len(0, array.len()))
