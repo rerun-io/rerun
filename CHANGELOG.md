@@ -1,5 +1,139 @@
 # Rerun changelog
 
+## [0.44.0](https://github.com/rerun-io/rerun/compare/0.43.2...0.44.0) - 2026-11-25
+
+0.44.0 is not published on crates.io, since it depends on an unreleased version of egui.
+The `rerun` CLI is available via `pip install rerun-sdk` or the binaries attached to this release.
+
+### ✨ Overview & highlights
+
+- [Agent panel](https://rerun.io/docs/changelog/changeset-0-44#agent-panel): [chat with a coding agent](https://rerun.io/docs/agents#agent-panel) that inspects and controls the Viewer, using your own agent or a model API
+
+https://github.com/user-attachments/assets/31f4a598-ee72-43c8-b946-89583d529127
+
+- [Switch between a dataset's blueprints](https://rerun.io/docs/changelog/changeset-0-44#switch-between-a-datasets-blueprints) from a dropdown in the top bar
+  <picture>
+    <img width="360" src="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/full.png" alt="Blueprint dropdown listing the heuristic blueprint and the dataset's blueprints">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/768w.png">
+  </picture>
+- [2D labels in 3D views](https://rerun.io/docs/changelog/changeset-0-44#2d-labels-in-3d-views) on points, lines, arrows, boxes, and ellipses
+  <picture>
+    <img width="400" src="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png" alt="Labels on 2D geometry in a 3D camera frustum">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/1200w.png">
+  </picture>
+- [Better preview card layouts](https://rerun.io/docs/changelog/changeset-0-44#better-preview-card-layouts) for [table blueprints](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints), sized by aspect ratio
+  <picture>
+    <img width="480" src="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/full.png" alt="Two columns of preview cards with preview widths matched to their aspect ratios">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1200w.png">
+  </picture>
+- MCP improvements:
+  - [Catalog tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-tools-in-the-mcp-server): [`rerun mcp`](https://rerun.io/docs/viewer/extend/mcp#reading-a-catalog) can list and query datasets with SQL, with or without a Viewer
+  - [Catalog write tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-write-tools-in-the-mcp-server): agents can [create datasets and upload or register recordings](https://rerun.io/docs/viewer/extend/mcp#changing-a-catalog), asking you before each change
+  - [Discover available view types via MCP](https://rerun.io/docs/changelog/changeset-0-44#discover-available-view-types-via-mcp) with `viewer_list_view_types`
+- [Shared list of catalog servers](https://rerun.io/docs/changelog/changeset-0-44#shared-list-of-catalog-servers) for the Viewer, the CLI ([`rerun servers`](https://rerun.io/docs/reference/cli#rerun-servers)), and `rerun mcp`
+- [Import MuJoCo (MJCF) models](https://rerun.io/docs/changelog/changeset-0-44#import-mujoco-mjcf-models) from `.mjcf` and `.xml` files, animated with [`MjcfTree`](https://rerun.io/docs/logging-and-ingestion/import/mjcf)
+- [Register a recording under any segment ID](https://rerun.io/docs/changelog/changeset-0-44#register-a-recording-under-any-segment-id) with [`DatasetEntry.register(…, segment_id=…)`](https://rerun.io/docs/query-and-transform/catalog/layers#how-can-i-register-a-recording-under-another-segment-id)
+- [Stream dataset selections as Arrow batches](https://rerun.io/docs/changelog/changeset-0-44#stream-dataset-selections-as-arrow-batches) with [`DatasetSelection.read_arrow()`](https://rerun.io/docs/query-and-transform/catalog/get-data-out#streaming-arrow-batches)
+- [Query annotated time spans](https://rerun.io/docs/changelog/changeset-0-44#query-annotated-time-spans) with [`rerun.experimental.spans.SpanTable`](https://rerun.io/docs/query-and-transform/dataframes/spans)
+- [Measure dataloader pipeline performance](https://rerun.io/docs/changelog/changeset-0-44#measure-dataloader-pipeline-performance) with `dataset.metrics.summary()` in the [dataloader](https://rerun.io/docs/train/dataloader)
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-44#highlights
+
+### ⚠️ Breaking changes
+
+- [`rerun viewer-mcp` is now `rerun mcp`](https://rerun.io/docs/changelog/changeset-0-44#rerun-viewer-mcp-is-now-rerun-mcp)
+- [MCP viewer tools are now named `viewer_*`](https://rerun.io/docs/changelog/changeset-0-44#mcp-viewer-tools-are-now-named-viewer_)
+- [The `@rerun-io/web-viewer` npm package sends usage data by default](https://rerun.io/docs/changelog/changeset-0-44#the-rerun-ioweb-viewer-npm-package-sends-usage-data-by-default)
+- [Blueprint APIs return `RegisteredBlueprint` instead of blueprint ID strings](https://rerun.io/docs/changelog/changeset-0-44#blueprint-apis-return-registeredblueprint-instead-of-blueprint-id-strings)
+- [`UrdfTree.from_file_path` splits `entity_path_prefix` into path parts](https://rerun.io/docs/changelog/changeset-0-44#urdftreefrom_file_path-splits-entity_path_prefix-into-path-parts)
+- [Dataloader curations replace sampling manifests](https://rerun.io/docs/changelog/changeset-0-44#dataloader-curations-replace-sampling-manifests)
+- [`ImportedData` and `SplitFrom` have named fields](https://rerun.io/docs/changelog/changeset-0-44#importeddata-and-splitfrom-have-named-fields)
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-44#breaking-changes
+
+### 🔎 Details
+
+#### 🐍 Python API
+- [Name property for blueprints](https://rerun.io/docs/changelog/changeset-0-44#blueprint-apis-return-registeredblueprint-instead-of-blueprint-id-strings) [142f788](https://github.com/rerun-io/rerun/commit/142f7883942dd2091ef09d299b50d6ee0855d2c2)
+- Allow [overriding segment id](https://rerun.io/docs/query-and-transform/catalog/layers#how-can-i-register-a-recording-under-another-segment-id) when registering RRDs [c5de63c](https://github.com/rerun-io/rerun/commit/c5de63cfb3ab473ee0f5950f86b8d9bbdbc1c994)
+- Make [`DatasetSelection.read_arrow`](https://rerun.io/docs/query-and-transform/catalog/get-data-out#streaming-arrow-batches) public [aef1825](https://github.com/rerun-io/rerun/commit/aef1825905cd60636ed04aaf8ffd2d92e2358912)
+- [Span table](https://rerun.io/docs/query-and-transform/dataframes/spans) view [aa4c3aa](https://github.com/rerun-io/rerun/commit/aa4c3aac92c56867b0f6fdc2d85778886f33e66e)
+- Support sequence timelines in SpanTable [beca300](https://github.com/rerun-io/rerun/commit/beca300adb0f834b8e5fe25cdd560d0e3963c968)
+- Reject unrepresentable span boundaries on numpy 2.5 [a46b289](https://github.com/rerun-io/rerun/commit/a46b28929b5244fbf32a71b71426349c486c02a6)
+- Modify the [dataloader](https://rerun.io/docs/train/dataloader#train-on-selected-spans) based on spans [a56237d](https://github.com/rerun-io/rerun/commit/a56237dea9a5d160dee280702f385fdfd4807864)
+- Reduce iterable dataloader scheduling memory [2624e1c](https://github.com/rerun-io/rerun/commit/2624e1c81afcb1add557d7ac34b59792cdc6951d)
+- Refactor [`UrdfTree`](https://rerun.io/docs/logging-and-ingestion/import/urdf#urdftree) onto a shared `KinematicTree` trait [75d4168](https://github.com/rerun-io/rerun/commit/75d41688b62ee8e94c573f9390d3f69efbbb5723)
+- Fix `UrdfTree`'s entity path prefix parsing [429da2c](https://github.com/rerun-io/rerun/commit/429da2c97ae57851386a46bd0546a5f62ad03530)
+- Add [viewer_get_settings and viewer_set_settings](https://rerun.io/docs/viewer/extend/mcp#changing-settings) [d27e2d4](https://github.com/rerun-io/rerun/commit/d27e2d46e01f870481f8dead322635aaec8e64be)
+- Add `Mp4Reader.info()` to inspect an MP4 without streaming [9340fb8](https://github.com/rerun-io/rerun/commit/9340fb843e44e4c96057c49a62afd5699d54995d)
+- Fix loading mp4 files whose H.264 SPS has trailing zeros (e.g. Insta360 files) [759a859](https://github.com/rerun-io/rerun/commit/759a859c8b915d38a9d0e9577005baae6ecf89f1)
+- Fix nanosecond precision loss in Python time conversions [0144645](https://github.com/rerun-io/rerun/commit/014464528018d7306e89a3f9bf565a050fa20f12)
+- Support importing multiple file paths in the Python SDK [#13028](https://github.com/rerun-io/rerun/pull/13028) (thanks [@XiaoPengYouCode](https://github.com/XiaoPengYouCode)!)
+- Warn when blueprint view override paths contain wildcards [#13001](https://github.com/rerun-io/rerun/pull/13001) (thanks [@sohailshk](https://github.com/sohailshk)!)
+
+#### 🦀 Rust API
+- Zero-copy decode chunk payloads [eebea5c](https://github.com/rerun-io/rerun/commit/eebea5c3cff2c9275d6ff6ea78acbdb4d2c87a80)
+- Assemble `next_n_rows` columns by concatenating slices [fd1615c](https://github.com/rerun-io/rerun/commit/fd1615c2d8385d25675140218cebd53150d8e828)
+- relint: limit positional fields and enum-variant fields ([named fields in `ImportedData`](https://rerun.io/docs/changelog/changeset-0-44#importeddata-and-splitfrom-have-named-fields)) [3519723](https://github.com/rerun-io/rerun/commit/351972381f338433440779b6f44d97f4e1644913)
+
+#### 🪳 Bug fixes
+- Fix chunk prefetching when several recordings share the budget [ba8d334](https://github.com/rerun-io/rerun/commit/ba8d334af687e3c8239ac3c5cbe316a45cff8269)
+- Fix video stuck loading when `ffmpeg -version` stalls [c15895d](https://github.com/rerun-io/rerun/commit/c15895dd955e38e183440f0bf30984e48566afbe)
+- Don't block the UI on the FFmpeg version check [#13030](https://github.com/rerun-io/rerun/pull/13030) (thanks [@iseemhlyfta](https://github.com/iseemhlyfta)!)
+- Only fade the video that is buffering [af446a1](https://github.com/rerun-io/rerun/commit/af446a15a0136ff0834cfbe9ffd4d24d72e26ee4)
+- Fix pinhole resolution fallback for video streams [0c39e2f](https://github.com/rerun-io/rerun/commit/0c39e2fe73762dff88c8b1bd2812d32b1db958da)
+- Fix spurious FFmpeg NAL warning on H.265 video [7019465](https://github.com/rerun-io/rerun/commit/70194656587b801da40e6fc1e192d45c1de13472)
+- Default to WebGL outside recognized Chromium browsers [689fe95](https://github.com/rerun-io/rerun/commit/689fe95117b3ed105fb351acd5b20aa8fcb288a7)
+- Fix [URDF](https://rerun.io/docs/logging-and-ingestion/import/urdf) joints with a non-unit axis [880ba2c](https://github.com/rerun-io/rerun/commit/880ba2c8f3ec692339f7233b0002e674d73dd5cd)
+- Fix entry rename in OSS server [b071ba1](https://github.com/rerun-io/rerun/commit/b071ba1a90d3868d0cf1156244d8acfb4b24663f)
+- Fix [table preview card](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints) sizing and aspect ratios [0662984](https://github.com/rerun-io/rerun/commit/0662984b15ddb5eaddff70504d2ef2aaffb7ee85)
+- Show why the agent exited in the [agent panel](https://rerun.io/docs/agents#agent-panel) [ccaa4b3](https://github.com/rerun-io/rerun/commit/ccaa4b3ce648b472f13c21b57ad2a674f4d78d09)
+- Make [`rerun rrd compare`](https://rerun.io/docs/reference/cli#rerun-rrd-compare) treat NaN as equal to NaN [638309f](https://github.com/rerun-io/rerun/commit/638309f77b98e87a92dbbc92808cdccbd93d81bf)
+- Fix duplicated and dropped data in [`rerun rrd split`](https://rerun.io/docs/reference/cli#rerun-rrd-split) [#13006](https://github.com/rerun-io/rerun/pull/13006) (thanks [@ragen1337](https://github.com/ragen1337)!)
+- Only show the update notice once per release [f824a15](https://github.com/rerun-io/rerun/commit/f824a15a1dbce6df17a9fd2fe57f061471a1e65b)
+- Show on/off state in top-bar toggles, and group panel toggles [a54fe1d](https://github.com/rerun-io/rerun/commit/a54fe1dde53ea3d2e0631f4ebc2e6a1c35d0bf6f)
+- Fix close button placement in the About dialog [b2cc69c](https://github.com/rerun-io/rerun/commit/b2cc69cb2f345f6aa69b9fc001dcfaa47ac67217)
+- Resolve a few stale to-do comments and remove some obsolete workarounds [a3de3fb](https://github.com/rerun-io/rerun/commit/a3de3fbe09bff309de7ed42ae5a243bedb9243c8)
+- Fix num_bytes of Y_U_V24 and out-of-range decoding of YUV 4:2:0 formats [#13002](https://github.com/rerun-io/rerun/pull/13002) (thanks [@sohailshk](https://github.com/sohailshk)!)
+
+#### 🌁 Viewer improvements
+- Add native [MJCF importer](https://rerun.io/docs/logging-and-ingestion/import/mjcf) [98e77cd](https://github.com/rerun-io/rerun/commit/98e77cdd03612c8a2ec82034bb23da9d8b9e421f)
+- Dropdown to switch between [registered blueprints](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#blueprints) [a34a52a](https://github.com/rerun-io/rerun/commit/a34a52aebc1891821f6131c40abba9fc9cdcf119)
+- Give the [agent panel](https://rerun.io/docs/agents#agent-panel) the catalog tools [828843e](https://github.com/rerun-io/rerun/commit/828843e8bfee7d758febb7ce831e778fc4e0cd99)
+- Give the model-API agent the Rerun skills [27af7f3](https://github.com/rerun-io/rerun/commit/27af7f300db328de7b6d5741440d10bb18d7691f)
+- Expose `ViewClassRegistry` to agents and viewer clients [3875879](https://github.com/rerun-io/rerun/commit/387587909c63ad6d04fdf61941aed7fc4ccf2a52)
+- Add cloning for view containers [e8d195c](https://github.com/rerun-io/rerun/commit/e8d195c62d91065ef382b014fb0564f63ef159b6) (thanks [@donnyboy72](https://github.com/donnyboy72)!)
+
+#### 🚀 Performance improvements
+- Lazy load dataset metadata - makes loading servers with many datasets a lot faster! [53ace35](https://github.com/rerun-io/rerun/commit/53ace358429a4392d618f850fbcb76d27a5452e2)
+- Select FindChunks Samples from the chunks table [62cb38d](https://github.com/rerun-io/rerun/commit/62cb38db5a95828afce0917bdc1edb35215f36f9)
+
+#### 🖼 UI improvements
+- Make the [agent panel](https://rerun.io/docs/agents#agent-panel) always on [162c47e](https://github.com/rerun-io/rerun/commit/162c47e98e97874c4d27833a48e6041f666ef74f)
+- Add a switch for the agent's [catalog write access](https://rerun.io/docs/viewer/extend/mcp#changing-a-catalog) [56cd4eb](https://github.com/rerun-io/rerun/commit/56cd4eb730d5ba51a8a2215cf650798e46ced098)
+- Show projected 2D labels in [3D scenes](https://rerun.io/docs/reference/types/views/spatial3d_view) [efb1c96](https://github.com/rerun-io/rerun/commit/efb1c9609506d23fd9b0631d8ba7671c7d220b1f)
+
+#### ✨ Other enhancement
+- Serve agent toolboxes over [MCP](https://rerun.io/docs/viewer/extend/mcp), starting with the catalog tools [c1289b4](https://github.com/rerun-io/rerun/commit/c1289b42089bf37809347fdf6e4220a81aa13d01)
+- Add SQL and dataset queries to the [MCP catalog tools](https://rerun.io/docs/viewer/extend/mcp#reading-a-catalog) [3e648b6](https://github.com/rerun-io/rerun/commit/3e648b6353efd98e31148c98563e169bb2793eb6)
+- Add [catalog write tools](https://rerun.io/docs/viewer/extend/mcp#changing-a-catalog) to the MCP server [d65b3b4](https://github.com/rerun-io/rerun/commit/d65b3b431df1fb9ac371b8289e271e4e492f96c9)
+- Share the catalog server list with the CLI and [rerun mcp](https://rerun.io/docs/reference/cli#rerun-mcp) [1cd96b3](https://github.com/rerun-io/rerun/commit/1cd96b3dacd18f260260dfe6aa5448bf3acd9215)
+
+#### 📈 Analytics
+- Try to make [web viewer](https://rerun.io/docs/changelog/changeset-0-44#the-rerun-ioweb-viewer-npm-package-sends-usage-data-by-default) more similar to native viewer around analytics support [d35ff00](https://github.com/rerun-io/rerun/commit/d35ff009a018a4523b9e454d680c0aa1d44c5ad5)
+- [Dataloader](https://rerun.io/docs/train/dataloader) Metrics [3c133d8](https://github.com/rerun-io/rerun/commit/3c133d8dd53bd01ee4790e27043e4d0a504167d5)
+
+#### 🗣 Refactors
+- Rename [`rerun viewer-mcp` to `rerun mcp`](https://rerun.io/docs/changelog/changeset-0-44#rerun-viewer-mcp-is-now-rerun-mcp) [b34e939](https://github.com/rerun-io/rerun/commit/b34e9396fbb7a9855e8c355cea6294a324d48b68)
+- Rename the [MCP viewer tools](https://rerun.io/docs/changelog/changeset-0-44#mcp-viewer-tools-are-now-named-viewer_) from `rerun_*` to `viewer_*` [79cf7a0](https://github.com/rerun-io/rerun/commit/79cf7a02e5ad3d38791cdfc0ae00867e05406939)
+
 ## [0.43.2](https://github.com/rerun-io/rerun/compare/0.43.1...0.43.2) - 2026-11-13
 
 ### 🔎 Details

@@ -1,2 +1,0 @@
-# The agents page is new; its URL goes live with the next docs release.
-^https://(www\.)?rerun\.io/docs/agents(/|#|$)

@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.44.0-alpha.1+dev"
-__version_info__ = (0, 44, 0, "alpha.1")
+__version__ = "0.45.0-alpha.1+dev"
+__version_info__ = (0, 45, 0, "alpha.1")
 
 if sys.version_info < (3, 11):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.11 or later.")
