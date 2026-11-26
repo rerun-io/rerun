@@ -24,6 +24,12 @@ It is served by two different catalogs:
   It only accepts connections from the local machine, like `ViewerControlService`.
 * `rerun server` serves a catalog of the `.rrd` files and tables it was started with, for any client that can reach it.
 
+## Catalog connections through HTTP proxies
+
+The desktop Viewer and the Python SDK connect to catalogs with native gRPC.
+Some HTTP proxies may not support forwarding native gRPC, even when the browser Viewer works through them.
+To work around this, set `RERUN_FORCE_GRPC_WEB=1` before starting the desktop Viewer or Python process to use gRPC-Web for all its catalog requests.
+
 ## Server reflection
 
 Reflection lets generic gRPC tooling discover the services and message types of a live server, without access to the `.proto` files.

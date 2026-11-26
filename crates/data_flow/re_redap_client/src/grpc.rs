@@ -182,6 +182,24 @@ fn build_pool(
     PoolChannel::new(connections)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Copy, Debug)]
+pub enum GrpcTransport {
+    Native,
+    Web,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl GrpcTransport {
+    /// Returns the transport's HTTP media type without a message format suffix such as `+proto`.
+    pub fn content_type(self) -> &'static str {
+        match self {
+            Self::Native => "application/grpc",
+            Self::Web => "application/grpc-web",
+        }
+    }
+}
+
 /// A pool of HTTP/2 connections to a single origin, dispatching each request to the least-loaded
 /// connection.
 ///
@@ -193,11 +211,21 @@ pub struct PoolChannel {
 
     /// Number of requests on each connection whose response body has not yet finished streaming.
     in_flight: Arc<[std::sync::atomic::AtomicU64]>,
+    transport: GrpcTransport,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl PoolChannel {
     fn new(connections: Vec<tonic::transport::Channel>) -> Self {
+        let transport = if re_log::env_var_is_truthy("RERUN_FORCE_GRPC_WEB") {
+            re_log::warn_once!(
+                "RERUN_FORCE_GRPC_WEB enables gRPC-Web for catalog requests. \
+                 The client buffers each request in memory before sending it, so large writes can use more memory."
+            );
+            GrpcTransport::Web
+        } else {
+            GrpcTransport::Native
+        };
         let in_flight = connections
             .iter()
             .map(|_| std::sync::atomic::AtomicU64::new(0))
@@ -205,6 +233,7 @@ impl PoolChannel {
         Self {
             connections: connections.into(),
             in_flight: in_flight.into(),
+            transport,
         }
     }
 
@@ -265,9 +294,96 @@ impl http_body::Body for TrackedBody {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+pub async fn send_request<S>(
+    transport: GrpcTransport,
+    connection: S,
+    request: tonic::codegen::http::Request<tonic::body::Body>,
+) -> tonic::Result<tonic::codegen::http::Response<tonic::body::Body>>
+where
+    S: tower::Service<
+            tonic::codegen::http::Request<tonic::body::Body>,
+            Response = tonic::codegen::http::Response<tonic::body::Body>,
+        > + Clone
+        + Send
+        + 'static,
+    S::Error: Into<tonic::codegen::StdError>,
+    S::Future: Send,
+{
+    use tower::ServiceExt as _;
+
+    use crate::grpc_web_on_native;
+
+    match transport {
+        GrpcTransport::Web => grpc_web_on_native::send(connection, request).await,
+        GrpcTransport::Native => {
+            let response = connection
+                .oneshot(request)
+                .await
+                .map_err(|err| tonic::Status::from_error(err.into()))?;
+            check_response(response, transport)
+        }
+    }
+}
+
+/// Whether `response` has the given gRPC content type, with or without a `+proto`-style suffix.
+#[cfg(not(target_arch = "wasm32"))]
+fn is_grpc_response(
+    response: &tonic::codegen::http::Response<tonic::body::Body>,
+    content_type: &str,
+) -> bool {
+    response
+        .headers()
+        .get(http::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| {
+            value == content_type
+                || value
+                    .strip_prefix(content_type)
+                    .is_some_and(|suffix| suffix.starts_with('+'))
+        })
+}
+
+/// Turns a reply that is not a gRPC response into a [`tonic::Status`] that names the HTTP status.
+///
+/// Call this before tonic reads the body.
+/// tonic decodes any body as gRPC frames, so an HTML or plain-text error page from a proxy becomes
+/// a decoding error, such as `invalid compression flag: 109`, with code `Internal` whatever the
+/// HTTP status was.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn check_response(
+    response: tonic::codegen::http::Response<tonic::body::Body>,
+    transport: GrpcTransport,
+) -> tonic::Result<tonic::codegen::http::Response<tonic::body::Body>> {
+    let content_type = transport.content_type();
+    if is_grpc_response(&response, content_type) || response.headers().contains_key("grpc-status") {
+        return Ok(response);
+    }
+    // The mapping from the gRPC spec, which tonic also uses once a body ends without a status:
+    // https://github.com/grpc/grpc/blob/9c3f79deb70460750421f3dd75c2ed6a9af91ca3/doc/http-grpc-status-mapping.md
+    let code = match response.status() {
+        http::StatusCode::BAD_REQUEST => tonic::Code::Internal,
+        http::StatusCode::UNAUTHORIZED => tonic::Code::Unauthenticated,
+        http::StatusCode::FORBIDDEN => tonic::Code::PermissionDenied,
+        http::StatusCode::NOT_FOUND => tonic::Code::Unimplemented,
+        http::StatusCode::TOO_MANY_REQUESTS
+        | http::StatusCode::BAD_GATEWAY
+        | http::StatusCode::SERVICE_UNAVAILABLE
+        | http::StatusCode::GATEWAY_TIMEOUT => tonic::Code::Unavailable,
+        _ => tonic::Code::Unknown,
+    };
+    Err(tonic::Status::new(
+        code,
+        format!(
+            "server returned HTTP {} without an expected {content_type} response; check the server or proxy configuration",
+            response.status(),
+        ),
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolChannel {
     type Response = tonic::codegen::http::Response<tonic::body::Body>;
-    type Error = tonic::transport::Error;
+    type Error = tonic::Status;
     type Future = std::pin::Pin<
         Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
     >;
@@ -288,11 +404,11 @@ impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolCh
             in_flight: self.in_flight.clone(),
             idx,
         };
-        let mut connection = self.connections[idx].clone();
+        let connection = self.connections[idx].clone();
+        let transport = self.transport;
 
         Box::pin(async move {
-            std::future::poll_fn(|cx| connection.poll_ready(cx)).await?;
-            let response = connection.call(req).await?;
+            let response = send_request(transport, connection, req).await?;
             // Hand the in-flight guard to the response body so the request stays counted until the
             // body is fully streamed (or dropped), not just until the headers arrive. This keeps the
             // load metric tracking the bandwidth-bound download work, which is what actually needs
@@ -1474,6 +1590,53 @@ mod tests {
     use re_protos::log_msg::v1alpha1::ArrowMsg;
 
     use super::FetchedPayloads;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test]
+    async fn connection_check_uses_only_the_selected_transport() {
+        use std::convert::Infallible;
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        use http::{Request, Response, StatusCode, header};
+        use re_protos::cloud::v1alpha1::rerun_cloud_service_server::SERVICE_NAME;
+        use tonic::body::Body;
+
+        use super::{GrpcTransport, send_request};
+
+        for transport in [GrpcTransport::Native, GrpcTransport::Web] {
+            let calls = Arc::new(AtomicUsize::new(0));
+            let connection = tower::service_fn({
+                let calls = calls.clone();
+                move |request: Request<Body>| {
+                    assert_eq!(
+                        request.headers()[header::CONTENT_TYPE],
+                        transport.content_type()
+                    );
+                    calls.fetch_add(1, Ordering::Relaxed);
+                    async {
+                        Ok::<_, Infallible>(
+                            Response::builder()
+                                .status(StatusCode::BAD_GATEWAY)
+                                .body(Body::empty())
+                                .unwrap(),
+                        )
+                    }
+                }
+            });
+            let request = Request::post(format!("/{SERVICE_NAME}/WhoAmI"))
+                .header(header::CONTENT_TYPE, "application/grpc")
+                .body(Body::new(http_body_util::Full::new(Bytes::from_static(
+                    &[0; 5],
+                ))))
+                .unwrap();
+            let err = send_request(transport, connection, request)
+                .await
+                .unwrap_err();
+            assert_eq!(err.code(), tonic::Code::Unavailable);
+            assert_eq!(calls.load(Ordering::Relaxed), 1);
+        }
+    }
 
     /// Two payloads sliced out of one shared receive buffer.
     fn response() -> (Bytes, Vec<ArrowMsg>) {

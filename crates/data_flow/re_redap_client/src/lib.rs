@@ -10,6 +10,8 @@ mod connection_handle;
 mod connection_registry;
 mod dataset_revisions;
 mod grpc;
+#[cfg(not(target_arch = "wasm32"))]
+mod grpc_web_on_native;
 mod registration_response;
 mod rpc_retry;
 mod schema_cache;
