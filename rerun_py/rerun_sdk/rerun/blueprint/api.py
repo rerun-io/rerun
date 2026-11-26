@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 ViewContentsLike = Utf8ArrayLike | ViewContents
 
-VisualizerLike = EntityBehavior | VisibleTimeRanges | Visualizer | VisualizableArchetype
+VisualizerLike = EntityBehavior | VisibleTimeRange | VisibleTimeRanges | Visualizer | VisualizableArchetype
 
 
 class View:
@@ -112,6 +112,8 @@ class View:
             should be applied. The value is a list of visualizers (or visualizable archetypes) which should be enabled for that entity, or a single visualizer.
 
             Each visualizer can be configured with arbitrary overrides and mappings.
+
+            Pass `VisibleTimeRange` or `VisibleTimeRanges` for an entity's time ranges.
 
             For any entity mentioned in this map, visualizers are no longer added automatically based on the entity's components.
 
@@ -192,17 +194,19 @@ class View:
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
-        for path, visualizer in self.visualizer_overrides.items():
+        for path, overrides in self.visualizer_overrides.items():
             base_visualizer_path = self._blueprint_base_visualizer_path_for_entity(path)
+            override_list = list(overrides) if isinstance(overrides, Iterable) else [overrides]
 
-            if isinstance(visualizer, Iterable):
-                visualizer_list = visualizer
-            else:
-                visualizer_list = [visualizer]
+            time_ranges = [override for override in override_list if isinstance(override, VisibleTimeRange)]
+            if time_ranges:
+                stream.log(base_visualizer_path, VisibleTimeRanges(time_ranges))
 
             visualizer_ids: list[uuid.UUID] = []
-            for visualizer in visualizer_list:
-                visualizer_id = self._log_visualizer_like(stream, base_visualizer_path, visualizer)
+            for override in override_list:
+                if isinstance(override, VisibleTimeRange):
+                    continue
+                visualizer_id = self._log_visualizer_like(stream, base_visualizer_path, override)
                 if visualizer_id is not None:
                     visualizer_ids.append(visualizer_id)
 
@@ -213,16 +217,8 @@ class View:
         self,
         stream: RecordingStream,
         base_visualizer_path: str,
-        visualizer: VisualizerLike,
+        visualizer: AsComponents | Visualizer | VisualizableArchetype,
     ) -> uuid.UUID | None:
-        if isinstance(visualizer, VisibleTimeRange):
-            _send_warning_or_raise(
-                "In overrides, put all ranges for each entity in a single VisibleTimeRanges, "
-                "such as VisibleTimeRanges([range_a, range_b]).",
-                exception_type=TypeError,
-            )
-            return None
-
         if isinstance(visualizer, VisualizableArchetype):
             visualizer = visualizer.visualizer()
 
@@ -232,8 +228,25 @@ class View:
             stream.log(
                 visualizer_path, VisualizerInstruction(visualizer.visualizer_type, component_map=visualizer.mappings)
             )
-            if visualizer.overrides is not None and len(visualizer.overrides) > 0:
-                stream.log(visualizer_path, visualizer.overrides)
+            if visualizer.overrides:
+                ranges_component = VisibleTimeRanges.descriptor_ranges().component
+                overrides = [
+                    override
+                    for override in visualizer.overrides
+                    if not isinstance(override, (VisibleTimeRange, VisibleTimeRanges))
+                    and not (
+                        isinstance(override, DescribedComponentBatch)
+                        and override.component_descriptor().component == ranges_component
+                    )
+                ]
+                if len(overrides) != len(visualizer.overrides):
+                    _send_warning_or_raise(
+                        "Visible time ranges do not apply to individual Visualizer overrides. "
+                        "Set them for the entity in the view's overrides.",
+                        exception_type=TypeError,
+                    )
+                if overrides:
+                    stream.log(visualizer_path, overrides)
 
             return visualizer.id
         else:  # has to be AsComponents (EntityBehavior, VisibleTimeRanges, etc.)
