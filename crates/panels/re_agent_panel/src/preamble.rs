@@ -9,7 +9,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 #[cfg(agent_harness_backend)]
-use super::{DOCS_SUBDIR, SKILLS_SUBDIR};
+use super::SKILLS_SUBDIR;
 
 /// The start of the instructions, the same for every backend.
 fn intro() -> String {
@@ -27,7 +27,12 @@ fn intro() -> String {
 }
 
 /// The end of the instructions, the same for every backend.
-const OUTRO: &str = "- Rerun is open source, and its examples are worth reading and worth linking: \
+const OUTRO: &str = "- Before answering how Rerun works, read the documentation for the version of this \
+     viewer, which `viewer_get_state` reports: the docs source at \
+     `https://raw.githubusercontent.com/rerun-io/rerun/<version>/docs/` and the Python API reference \
+     at `https://ref.rerun.io/docs/python/<version>/`. Use `main` for a development build. \
+     <https://rerun.io/docs> shows only the latest release, which can be newer than this viewer.\n\
+     - Rerun is open source, and its examples are worth reading and worth linking: \
      their code is under `examples/` in <https://github.com/rerun-io/rerun>, and \
      <https://rerun.io/examples> walks through collecting, preparing, and training on robot \
      data. Larger applications — SLAM, gaussian splatting, \
@@ -45,7 +50,7 @@ pub struct Preamble<'a> {
     /// already attached. Unset when the viewer serves no endpoint to connect to.
     pub viewer_endpoint: Option<&'a str>,
 
-    /// Where the skills and docs were unpacked for the agent to read.
+    /// Where the skills were unpacked for the agent to read.
     /// Unset when there was nowhere to unpack them, in which case they go unmentioned.
     pub agent_dir: Option<&'a Path>,
 
@@ -91,7 +96,7 @@ impl Preamble<'_> {
             " Use its tools to see what the user sees and to drive the viewer, instead of guessing. \
              Prefer the high-level `viewer_*` tools (`viewer_get_state`, `viewer_set_time_cursor`, …), \
              and `viewer_run_command` for anything the command palette can do (its `id` lists every command); \
-             drop to the low-level widget tools (`widget_tree`, `click`, `screenshot`, …) only for what they do not cover. \
+             drop to the low-level `ui_*` widget tools (`ui_widget_tree`, `ui_click`, `ui_screenshot`, …) only for what they do not cover. \
              The panel hands the `rerun` server to this session directly, so it never shows up in your own MCP \
              configuration, with tools as `viewer_*`.\n",
         );
@@ -113,13 +118,6 @@ impl Preamble<'_> {
                 "- To change how a table looks (previews, cards, columns, filters), read the `rerun-blueprint` skill \
                  and call `viewer_set_blueprint`. Do not click through the UI.\n",
             );
-            writeln!(
-                text,
-                "- The Rerun documentation (the source of rerun.io/docs) and its code snippets are in `{}`. \
-                 The `rerun-docs` skill explains the layout; grep there before answering how Rerun works.",
-                agent_dir.join(DOCS_SUBDIR).display()
-            )
-            .ok();
         }
 
         text.push_str(
@@ -161,9 +159,9 @@ impl Preamble<'_> {
         );
 
         text.push_str(
-            "- When a recording has joint angles but no robot model, suggest adding a URDF: \
+            "- When a recording has joint angles but no robot model, suggest adding a robot model (URDF or MJCF): \
              fetch one for that robot, solve forward kinematics from the joint states, \
-             and layer the transforms onto the recording. The `rerun-urdf` skill has the sources and the pipeline.\n",
+             and layer the transforms onto the recording. The `rerun-robot-model` skill has the sources and the pipeline.\n",
         );
 
         text.push_str(
@@ -225,6 +223,12 @@ pub fn model_api_text() -> String {
         "\n- Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );
+    if crate::skills_toolbox::SkillsToolbox::embedded().is_some() {
+        text.push_str(
+            "- Rerun skills are listed in the description of `skill_read`. \
+             Read the relevant one with it before starting the task.\n",
+        );
+    }
     text.push_str(OUTRO);
     text
 }
@@ -246,6 +250,8 @@ mod tests {
                     re_viewer_control_tools::is_operation(operation),
                     "unknown tool: {name}"
                 );
+            } else if name.starts_with("skill_") {
+                assert_eq!(name, crate::skills_toolbox::SKILL_READ, "unknown tool");
             } else if name.starts_with("catalog_") && name != "catalog_url" {
                 assert!(
                     re_catalog_tools::CatalogTool::from_name(name).is_some(),

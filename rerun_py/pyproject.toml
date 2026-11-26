@@ -38,15 +38,15 @@ name = "Rerun.io"
 [project.optional-dependencies]
 tests = [
   "av>=14.2.0", # PyAV, for demuxing mp4 in VideoStream tests
-  "inline-snapshot==0.36.2",
+  "inline-snapshot==0.37.0",
   "opencv-python>4.6",
   "pandas>=2",
   "polars==2.1.0",
   "pytest==9.2.0",
   "semver>=3.0,<3.2",
-  "syrupy==7.0.0",
+  "syrupy==7.0.2",
   "tomli==2.5.0",
-  "torch>=2.5", # Needs numpy 2 support
+  "torch>=2.11",
   "torchvision", # Imported at top of `rerun.experimental.dataloader.decoders`, so needed to import the dataloader module at all
   "datafusion==54.0.0",
 ]
@@ -58,7 +58,7 @@ catalog = [
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
 
 # PyTorch `Dataset` for a catalog server.
-dataloader = ["torch>=2.5", "torchvision", "av", "pillow>=8.0.0"]
+dataloader = ["torch>=2.11", "torchvision", "av", "pillow>=8.0.0"]
 
 # Client-side OpenTelemetry export, enabled by setting `TELEMETRY_ENABLED=true`
 # along with an OTLP endpoint env var (e.g. `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=...`).

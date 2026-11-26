@@ -65,6 +65,8 @@ Tailor the output to the release type:
 Preserve each entry's prose and structure (migration guides, tables, `snippet:` directives,
 screenshots, links), except that each miscellaneous entry becomes its single list item.
 De-duplicate overlapping entries and order breaking changes most-impactful first.
+In each of `## Highlights` and `## New features`, and in the `CHANGELOG.md` overview outside “Experimental and unstable”, put entries with an image or video first.
+Within each group, put the highest-impact entries first.
 Drop the per-entry frontmatter.
 
 Relative doc links in entries were written as if from `changelog/` (e.g.
@@ -116,8 +118,8 @@ script emits an unresolved placeholder instead.
 
 The generated section is a starting point; edit it by hand so readers can find their way to the details.
 
-- **Order the overview by impact.**
-  Put the biggest new capabilities first, then integrations and APIs, then format support, then polish, then niche or developer-facing items.
+- **Judge impact in the overview.**
+  Rank major new capabilities above integrations and APIs, followed by format support, polish, and niche or developer-facing changes.
 - **Group and order the details.**
   The script emits each details subsection (🐍 Python API, 🪳 Bug fixes, 🌁 Viewer improvements, …) in commit order.
   Within each subsection, put entries that touch the same feature next to each other (e.g. all MCP/ViewerControl entries, all state timeline entries, all hangs and deadlocks), order the groups by their most impactful entry, and order entries within a group by impact.
@@ -154,15 +156,16 @@ The generated section is a starting point; edit it by hand so readers can find t
   Blueprint types (`rerun.blueprint.*`, under `re_type_definitions/rerun/blueprint/`) are an exception: they are all marked unstable, which only means the blueprint data isn't backwards compatible.
   That alone does not make a feature experimental, so a new view or blueprint setting is only experimental if one of the other markers applies to it (or to the data archetype it shows).
   Likewise, a Viewer feature is not experimental just because it is configured through an experimental API.
-- **Add media to the headline features** in the overview: a screenshot (or a still frame plus a link to the video) indented under the bullet, using the `<picture>` markup that `pixi run upload-image` prints.
+- **Add media to the headline features** in the overview: a screenshot (or a still frame plus a link to the video) indented under the bullet, using the markup that `pixi run upload-image` prints.
   Aim for a few images (roughly three to five), covering the most visual headline features: a picture sells a new view or renderer feature far better than a bullet does.
   Start from the media already in the changeset and the PR descriptions; if a visual feature has none, ask the user for a screenshot rather than skipping it.
   Don't add images to every entry: API, CLI, and bug-fix items rarely benefit.
   All media must live on `static.rerun.io`.
   Reuse a PR's media only if it is already on `static.rerun.io` or publicly accessible: `github.com/user-attachments/…` links from the private monorepo return 404 for the public.
   Download those with `curl -L -H "Authorization: token $(gh auth token)" <url>` and upload them with `pixi run upload-image <file> --name <name>`.
-  GitHub does not render `<video>` from external hosts, so for a video, extract a representative still (`ffmpeg -ss <t> -i video.mp4 -frames:v 1 still.png`), upload it, and link the `.mp4` below it.
-  Look at the frames and pick one without a cursor over the subject.
+  Keep embedded videos in the rerun.io changeset, where they play inline.
+  For every video used in the GitHub `CHANGELOG.md`, extract a representative still (`ffmpeg -ss <t> -i video.mp4 -frames:v 1 still.png`), upload it, and show it with a link to the video below.
+  Look at the frames and pick one without a cursor over the subject, and crop away any black margins around the recording.
 
 ### 5. Empty the inbox
 
@@ -174,7 +177,7 @@ Never add redirects for these temporary entries.
 - [ ] Every non-template `upcoming/` entry is represented in the changeset.
 - [ ] No `TODO(name)` remains in the changeset.
 - [ ] No summaries or other prose were synthesized for existing entries.
-- [ ] The `CHANGELOG.md` overview is ordered by impact, a few of its most visual headline features have `static.rerun.io` images, and its breaking changes link to the changeset subheadings.
+- [ ] A few visual headline features in the `CHANGELOG.md` overview have `static.rerun.io` images, and its breaking changes link to the changeset subheadings.
 - [ ] Every overview and detail entry that has relevant docs links to them.
 - [ ] Each details subsection groups entries by feature, most impactful first.
 - [ ] Every experimental or unstable feature (feature flag, `rerun.experimental`, `#[rerun(state = "unstable")]` on a non-blueprint type, or documented as experimental) is labeled as such in the changeset, and listed under the overview's final "Experimental and unstable" subsection.

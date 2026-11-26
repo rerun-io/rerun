@@ -18,6 +18,28 @@ use serde_json::{Map, Value};
 pub use self::combined_toolbox::CombinedToolbox;
 pub use self::model_preselect::{ModelCategory, ModelPreference, ModelPreselect};
 
+/// What the agent may do with a catalog server.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CatalogAccess {
+    /// Find and query data, but change nothing.
+    ReadOnly,
+
+    /// Also create datasets, rename entries, and upload or register recordings.
+    /// Every change still asks the user first.
+    #[default]
+    ReadWrite,
+}
+
+impl CatalogAccess {
+    /// Whether the agent may change the catalog.
+    pub fn allows_writes(self) -> bool {
+        match self {
+            Self::ReadOnly => false,
+            Self::ReadWrite => true,
+        }
+    }
+}
+
 /// The error a tool call fails with.
 ///
 /// Its message is reported to the model, so it can correct itself.
@@ -44,28 +66,59 @@ pub struct ToolDefinition {
     ///
     /// [`AgentToolbox::requires_approval`] may judge one call differently, from its arguments.
     pub effect: ToolEffect,
+
+    /// Whether the tool may reach beyond the host, e.g. load a URL or send data to a server.
+    ///
+    /// Over MCP, this is `openWorldHint`.
+    pub open_world: bool,
 }
 
 /// What running a tool can change.
-///
-/// Over MCP, this sets the tool annotations: `ReadOnly` is `readOnlyHint: true`,
-/// `NonDestructive` is `destructiveHint: false`, and `Destructive` is `destructiveHint: true`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolEffect {
     /// Changes nothing.
+    ///
+    /// Over MCP, this is `readOnlyHint: true`.
     ReadOnly,
 
+    /// Like [`Self::NonDestructive`], and running it again with the same arguments changes
+    /// nothing more, e.g. resizing a window.
+    ///
+    /// Over MCP, this is `idempotentHint: true` and `destructiveHint: false`.
+    IdempotentNonDestructive,
+
     /// Changes only state the user can easily undo, e.g. what the viewer shows.
+    ///
+    /// Over MCP, this is `destructiveHint: false`.
     NonDestructive,
 
     /// Anything else.
+    ///
+    /// Over MCP, this is `destructiveHint: true`.
     Destructive,
 }
 
 impl ToolEffect {
+    /// Whether the tool changes nothing, which is MCP's `readOnlyHint`.
+    pub fn read_only(self) -> bool {
+        self == Self::ReadOnly
+    }
+
+    /// Whether the tool may change what the user cannot easily undo, which is MCP's
+    /// `destructiveHint`.
+    pub fn destructive(self) -> bool {
+        self == Self::Destructive
+    }
+
+    /// Whether running the tool again with the same arguments changes nothing more, which is
+    /// MCP's `idempotentHint`.
+    pub fn idempotent(self) -> bool {
+        matches!(self, Self::ReadOnly | Self::IdempotentNonDestructive)
+    }
+
     /// Whether an agent should ask the user before running the tool.
     pub fn requires_approval(self) -> bool {
-        self == Self::Destructive
+        self.destructive()
     }
 }
 

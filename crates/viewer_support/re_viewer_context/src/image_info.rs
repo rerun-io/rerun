@@ -55,7 +55,7 @@ pub fn resolution_of_image_at(
         let video = ctx
             .store_context
             .memoizer(|c: &mut crate::VideoStreamCache| {
-                let codec_component = archetypes::EncodedImage::descriptor_media_type().component;
+                let codec_component = archetypes::VideoStream::descriptor_codec().component;
                 let codec = entity_db
                     .latest_at_component::<components::VideoCodec>(
                         entity_path,
@@ -325,8 +325,10 @@ impl ImageInfo {
     /// This will never fail.
     /// If the buffer is 5 bytes long and the target type is `f32`, the last byte is just ignored.
     ///
-    /// Cheap in most cases, but if the input buffer is not aligned to the element type,
-    /// this function will copy the data.
+    /// Borrows the buffer when it is aligned to `T`, and copies it otherwise.
+    /// The buffer is a blob, whose bytes arrow does not align to any wider type: it may sit at
+    /// any address within a zero-copy decoded payload, or follow an image of another element
+    /// type in the same chunk.
     pub fn to_slice<T: bytemuck::Pod>(&self) -> Cow<'_, [T]> {
         let element_size = std::mem::size_of::<T>();
         let num_elements = self.buffer.len() / element_size;
@@ -336,14 +338,6 @@ impl ImageInfo {
         if let Ok(slice) = bytemuck::try_cast_slice(bytes) {
             Cow::Borrowed(slice)
         } else {
-            // This should happen very rarely.
-            // But it can happen, e.g. when logging a `1x1xu8` image followed by a `1x1xf32` image
-            // to the same entity path, and they are put in the same chunk.
-
-            re_log::debug_warn_once!(
-                "The image buffer was not aligned to the element type {}",
-                std::any::type_name::<T>()
-            );
             re_tracing::profile_scope!("copy_image_buffer");
 
             let mut dest = vec![T::zeroed(); num_elements];

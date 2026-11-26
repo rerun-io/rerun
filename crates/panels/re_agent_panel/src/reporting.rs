@@ -40,7 +40,7 @@ impl Reporting {
     pub fn submit_product_feedback(
         &mut self,
         panel: Option<&AgentPanel>,
-        request: re_protos::viewer_control::v1alpha1::SubmitFeedbackRequest,
+        feedback: crate::AgentFeedback,
         share_text: bool,
     ) {
         let redact_with = if share_text {
@@ -55,7 +55,7 @@ impl Reporting {
         } else {
             None
         };
-        self.product_feedback.submit(request, redact_with);
+        self.product_feedback.submit(feedback, redact_with);
     }
 
     /// Record non-content usage for every turn and, when enabled, share its redacted text.

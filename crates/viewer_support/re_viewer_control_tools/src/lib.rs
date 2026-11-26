@@ -23,6 +23,10 @@ use re_protos::viewer_control::v1alpha1::{
     BlueprintUpdateMode, ViewerControlRequest, ViewerControlResponse,
 };
 
+mod operation;
+
+pub use self::operation::Operation;
+
 /// Prefix on the name of every viewer-control tool an agent sees, as in `viewer_get_state`.
 ///
 /// The same for every agent, however it reaches the viewer, so instructions and transcripts read
@@ -40,47 +44,6 @@ fn request_envelope() -> String {
 /// Name of the `oneof` inside the request envelope.
 const OPERATION_ONEOF: &str = "kind";
 
-/// Operations that exist on the wire but are not useful as agent-facing tools.
-///
-/// `egui_inspect` carries a MessagePack blob that the `egui_mcp` tools already wrap; handing an
-/// agent the raw bytes would be worse than the tools it backs.
-const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
-
-/// Operations that change nothing. See [`ToolEffect::ReadOnly`].
-///
-/// `save_screenshot` is only read-only with [`ScreenshotDelivery::Inline`]: otherwise it writes
-/// a file, possibly over another one.
-const READ_ONLY_OPERATIONS: &[&str] = &[
-    "describe_commands",
-    "get_blueprint",
-    "get_dataset_assets_schema",
-    "get_dataset_schema",
-    "get_location",
-    "get_logs",
-    "get_recording_schema",
-    "get_selection",
-    "get_settings",
-    "get_state",
-    "get_table_schema",
-    "get_transform_graph",
-    "list_commands",
-    "list_view_types",
-];
-
-/// Operations the user can easily undo. See [`ToolEffect::NonDestructive`].
-///
-/// Everything not listed here or in [`READ_ONLY_OPERATIONS`] asks first, including operations
-/// added later: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
-/// writes files, `set_settings` changes saved settings, and `submit_feedback` sends text to Rerun.
-/// `run_command` asks too, since it runs any UI command, but a host that sees the arguments can
-/// let the undoable commands through.
-const NON_DESTRUCTIVE_OPERATIONS: &[&str] = &[
-    "highlight_rect",
-    "set_blueprint",
-    "set_location",
-    "set_time_cursor",
-];
-
 /// Fully-qualified names of the `oneof`s a caller may leave unset, which the viewer then fills in.
 ///
 /// A `.proto` cannot mark a `oneof` as omittable, so this list does.
@@ -88,9 +51,6 @@ const OMITTABLE_ONEOFS: &[&str] = &[
     "rerun.viewer_control.v1alpha1.GetBlueprintRequest.target",
     "rerun.viewer_control.v1alpha1.SetBlueprintRequest.target",
 ];
-
-/// The screenshot operation, whose `max_size` this server defaults.
-const SCREENSHOT_OPERATION: &str = "save_screenshot";
 
 /// Where `save_screenshot` writes the image, when it is given one.
 const SCREENSHOT_FILE_PATH: &str = "file_path";
@@ -117,12 +77,6 @@ pub enum ScreenshotDelivery {
     /// in the web viewer there is no file system to write to.
     Inline,
 }
-
-/// The blueprint operation, whose update modes use short names on the agent surface.
-const SET_BLUEPRINT_OPERATION: &str = "set_blueprint";
-
-/// The command operation, whose `id` lists the viewer's command ids when they are known.
-const RUN_COMMAND_OPERATION: &str = "run_command";
 
 /// The `id` description of `run_command` when its values are listed, which replaces the
 /// `.proto` one that sends the agent to `list_commands` for them.
@@ -418,8 +372,16 @@ pub fn tools(
 ) -> Vec<ToolDefinition> {
     operation_oneof()
         .fields()
-        .filter(|field| !HIDDEN_OPERATIONS.contains(&field.name()))
-        .map(|field| {
+        .filter_map(|field| {
+            let operation = Operation::from_name(field.name());
+            re_log::debug_assert!(
+                operation.is_some(),
+                "`{}` is missing from `Operation`",
+                field.name()
+            );
+            Some((operation?, field))
+        })
+        .map(|(operation, field)| {
             let Kind::Message(request) = field.kind() else {
                 // Every operation is a message; a scalar here would be a `.proto` mistake.
                 re_log::debug_assert!(
@@ -432,6 +394,7 @@ pub fn tools(
                     description: "Unsupported operation".to_owned(),
                     input_schema: Map::new(),
                     effect: ToolEffect::Destructive,
+                    open_world: true,
                 };
             };
 
@@ -443,7 +406,7 @@ pub fn tools(
             let mut visiting = HashSet::default();
             let schema = message_schema(&request, &mut visiting, 0);
             let mut schema = schema.as_object().cloned().unwrap_or_default();
-            if field.name() == SET_BLUEPRINT_OPERATION
+            if operation == Operation::SetBlueprint
                 && let Some(mode) = schema
                     .get_mut("properties")
                     .and_then(|properties| properties.get_mut("mode"))
@@ -452,7 +415,7 @@ pub fn tools(
                 mode.insert("enum".to_owned(), json!(["full", "partial"]));
                 mode.insert("default".to_owned(), json!("full"));
             }
-            if field.name() == RUN_COMMAND_OPERATION
+            if operation == Operation::RunCommand
                 && let Some(command_ids) = command_ids
                 && let Some(id) = schema
                     .get_mut("properties")
@@ -464,7 +427,7 @@ pub fn tools(
                 id.insert("enum".to_owned(), json!(command_ids));
                 id.insert("description".to_owned(), json!(RUN_COMMAND_ID_DESCRIPTION));
             }
-            if field.name() == SCREENSHOT_OPERATION {
+            if operation == Operation::SaveScreenshot {
                 screenshot_schema(&mut schema, screenshot);
             }
             // The description still names the exclusive arms, and `build_request` enforces them.
@@ -472,18 +435,20 @@ pub fn tools(
                 schema.remove(keyword);
             }
 
-            let description =
-                if field.name() == SCREENSHOT_OPERATION && screenshot == ScreenshotDelivery::File {
-                    SCREENSHOT_FILE_DESCRIPTION.to_owned()
-                } else {
-                    description
-                };
+            let description = if operation == Operation::SaveScreenshot
+                && screenshot == ScreenshotDelivery::File
+            {
+                SCREENSHOT_FILE_DESCRIPTION.to_owned()
+            } else {
+                description
+            };
 
             ToolDefinition {
                 name: field.name().to_owned(),
                 description,
                 input_schema: schema,
-                effect: operation_effect(field.name(), screenshot),
+                effect: operation.effect(screenshot),
+                open_world: operation.may_be_open_world(),
             }
         })
         .collect()
@@ -493,26 +458,13 @@ pub fn tools(
 ///
 /// Can differ from the tool's [`ToolDefinition::effect`]: `save_screenshot` given a `file_path`
 /// writes a file, whichever [`ScreenshotDelivery`] the tool was described with.
-pub fn call_effect(operation: &str, arguments: &Map<String, Value>) -> ToolEffect {
+pub fn call_effect(operation: Operation, arguments: &Map<String, Value>) -> ToolEffect {
     let screenshot = if has_screenshot_file_path(arguments) {
         ScreenshotDelivery::File
     } else {
         ScreenshotDelivery::Inline
     };
-    operation_effect(operation, screenshot)
-}
-
-/// What `operation` can change, when screenshots are delivered as `screenshot`.
-fn operation_effect(operation: &str, screenshot: ScreenshotDelivery) -> ToolEffect {
-    if READ_ONLY_OPERATIONS.contains(&operation)
-        || (operation == SCREENSHOT_OPERATION && screenshot == ScreenshotDelivery::Inline)
-    {
-        ToolEffect::ReadOnly
-    } else if NON_DESTRUCTIVE_OPERATIONS.contains(&operation) {
-        ToolEffect::NonDestructive
-    } else {
-        ToolEffect::Destructive
-    }
+    operation.effect(screenshot)
 }
 
 /// Adjusts the screenshot tool's schema: the `max_size` default this crate applies, and the
@@ -677,9 +629,7 @@ pub enum ResponseJsonError {
 
 /// Whether `name` is one of the generated operations.
 pub fn is_operation(name: &str) -> bool {
-    operation_oneof()
-        .fields()
-        .any(|field| field.name() == name && !HIDDEN_OPERATIONS.contains(&field.name()))
+    Operation::from_name(name).is_some()
 }
 
 /// Build the request envelope for `name` from the JSON arguments an agent sent.
@@ -691,12 +641,14 @@ pub fn build_request(
     arguments: Option<Map<String, Value>>,
     screenshot: ScreenshotDelivery,
 ) -> Result<ViewerControlRequest, BuildRequestError> {
+    let unknown_operation = || BuildRequestError::UnknownOperation {
+        name: name.to_owned(),
+    };
+    let operation = Operation::from_name(name).ok_or_else(unknown_operation)?;
     let field = operation_oneof()
         .fields()
         .find(|field| field.name() == name)
-        .ok_or_else(|| BuildRequestError::UnknownOperation {
-            name: name.to_owned(),
-        })?;
+        .ok_or_else(unknown_operation)?;
     let invalid_arguments = |source| BuildRequestError::InvalidArguments {
         name: name.to_owned(),
         source,
@@ -708,7 +660,7 @@ pub fn build_request(
     };
 
     let mut arguments = arguments.unwrap_or_default();
-    if name == SCREENSHOT_OPERATION {
+    if operation == Operation::SaveScreenshot {
         match (screenshot, has_screenshot_file_path(&arguments)) {
             (ScreenshotDelivery::File, false) => {
                 return Err(invalid_arguments(ArgumentsError::MissingScreenshotFilePath));
@@ -722,7 +674,7 @@ pub fn build_request(
         }
         default_screenshot_max_size(&mut arguments);
     }
-    if name == SET_BLUEPRINT_OPERATION
+    if operation == Operation::SetBlueprint
         && let Some(value) = arguments.get_mut("mode")
     {
         // Agents use short mode names; the protobuf decoder requires the wire enum names.
@@ -908,18 +860,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_classified_operation_exists() {
-        for operation in std::iter::chain(READ_ONLY_OPERATIONS, NON_DESTRUCTIVE_OPERATIONS) {
-            assert!(is_operation(operation), "{operation:?} is not an operation");
-        }
-    }
-
-    #[test]
     fn a_screenshot_written_to_a_file_needs_approval() {
         let tool_effect = |screenshot| {
             tools(screenshot, None)
                 .into_iter()
-                .find(|tool| tool.name == SCREENSHOT_OPERATION)
+                .find(|tool| tool.name == Operation::SaveScreenshot.name())
                 .map(|tool| tool.effect)
         };
         assert_eq!(
@@ -932,13 +877,13 @@ mod tests {
         );
 
         assert_eq!(
-            call_effect(SCREENSHOT_OPERATION, &Map::new()),
+            call_effect(Operation::SaveScreenshot, &Map::new()),
             ToolEffect::ReadOnly
         );
         for key in [SCREENSHOT_FILE_PATH, "filePath"] {
             let to_file = Map::from_iter([(key.to_owned(), Value::from("/tmp/screenshot.png"))]);
             assert_eq!(
-                call_effect(SCREENSHOT_OPERATION, &to_file),
+                call_effect(Operation::SaveScreenshot, &to_file),
                 ToolEffect::Destructive,
                 "{key}"
             );
@@ -950,7 +895,7 @@ mod tests {
         let run_command_id = |command_ids: Option<&[String]>| {
             tools(ScreenshotDelivery::File, command_ids)
                 .into_iter()
-                .find(|tool| tool.name == RUN_COMMAND_OPERATION)
+                .find(|tool| tool.name == Operation::RunCommand.name())
                 .map(|tool| tool.input_schema["properties"]["id"].clone())
         };
 
@@ -972,11 +917,11 @@ mod tests {
     #[test]
     fn changing_settings_needs_approval_but_reading_them_does_not() {
         assert_eq!(
-            call_effect("get_settings", &Map::new()),
+            call_effect(Operation::GetSettings, &Map::new()),
             ToolEffect::ReadOnly
         );
         assert_eq!(
-            call_effect("set_settings", &Map::new()),
+            call_effect(Operation::SetSettings, &Map::new()),
             ToolEffect::Destructive
         );
     }
@@ -989,7 +934,7 @@ mod tests {
         // Advertise the short names rather than the protobuf enum names.
         let tool = tools(ScreenshotDelivery::File, None)
             .into_iter()
-            .find(|tool| tool.name == SET_BLUEPRINT_OPERATION)
+            .find(|tool| tool.name == Operation::SetBlueprint.name())
             .unwrap();
         assert_eq!(
             tool.input_schema["properties"]["mode"]["enum"],
@@ -1011,7 +956,7 @@ mod tests {
                 args.insert("mode".to_owned(), json!(input));
             }
             let request = build_request(
-                SET_BLUEPRINT_OPERATION,
+                Operation::SetBlueprint.name(),
                 Some(args),
                 ScreenshotDelivery::File,
             )
@@ -1026,7 +971,7 @@ mod tests {
             let args = json!({"recording": {}, "json": "{}", "mode": invalid});
             assert!(
                 build_request(
-                    SET_BLUEPRINT_OPERATION,
+                    Operation::SetBlueprint.name(),
                     args.as_object().cloned(),
                     ScreenshotDelivery::File,
                 )
@@ -1185,7 +1130,7 @@ mod tests {
         for delivery in [ScreenshotDelivery::Inline, ScreenshotDelivery::File] {
             let tool = tools(delivery, None)
                 .into_iter()
-                .find(|tool| tool.name == SCREENSHOT_OPERATION)
+                .find(|tool| tool.name == Operation::SaveScreenshot.name())
                 .ok_or("missing screenshot tool")?;
             let writes_file = delivery == ScreenshotDelivery::File;
             assert_eq!(
@@ -1204,7 +1149,7 @@ mod tests {
                 Some(Map::new()),
                 json!({"file_path": null}).as_object().cloned(),
             ] {
-                let request = build_request(SCREENSHOT_OPERATION, arguments, delivery);
+                let request = build_request(Operation::SaveScreenshot.name(), arguments, delivery);
                 if writes_file {
                     assert!(request.is_err(), "file delivery requires a path");
                 } else {
@@ -1219,7 +1164,8 @@ mod tests {
 
             for key in ["file_path", "filePath"] {
                 let arguments = Map::from_iter([(key.to_owned(), json!("a.png"))]);
-                let request = build_request(SCREENSHOT_OPERATION, Some(arguments), delivery);
+                let request =
+                    build_request(Operation::SaveScreenshot.name(), Some(arguments), delivery);
                 if writes_file {
                     let Some(viewer_control_request::Kind::SaveScreenshot(request)) = request?.kind
                     else {

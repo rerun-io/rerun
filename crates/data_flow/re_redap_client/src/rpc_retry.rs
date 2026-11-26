@@ -233,6 +233,22 @@ mod tests {
         }
     }
 
+    #[test]
+    fn every_rpc_sets_an_idempotency_level() {
+        let service = re_protos::json::descriptor_pool()
+            .get_service_by_name("rerun.cloud.v1alpha1.RerunCloudService")
+            .unwrap();
+        let unset: Vec<_> = service
+            .methods()
+            .filter(|method| !method.options().has_field_by_name("idempotency_level"))
+            .map(|method| method.name().to_owned())
+            .collect();
+        assert!(
+            unset.is_empty(),
+            "set `idempotency_level` on these RPCs: {unset:?}"
+        );
+    }
+
     #[tokio::test]
     async fn other_errors_are_not_retried() {
         for error in [

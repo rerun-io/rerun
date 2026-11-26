@@ -9,6 +9,7 @@ use re_auth::credentials::CredentialsProviderError;
 use re_byte_size::SizeBytes as _;
 use re_protos::capabilities::ServerCapabilities;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest, WhoAmIRequest};
+use re_protos::protocol_level::ProtocolLevel;
 use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
@@ -28,6 +29,24 @@ fn suggest_api_prefix(origin: &Origin) -> Option<String> {
     } else {
         None
     }
+}
+
+/// The warning for the user of a client that the server at `origin` will stop serving.
+fn deprecation_warning(
+    origin: &Origin,
+    deprecation: re_protos::cloud::v1alpha1::ClientDeprecation,
+) -> String {
+    let client_version = env!("CARGO_PKG_VERSION");
+    let upgrade = match deprecation.min_non_deprecated_version {
+        Some(version) => format!(
+            "Upgrade to Rerun {} or later.",
+            re_build_info::CrateVersion::from(version)
+        ),
+        None => "Upgrade to a newer version.".to_owned(),
+    };
+    format!(
+        "The server will stop supporting this version of Rerun ({client_version}). {upgrade}\nServer: {origin}"
+    )
 }
 
 //TODO(#11016): refactor this to achieve lazy auth retry.
@@ -211,10 +230,11 @@ pub struct SourcedCredentials {
     pub credentials: Credentials,
 }
 
-/// A client stack that passed the `/WhoAmI` check, and the capabilities that call returned.
+/// A client stack that passed the `/WhoAmI` check, and what that call said of the server.
 struct ValidatedClientStack {
     client_stack: RedapClientStack,
     capabilities: ServerCapabilities,
+    server_protocol_level: ProtocolLevel,
 }
 
 impl ConnectionRegistryHandle {
@@ -393,6 +413,7 @@ impl ConnectionRegistryHandle {
             ValidatedClientStack {
                 client_stack,
                 capabilities,
+                server_protocol_level,
             },
             successful_credentials,
         ) = Self::try_connect_client_stack(
@@ -430,6 +451,7 @@ impl ConnectionRegistryHandle {
                     client_stack,
                 )),
                 capabilities,
+                server_protocol_level,
             };
 
             inner
@@ -639,7 +661,7 @@ impl ConnectionRegistryHandle {
                         }),
                     })
                     .await
-                    .map(|_| ServerCapabilities::unknown())
+                    .map(|_| (ServerCapabilities::unknown(), ProtocolLevel::BASELINE))
             }
             Ok(resp) => {
                 let trace_id = crate::extract_trace_id(resp.metadata());
@@ -648,13 +670,19 @@ impl ConnectionRegistryHandle {
                     can_read,
                     can_write,
                     capabilities,
+                    client_deprecation,
+                    protocol_level,
                 } = resp.into_inner();
+                if let Some(client_deprecation) = client_deprecation {
+                    re_log::warn_once!("{}", deprecation_warning(&origin, client_deprecation));
+                }
                 let is_anonymous = user_id.is_none();
                 let user_id = user_id.as_deref().unwrap_or("<anonymous>");
                 let capabilities =
                     capabilities.map_or_else(ServerCapabilities::unknown, Into::into);
+                let server_protocol_level = ProtocolLevel::from(protocol_level);
                 re_log::debug_once!(
-                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}, capabilities={capabilities:?}",
+                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}, capabilities={capabilities:?}, protocol_level={server_protocol_level}",
                 );
                 if !can_read {
                     if is_anonymous {
@@ -673,15 +701,16 @@ impl ConnectionRegistryHandle {
                         "the server reports that you do not have read access",
                     ));
                 }
-                Ok(capabilities)
+                Ok((capabilities, server_protocol_level))
             }
             Err(err) => Err(err),
         };
 
         match request_result {
-            Ok(capabilities) => Ok(ValidatedClientStack {
+            Ok((capabilities, server_protocol_level)) => Ok(ValidatedClientStack {
                 client_stack,
                 capabilities,
+                server_protocol_level,
             }),
 
             // catch unauthenticated errors and forget the token if they happen
@@ -931,5 +960,37 @@ mod tests {
                 .expect_err("connection should fail");
             assert_eq!(err.kind, ApiErrorKind::Connection, "{credentials:?}: {err}");
         }
+    }
+
+    /// The warning names the version to upgrade to when the server sends one, and ends with the
+    /// server's address.
+    #[test]
+    fn deprecation_warning_names_the_version_to_upgrade_to() {
+        use re_protos::cloud::v1alpha1::ClientDeprecation;
+
+        let origin: re_uri::Origin = "rerun+http://127.0.0.1:51234"
+            .parse()
+            .expect("origin should be valid");
+        let client_version = env!("CARGO_PKG_VERSION");
+
+        let with_version = ClientDeprecation {
+            min_non_deprecated_version: Some(re_build_info::CrateVersion::new(0, 45, 0).into()),
+        };
+        assert_eq!(
+            super::deprecation_warning(&origin, with_version),
+            format!(
+                "The server will stop supporting this version of Rerun ({client_version}). Upgrade to Rerun 0.45.0 or later.\nServer: {origin}"
+            )
+        );
+
+        let without_version = ClientDeprecation {
+            min_non_deprecated_version: None,
+        };
+        assert_eq!(
+            super::deprecation_warning(&origin, without_version),
+            format!(
+                "The server will stop supporting this version of Rerun ({client_version}). Upgrade to a newer version.\nServer: {origin}"
+            )
+        );
     }
 }

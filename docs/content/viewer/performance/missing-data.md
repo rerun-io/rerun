@@ -12,7 +12,7 @@ First, check that the data arrived at all: look for the entity in the streams pa
 Data is only shown on the timelines it was logged on.
 If you log with `rr.set_time("frame", sequence=…)` but the Viewer shows another custom timeline, for example `sensor_time`, the data appears to be missing.
 By default, the SDK also logs all data on the automatic `log_time` timeline, so `log_time` shows it unless you turned that timeline off.
-Pick the right timeline in the time panel.
+Pick the right timeline in the timeline panel.
 Static data is shown on every timeline.
 See [timelines](../../logging-and-ingestion/data-model/timelines.md).
 
@@ -29,7 +29,7 @@ If you changed the query, or set up the layout with a blueprint, new entities ma
 Select the view and check its entity path filter in the selection panel, or right-click the entity in the streams panel and pick **Add to new view**.
 
 When the Viewer creates views automatically, it creates at most 8 views of each kind (for example 8 time series views).
-If your data needs more, add the views yourself in the UI or with a [blueprint](../blueprints/build-a-blueprint-programmatically.md).
+If your data needs more, add the views yourself in the UI or with a [blueprint](../inspect-recordings/configure-from-code.md).
 
 ## The entity is hidden
 
@@ -69,3 +69,14 @@ See [Limit the Viewer's memory usage](limit-ram.md).
 Data with a different application ID or recording ID goes to a separate recording.
 Check the recording panel on the left and select the right recording.
 If several processes log to the same recording, they need the same application ID and recording ID, see [Share recordings across multiple processes](../../logging-and-ingestion/sinks-and-modes/shared-recordings.md).
+
+## Old data stays visible
+
+Views use [latest-at semantics](../../logging-and-ingestion/data-model/latest-at.md): a value remains visible until another value is logged for that entity.
+Log [`Clear`](../../reference/types/archetypes/clear.md) to remove it at a given time.
+Static data is not on a timeline and is unaffected by visible time ranges.
+
+## Data is outside the visible time range
+
+A view with a [visible time range](../view-concepts/visible-time-ranges.md) does not show data outside that range.
+Check the view or entity settings in the selection panel.

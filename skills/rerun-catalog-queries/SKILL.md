@@ -366,6 +366,18 @@ When a query stage is slower than expected:
 
 ---
 
+## Refresh the server in the viewer after catalog writes
+
+<!-- TODO(RR-4859, RR-4853): remove this section once the catalog server sends `WatchEvents` for every change, so the viewer refreshes by itself. -->
+
+The viewer caches the contents of each server.
+After any change to the catalog (rename, create, register, upload, delete), the viewer's sidebar and open dataset or table pages stay stale until refreshed.
+
+Run `viewer_run_command` with `server.refresh` after each write.
+Use `table.refresh` to refresh only the dataset or table on screen.
+
+---
+
 ## See also
 
 - `datafusion-python` skill — DataFrame API, SQL parity, expression

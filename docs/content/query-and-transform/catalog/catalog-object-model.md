@@ -77,8 +77,8 @@ Pass `on_duplicate=OnDuplicateSegmentLayer.REPLACE` to `register()` to overwrite
 Additive registration can be achieved by using different layer names for different `.rrd`s registered under the same segment ID.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/6a9690740962bcda73b78a847c04862ba646461a_d2.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
-  <img class="d2-light" src="https://static.rerun.io/97520fa2e99046614f595be752eec7c48c405e51_d2-light.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
+  <img class="d2-dark" src="https://static.rerun.io/87994b13acba8b61778eca16b947454f6d4380d9_diagram-catalog-object-model-dark.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
+  <img class="d2-light" src="https://static.rerun.io/139785ff1666d48a7caf4ad48a7b4226a6f37011_diagram-catalog-object-model-light.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
 </div>
 
 Layers are immutable and can only be overwritten by registering a new `.rrd` file. In other words, datasets support the following mutation operations:
@@ -117,8 +117,8 @@ Use `dataset.layer(name).schema()` to fetch the union of one layer's schemas acr
 snippet: concepts/query-and-transform/catalog_object_model[schema]
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
-  <img class="d2-light" src="https://static.rerun.io/43ed31f276a37305d671c76e9ae4083667ccb988_d2-light.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
+  <img class="d2-dark" src="https://static.rerun.io/a2425d9909b1766edff1b2940d66331f8f54d512_diagram-schema-stack-dark.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
+  <img class="d2-light" src="https://static.rerun.io/df137081af950d481ad5b27ae900910d286a2ca3_diagram-schema-stack-light.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
 </div>
 
 Datasets maintain a minimal level of schema self-consistency.
@@ -133,15 +133,15 @@ You can add blueprints to a dataset by registering `.rbl` blueprint files, typic
 A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
 You can also set one as the default, which is then loaded with each segment of the dataset.
 
-The registered blueprints show up in the Viewer in a [dropdown in the top bar](../../viewer/ui/blueprint-panel.md#dataset-blueprints).
+The registered blueprints show up in the Viewer in a [dropdown in the top bar](../../viewer/inspect-recordings/recording-layout.md#select-a-recording-blueprint-for-a-dataset).
 
 A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded segment previews.
-See [Configure table layouts and segment previews](../../viewer/blueprints/configure-table-blueprints.md) for the complete save-and-register workflow.
+See [Configure table layouts and segment previews](../../viewer/browse-datasets/table-layout.md) for the complete save-and-register workflow.
 
 
 ### Assets
 
-An asset is static data registered on a dataset and shared by all of its segments, such as a robot URDF, a room mesh, or a calibration.
+An asset is static data registered on a dataset and shared by its segments, such as a robot URDF, a room mesh, or a calibration.
 Registering it once as an asset means it does not have to be copied into every recording.
 
 Like blueprints, assets live in their own dataset, owned by the dataset they belong to.
@@ -156,9 +156,12 @@ Asset datasets have some restrictions to keep them light, and the server rejects
 - are larger than 300 MiB
 - would bring the dataset above 12 assets
 
-When the Rerun Viewer opens a segment, it loads the dataset's assets along with the segment's own data.
+Assets can apply to all segments except selected ones (`mode="opt_out"`, the default), or only to selected segments (`mode="opt_in"`).
+Choose coverage during registration or change it later using `add_segments_to_asset()` and `remove_segments_from_asset()`.
+
+When the Rerun Viewer opens a segment, it loads the assets that apply to it along with the segment's own data.
 The asset data is cached, so opening another segment of the same dataset does not download it again.
-The assets tab of a dataset lists the registered assets and their metadata, and lets you register and unregister them right in the viewer.
+The assets tab of a dataset lists the registered assets and their coverage, and lets you register and unregister them and edit their coverage in the Viewer.
 If the server accepts uploads, the viewer can also upload a `.rrd` from your machine and register it as an asset.
 
 Assets also show up in the [python chunk processing api](../../logging-and-ingestion/import/chunk-processing-api.md) if `include_assets` is `True`:

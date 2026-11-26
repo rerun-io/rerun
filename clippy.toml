@@ -140,6 +140,7 @@ doc-valid-idents = [
   "MessagePack",
   "MiB",
   "MiMalloc",
+  "MuJoCo",
   "NaN",
   "OBJ",
   "OpenGL",

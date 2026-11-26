@@ -26,7 +26,7 @@ Before starting, make sure you've [installed the SDK](../getting-started/install
 
 ## Initializing the SDK
 
-Create a new file (or project), import the relevant utilities from your language's SDK, and initialize a recording. Initialization names the recording with a stable [`ApplicationId`](data-model/recordings.md), then spawns a [Rerun Viewer](../viewer/ui/overview.md) and connects the recording to it:
+Create a new file (or project), import the relevant utilities from your language's SDK, and initialize a recording. Initialization names the recording with a stable [`ApplicationId`](data-model/recordings.md#application-ids), then spawns a [Rerun Viewer](../viewer/organization.md) and connects the recording to it:
 
 snippet: tutorials/dna[imports]
 
@@ -62,7 +62,7 @@ If the Viewer was still running, Rerun will simply connect to this existing sess
 </picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_See the [Viewer overview](../viewer/ui/overview.md) for a tour of the user interface._
+_See the [Viewer overview](../viewer/inspect-recordings/configure-layout.md#panels) for a tour of the user interface._
 
 ## Under the hood
 
@@ -122,7 +122,7 @@ Once again, although we are getting fancier with our array manipulations, there 
 
 Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](data-model/timelines.md).
 
-Even so, if you look at your [Timeline View](../viewer/ui/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
+Even so, if you look at your [Timeline View](../viewer/inspect-recordings/configure-layout.md#timeline-panel) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/480w.png">

@@ -8,6 +8,7 @@ mod datafusion_table_widget;
 mod display_record_batch;
 mod filters;
 mod header_tooltip;
+mod no_cards_ui;
 mod pending_upserts;
 mod preview_renderer;
 mod re_table;

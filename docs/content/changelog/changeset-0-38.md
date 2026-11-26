@@ -246,8 +246,8 @@ view = rrb.Spatial2DView(
     }
 )
 ```
-For a general overview of component mappings see [component mappings](../viewer/blueprints-and-views/component-mappings.md).
-For a guide about annotation context see [annotation context](../viewer/blueprints-and-views/annotation-context.md).
+For a general overview of component mappings see [component mappings](../viewer/view-concepts/component-mappings.md).
+For a guide about annotation context see [annotation context](../viewer/view-concepts/annotation-context.md).
 
 Under the hood we now resolve annotation context more rigoriously & consistently,
 which led to some subtle changes in behavior, see [Recorded labels no longer mix with annotation labels](#recorded-labels-no-longer-mix-with-annotation-labels).
@@ -375,7 +375,7 @@ rr.log(
 Previously, the third point was labeled `car`; now it is unlabeled.
 Log `labels=["first", "second", "car"]` to preserve the previous result, or omit recorded labels to use annotations for all points.
 
-See the [annotation context documentation](../viewer/blueprints-and-views/annotation-context.md).
+See the [annotation context documentation](../viewer/view-concepts/annotation-context.md).
 
 ### Custom views must now provide reflection metadata
 

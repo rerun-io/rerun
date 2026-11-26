@@ -1,12 +1,13 @@
 ---
-title: Format-independent kinematics API for URDF
+title: Format-independent kinematics API
 hidden: true
 type: misc
 ---
 
-### Format-independent kinematics API for URDF
+### Format-independent kinematics API
 
 `re_importer::UrdfTree` now implements the new `re_importer::KinematicTree` trait, which returns its transforms as `re_importer::JointTransform`.
+The trait is shared with the new MJCF importer, so `re_importer::MjcfTree` (`rerun.mjcf.MjcfTree` in Python) drives a MuJoCo model through the same API.
 Existing code keeps working, with these deprecations:
 
 - In Rust, `re_importer::urdf_joint_transform::compute_transform3d` is deprecated in favor of `urdf_joint_transform::compute_joint_transform` (convert the result with `Transform3D::from`), or `UrdfTree::compute_joint_transform` to apply the frame prefix.

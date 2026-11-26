@@ -107,7 +107,7 @@ native_viewer = [
   "dep:re_rerun_mcp",
   "dep:url",
   "importers",
-  "re_viewer?/agent_context",
+  "re_viewer?/agent_skills",
 ]
 
 ## Enable the local Rerun catalog server.

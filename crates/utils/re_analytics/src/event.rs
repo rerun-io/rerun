@@ -796,11 +796,28 @@ pub struct SessionFeedback {
 /// Feedback from an agent about Rerun, modeled after the feedback.now protocol.
 ///
 /// The fields and their limits use the names of the protocol, flattened into event properties:
-/// `signal.category`, `signal.severity`, `subject.surface`, `content.title`, and `content.summary`.
+/// `signal.category`, `signal.severity`, `signal.reproducibility`, `signal.confidence`,
+/// `subject.surface`, `subject.kind`, `content.title`, and `content.summary`.
 pub struct ProductFeedback {
+    /// What kind of problem it is.
     pub category: Option<FeedbackCategory>,
+
+    /// How much the problem got in the way.
     pub severity: Option<FeedbackSeverity>,
-    pub surface: Option<String>,
+
+    /// How often the problem happens.
+    pub reproducibility: Option<FeedbackReproducibility>,
+
+    /// How sure the author is of the report.
+    pub confidence: Option<Confidence>,
+
+    /// The tool, command, or API that the feedback is about.
+    pub surface: Surface,
+
+    /// What kind of thing [`Self::surface`] names.
+    pub kind: Option<FeedbackSurfaceKind>,
+
+    /// The free text, only sent after redaction.
     pub content: Option<ProductFeedbackContent>,
 }
 
@@ -810,7 +827,6 @@ pub struct ProductFeedbackContent {
 }
 
 impl ProductFeedback {
-    pub const MAX_SURFACE_CHARS: usize = 64;
     pub const MAX_TITLE_CHARS: usize = 256;
     pub const MAX_SUMMARY_CHARS: usize = 4096;
 
@@ -818,12 +834,21 @@ impl ProductFeedback {
         let Self {
             category,
             severity,
+            reproducibility,
+            confidence,
             surface,
+            kind,
             content,
         } = self;
         event.insert_opt("category", category.map(FeedbackCategory::as_str));
         event.insert_opt("severity", severity.map(FeedbackSeverity::as_str));
-        event.insert_opt("surface", surface.filter(|name| is_surface(name)));
+        event.insert_opt(
+            "reproducibility",
+            reproducibility.map(FeedbackReproducibility::as_str),
+        );
+        event.insert_opt("confidence", confidence.map(Confidence::get));
+        event.insert("surface", surface.0);
+        event.insert_opt("kind", kind.map(FeedbackSurfaceKind::as_str));
         if let Some(ProductFeedbackContent { title, summary }) = content {
             event.insert("title", truncate(title, Self::MAX_TITLE_CHARS));
             event.insert_opt(
@@ -834,12 +859,63 @@ impl ProductFeedback {
     }
 }
 
-fn is_surface(name: &str) -> bool {
-    !name.is_empty()
-        && name.chars().count() <= ProductFeedback::MAX_SURFACE_CHARS
-        && name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | ':' | '-'))
+/// The tool, command, or API that the feedback is about, such as `rr.log`.
+///
+/// It is sent without redaction. [`Self::new`] keeps it an identifier, never free text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Surface(String);
+
+/// Why a name is not a [`Surface`].
+#[derive(thiserror::Error, Debug)]
+#[error(
+    "must be 1 to {} characters: letters, digits, `_`, `.`, `:`, and `-`",
+    Surface::MAX_CHARS
+)]
+pub struct InvalidSurface;
+
+impl Surface {
+    /// The longest a surface can be, in characters.
+    pub const MAX_CHARS: usize = 64;
+
+    pub fn new(name: String) -> Result<Self, InvalidSurface> {
+        let is_valid = !name.is_empty()
+            && name.chars().count() <= Self::MAX_CHARS
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | ':' | '-'));
+        if is_valid {
+            Ok(Self(name))
+        } else {
+            Err(InvalidSurface)
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// How sure the author is of the feedback. Always from 0 to 1 inclusive, never NaN.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Confidence(f64);
+
+/// Why a number is not a [`Confidence`].
+#[derive(thiserror::Error, Debug)]
+#[error("must be from 0 to 1")]
+pub struct InvalidConfidence;
+
+impl Confidence {
+    pub fn new(value: f64) -> Result<Self, InvalidConfidence> {
+        if (0.0..=1.0).contains(&value) {
+            Ok(Self(value))
+        } else {
+            Err(InvalidConfidence)
+        }
+    }
+
+    pub fn get(self) -> f64 {
+        self.0
+    }
 }
 
 fn truncate(text: String, max_chars: usize) -> String {
@@ -887,6 +963,48 @@ impl FeedbackSeverity {
             Self::High => "high",
             Self::Medium => "medium",
             Self::Low => "low",
+        }
+    }
+}
+
+/// How often the problem of a [`ProductFeedback`] happens.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedbackReproducibility {
+    Always,
+    Sometimes,
+    Intermittent,
+    Once,
+}
+
+impl FeedbackReproducibility {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Always => "always",
+            Self::Sometimes => "sometimes",
+            Self::Intermittent => "intermittent",
+            Self::Once => "once",
+        }
+    }
+}
+
+/// What kind of thing the [`Surface`] names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedbackSurfaceKind {
+    ApiEndpoint,
+    DocsPage,
+    CliCommand,
+    SdkMethod,
+    Other,
+}
+
+impl FeedbackSurfaceKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ApiEndpoint => "api_endpoint",
+            Self::DocsPage => "docs_page",
+            Self::CliCommand => "cli_command",
+            Self::SdkMethod => "sdk_method",
+            Self::Other => "other",
         }
     }
 }
@@ -1341,7 +1459,10 @@ mod tests {
         let event = product_event(ProductFeedback {
             category: Some(FeedbackCategory::DocsMismatch),
             severity: None,
-            surface: Some("viewer_set_blueprint".to_owned()),
+            reproducibility: None,
+            confidence: None,
+            surface: surface("viewer_set_blueprint"),
+            kind: None,
             content: None,
         });
         assert!(matches!(&event.props["subject"], Property::String(s) if s == "product"));
@@ -1350,6 +1471,9 @@ mod tests {
             matches!(&event.props["surface"], Property::String(s) if s == "viewer_set_blueprint")
         );
         assert!(!event.props.contains_key("severity"));
+        assert!(!event.props.contains_key("reproducibility"));
+        assert!(!event.props.contains_key("confidence"));
+        assert!(!event.props.contains_key("kind"));
         assert!(!event.props.contains_key("title"));
         assert!(!event.props.contains_key("summary"));
     }
@@ -1359,7 +1483,10 @@ mod tests {
         let event = product_event(ProductFeedback {
             category: None,
             severity: Some(FeedbackSeverity::Low),
-            surface: None,
+            reproducibility: None,
+            confidence: None,
+            surface: surface("rr.log"),
+            kind: None,
             content: Some(ProductFeedbackContent {
                 title: "é".repeat(ProductFeedback::MAX_TITLE_CHARS + 1),
                 summary: Some("x".repeat(ProductFeedback::MAX_SUMMARY_CHARS + 1)),
@@ -1376,15 +1503,49 @@ mod tests {
     }
 
     #[test]
-    fn a_surface_that_is_not_a_name_is_left_out() {
-        for surface in ["", "rr.log(\"/home/me/data\")", "a tool", &"x".repeat(65)] {
-            let event = product_event(ProductFeedback {
-                category: None,
-                severity: None,
-                surface: Some(surface.to_owned()),
-                content: None,
-            });
-            assert!(!event.props.contains_key("surface"), "{surface}");
+    fn product_feedback_sends_reproducibility_kind_and_confidence() {
+        let event = product_event(ProductFeedback {
+            category: None,
+            severity: None,
+            reproducibility: Some(FeedbackReproducibility::Intermittent),
+            confidence: Some(Confidence::new(0.1).expect("in range")),
+            surface: surface("rr.log"),
+            kind: Some(FeedbackSurfaceKind::SdkMethod),
+            content: None,
+        });
+        assert!(
+            matches!(&event.props["reproducibility"], Property::String(s) if s == "intermittent")
+        );
+        assert!(matches!(&event.props["kind"], Property::String(s) if s == "sdk_method"));
+        assert!(matches!(event.props["confidence"], Property::Float(c) if c == 0.1));
+    }
+
+    fn surface(name: &str) -> Surface {
+        Surface::new(name.to_owned()).expect("a valid surface")
+    }
+
+    #[test]
+    fn only_a_short_name_is_a_surface() {
+        for name in [
+            "viewer_set_blueprint",
+            "rr.log",
+            "rerun::RecordingStream",
+            &"x".repeat(64),
+        ] {
+            assert!(Surface::new(name.to_owned()).is_ok(), "{name}");
+        }
+        for name in ["", "rr.log(\"/home/me/data\")", "a tool", &"x".repeat(65)] {
+            assert!(Surface::new(name.to_owned()).is_err(), "{name}");
+        }
+    }
+
+    #[test]
+    fn only_zero_to_one_is_a_confidence() {
+        for value in [0.0, 0.1, 1.0] {
+            assert!(Confidence::new(value).is_ok(), "{value}");
+        }
+        for value in [-0.1, 1.1, f64::NAN, f64::INFINITY] {
+            assert!(Confidence::new(value).is_err(), "{value}");
         }
     }
 

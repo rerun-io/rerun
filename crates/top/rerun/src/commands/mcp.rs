@@ -18,8 +18,12 @@ pub struct McpCommand {
     catalog_url: Option<re_uri::Origin>,
 
     /// The toolsets to offer, comma-separated.
-    #[arg(long, value_enum, value_delimiter = ',', default_values_t = [McpToolset::Viewer, McpToolset::Catalog])]
+    #[arg(long, value_enum, value_delimiter = ',', default_values_t = [McpToolset::Viewer, McpToolset::Egui, McpToolset::Catalog])]
     toolsets: Vec<McpToolset>,
+
+    /// Leave out the catalog tools that create, rename, or upload.
+    #[arg(long)]
+    catalog_read_only: bool,
 
     // TODO(eleijonmarck): find a cleaner way for analytics to know who started the server.
     /// Marks a server started by the viewer's agent panel.
@@ -34,6 +38,9 @@ pub struct McpCommand {
 enum McpToolset {
     /// Drive a running Rerun Viewer.
     Viewer,
+
+    /// Click, type, and look at the widgets of the Viewer the viewer toolset connects to.
+    Egui,
 
     /// Read and add to a Rerun catalog server. Every change asks the user first.
     Catalog,
@@ -52,21 +59,37 @@ impl McpCommand {
         let Self {
             endpoint,
             catalog_url,
+            catalog_read_only,
             toolsets,
             from_agent_panel: _,
         } = self;
         let has_viewer = toolsets.contains(&McpToolset::Viewer);
+        let has_egui = toolsets.contains(&McpToolset::Egui);
         let has_catalog = toolsets.contains(&McpToolset::Catalog);
+        if has_egui && !has_viewer {
+            anyhow::bail!("The egui toolset needs the viewer toolset, see `--toolsets`");
+        }
         if endpoint.is_some() && !has_viewer {
             anyhow::bail!("`--endpoint` needs the viewer toolset, see `--toolsets`");
         }
         if catalog_url.is_some() && !has_catalog {
             anyhow::bail!("`--catalog-url` needs the catalog toolset, see `--toolsets`");
         }
+        if catalog_read_only && !has_catalog {
+            anyhow::bail!("`--catalog-read-only` needs the catalog toolset, see `--toolsets`");
+        }
         Ok(re_rerun_mcp::Config {
-            viewer: has_viewer.then_some(re_rerun_mcp::ViewerConfig { endpoint }),
+            viewer: has_viewer.then_some(re_rerun_mcp::ViewerConfig {
+                endpoint,
+                egui: has_egui,
+            }),
             catalog: has_catalog.then_some(re_rerun_mcp::CatalogConfig {
                 origin: catalog_url,
+                access: if catalog_read_only {
+                    re_rerun_mcp::CatalogAccess::ReadOnly
+                } else {
+                    re_rerun_mcp::CatalogAccess::ReadWrite
+                },
             }),
         })
     }
@@ -93,10 +116,10 @@ mod tests {
     }
 
     #[test]
-    fn viewer_and_catalog_are_offered_by_default() {
+    fn viewer_egui_and_catalog_are_offered_by_default() {
         assert_eq!(
             parse(&[]).toolsets,
-            [McpToolset::Viewer, McpToolset::Catalog]
+            [McpToolset::Viewer, McpToolset::Egui, McpToolset::Catalog]
         );
         assert_eq!(
             parse(&["--toolsets", "catalog"]).toolsets,
@@ -106,6 +129,22 @@ mod tests {
             parse(&["--toolsets", "viewer,catalog"]).toolsets,
             [McpToolset::Viewer, McpToolset::Catalog]
         );
+    }
+
+    #[test]
+    fn the_catalog_writes_are_on_unless_read_only() {
+        use re_rerun_mcp::CatalogAccess;
+
+        let access = |args: &[&str]| {
+            parse(args)
+                .config()
+                .expect("valid")
+                .catalog
+                .expect("on")
+                .access
+        };
+        assert_eq!(access(&[]), CatalogAccess::ReadWrite);
+        assert_eq!(access(&["--catalog-read-only"]), CatalogAccess::ReadOnly);
     }
 
     #[test]
@@ -128,6 +167,10 @@ mod tests {
         .config()
         .expect_err("no catalog toolset");
         assert!(err.to_string().contains("--catalog-url"), "{err}");
+        let err = parse(&["--toolsets", "viewer", "--catalog-read-only"])
+            .config()
+            .expect_err("no catalog toolset");
+        assert!(err.to_string().contains("--catalog-read-only"), "{err}");
 
         let config = parse(&[
             "--endpoint",
@@ -149,5 +192,18 @@ mod tests {
         );
         let config = parse(&["--toolsets", "catalog"]).config().expect("valid");
         assert!(config.viewer.is_none());
+    }
+
+    #[test]
+    fn egui_needs_the_viewer_toolset() {
+        let err = parse(&["--toolsets", "egui"])
+            .config()
+            .expect_err("no viewer toolset");
+        assert!(err.to_string().contains("viewer toolset"), "{err}");
+
+        let config = parse(&["--toolsets", "viewer"]).config().expect("valid");
+        assert!(config.viewer.is_some_and(|viewer| !viewer.egui));
+        let config = parse(&[]).config().expect("valid");
+        assert!(config.viewer.is_some_and(|viewer| viewer.egui));
     }
 }

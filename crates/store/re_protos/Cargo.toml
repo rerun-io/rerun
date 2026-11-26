@@ -46,7 +46,7 @@ prost-reflect = { workspace = true, features = ["serde"] }
 prost-types.workspace = true
 prost.workspace = true
 pyo3 = { workspace = true, optional = true }
-quiver = { workspace = true, features = ["derive"] }
+quiver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_path_to_error.workspace = true

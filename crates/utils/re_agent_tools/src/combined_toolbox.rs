@@ -10,12 +10,10 @@ use crate::{AgentToolbox, ToolDefinition, ToolError, ToolOutput};
 /// Several toolboxes offered as one, e.g. the viewer's tools next to the catalog's.
 ///
 /// Tool names must be unique across the toolboxes; the first toolbox with a name wins.
+/// A toolbox may change its tools at any time, e.g. when the user turns some off: every call
+/// goes to the toolbox that offers the tool at that moment.
 pub struct CombinedToolbox {
     toolboxes: Vec<Arc<dyn AgentToolbox>>,
-
-    /// Which toolbox answers each tool name, from the definitions at construction.
-    owner_of: ahash::HashMap<String, usize>,
-
     mcp_server_name: Option<String>,
 }
 
@@ -23,46 +21,41 @@ impl CombinedToolbox {
     /// The tools of `toolboxes`, as one toolbox.
     ///
     /// `mcp_server_name` names the MCP server that serves all of these tools, if any.
-    /// The tools of each toolbox are fixed at construction: a toolbox whose definitions change
-    /// later answers only for the names it had then.
     pub fn new(
         mcp_server_name: Option<String>,
         toolboxes: impl IntoIterator<Item = Arc<dyn AgentToolbox>>,
     ) -> Self {
-        let toolboxes: Vec<_> = toolboxes.into_iter().collect();
-        let mut owner_of = ahash::HashMap::default();
-        for (index, toolbox) in toolboxes.iter().enumerate() {
-            for ToolDefinition { name, .. } in toolbox.definitions() {
-                re_log::debug_assert!(
-                    !owner_of.contains_key(&name),
-                    "Two toolboxes define the tool `{name}`"
-                );
-                owner_of.entry(name).or_insert(index);
-            }
-        }
         Self {
-            toolboxes,
-            owner_of,
+            toolboxes: toolboxes.into_iter().collect(),
             mcp_server_name,
         }
     }
 
+    /// The first toolbox that offers the tool `name` now.
     fn owner(&self, name: &str) -> Option<&Arc<dyn AgentToolbox>> {
-        let &index = self.owner_of.get(name)?;
-        self.toolboxes.get(index)
+        self.toolboxes.iter().find(|toolbox| {
+            toolbox
+                .definitions()
+                .iter()
+                .any(|definition| definition.name == name)
+        })
     }
 }
 
 impl AgentToolbox for CombinedToolbox {
     fn definitions(&self) -> Vec<ToolDefinition> {
+        let mut seen = ahash::HashSet::default();
         self.toolboxes
             .iter()
-            .enumerate()
-            .flat_map(|(index, toolbox)| {
-                toolbox
-                    .definitions()
-                    .into_iter()
-                    .filter(move |definition| self.owner_of.get(&definition.name) == Some(&index))
+            .flat_map(|toolbox| toolbox.definitions())
+            .filter(|definition| {
+                let is_new = seen.insert(definition.name.clone());
+                re_log::debug_assert!(
+                    is_new,
+                    "Two toolboxes define the tool `{}`",
+                    definition.name
+                );
+                is_new
             })
             .collect()
     }
@@ -111,6 +104,7 @@ mod tests {
                     description: String::new(),
                     input_schema: Map::new(),
                     effect: ToolEffect::ReadOnly,
+                    open_world: false,
                 })
                 .collect()
         }
@@ -185,6 +179,53 @@ mod tests {
         let combined = viewer_and_catalog();
         assert!(combined.requires_approval("viewer_get_state", &Map::new()));
         assert!(!combined.requires_approval("catalog_sql", &Map::new()));
+    }
+
+    #[test]
+    fn a_tool_offered_later_is_reachable() {
+        struct Switchable(std::sync::atomic::AtomicBool);
+
+        impl AgentToolbox for Switchable {
+            fn definitions(&self) -> Vec<ToolDefinition> {
+                let offered = self.0.load(std::sync::atomic::Ordering::Relaxed);
+                offered
+                    .then(|| ToolDefinition {
+                        name: "catalog_write".to_owned(),
+                        description: String::new(),
+                        input_schema: Map::new(),
+                        effect: ToolEffect::NonDestructive,
+                        open_world: false,
+                    })
+                    .into_iter()
+                    .collect()
+            }
+
+            fn requires_approval(&self, _name: &str, _arguments: &Map<String, Value>) -> bool {
+                false
+            }
+
+            fn call(
+                &self,
+                _name: &str,
+                _arguments: Map<String, Value>,
+            ) -> BoxFuture<'static, Result<Vec<ToolOutput>, ToolError>> {
+                Box::pin(async { Ok(vec![ToolOutput::Text("written".to_owned())]) })
+            }
+        }
+
+        let switchable = Arc::new(Switchable(std::sync::atomic::AtomicBool::new(false)));
+        let combined =
+            CombinedToolbox::new(None, [Arc::clone(&switchable) as Arc<dyn AgentToolbox>]);
+        assert!(call_text(&combined, "catalog_write").is_err());
+
+        switchable
+            .0
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(
+            call_text(&combined, "catalog_write"),
+            Ok("written".to_owned())
+        );
+        assert!(!combined.requires_approval("catalog_write", &Map::new()));
     }
 
     #[test]

@@ -32,7 +32,7 @@ All of the code for this guide can be found on GitHub in
 Other relevant tutorials:
 
 -   [Log and Ingest Tutorial](../tutorial.md)
--   [Viewer overview](../../viewer/ui/overview.md)
+-   [How the Viewer is organized](../../viewer/organization.md)
 -   [Transforms & Coordinate Frames](../data-model/transforms.md)
 -   [Loading URDF models](../import/urdf.md)
 -   [Working with MCAP](../import/mcap/working-with-mcap.md)

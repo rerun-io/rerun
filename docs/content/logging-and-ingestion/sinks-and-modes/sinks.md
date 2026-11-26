@@ -64,7 +64,7 @@ If the Viewer cannot start because its port is taken, run `rerun --port auto` (o
 ## See also
 
 - [Recordings](../data-model/recordings.md): Understand how recordings relate to sinks
-- [Blueprints](../../viewer/blueprints.md): Learn how to configure the viewer's layout
+- [Blueprints](../../viewer/inspect-recordings/recording-layout.md): Learn how to configure the viewer's layout
 - API References:
   - [🐍 Python sinks API](https://ref.rerun.io/docs/python/stable/rerun/)
   - [🦀 Rust RecordingStream](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html)

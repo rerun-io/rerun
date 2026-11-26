@@ -88,6 +88,7 @@ snippet: howto/query_videos[export_mp4]
 
 For efficient random access to specific frames, you need keyframe indicators: log them at recording time, or add them with `rerun rrd optimize`.
 [`VideoStream`](../../reference/types/archetypes/video_stream.md) has an optional `is_keyframe` component for this, which is queryable as the `VideoStream:is_keyframe` column.
+`rerun.experimental.Mp4Reader` logs it when it imports an MP4 file as a video stream, and its `info()` method lists a file's keyframes from the container metadata, without decoding the video.
 
 ### Timestamp handling
 

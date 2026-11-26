@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from ._sample_index import SampleIndex, SegmentMetadata
     from .decoders._base import ColumnDecoder, DecodedResult, DecodedSample, DecodedValue
 
+_BlockT = TypeVar("_BlockT")
 _DecodedT = TypeVar("_DecodedT")
 _FetchedT = TypeVar("_FetchedT")
 
@@ -394,19 +395,22 @@ def _build_targets(
 
 
 def _pipeline_blocks(
-    blocks: list[np.ndarray],
+    blocks: Iterable[_BlockT],
     *,
-    fetch: Callable[[np.ndarray], _FetchedT],
+    fetch: Callable[[_BlockT], _FetchedT],
     process: Callable[[_FetchedT], Iterator[DecodedSample]],
     metrics: _WorkerMetricsPublisher | None = None,
 ) -> Generator[DecodedSample, None, None]:
-    """Process blocks while fetching the next block on a background thread."""
-    if not blocks:
+    """Process a lazy block stream while fetching the next block on a background thread."""
+    block_iter = iter(blocks)
+    try:
+        first_block = next(block_iter)
+    except StopIteration:
         return
 
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
 
-    def submit(block: np.ndarray) -> Future[_FetchedT]:
+    def submit(block: _BlockT) -> Future[_FetchedT]:
         # Copy the caller's contextvars so the fetch's span nests under the current OTel
         # context instead of appearing as a root trace.
         ctx = contextvars.copy_context()
@@ -427,23 +431,34 @@ def _pipeline_blocks(
         return executor.submit(lambda: ctx.run(fetch, block))
 
     try:
-        pending: Future[_FetchedT] | None = submit(blocks[0])
-        for i in range(len(blocks)):
-            assert pending is not None
+        pending: Future[_FetchedT] | None = submit(first_block)
+        block_index = 0
+        while pending is not None:
             with tracing_scope("RerunDataset._wait_for_fetch_block"):
-                set_current_span_attributes({"rerun.dataloader.iter.block.index": i})
+                set_current_span_attributes({"rerun.dataloader.iter.block.index": block_index})
                 if metrics is None:
                     fetched = pending.result()
                 else:
                     wait_started_ns = time.perf_counter_ns()
                     fetched = pending.result()
                     metrics.record_fetch_wait(time.perf_counter_ns() - wait_started_ns)
-            pending = submit(blocks[i + 1]) if i + 1 < len(blocks) else None
+
+            try:
+                next_block = next(block_iter)
+            except StopIteration:
+                pending = None
+            else:
+                pending = submit(next_block)
+
             samples = process(fetched)
             # Only `samples` may keep the block's fetched tables alive while it is drained.
             del fetched
             yield from samples
+            block_index += 1
     finally:
+        close = getattr(block_iter, "close", None)
+        if close is not None:
+            close()
         with tracing_scope("executor.shutdown"):
             executor.shutdown(wait=False)
 

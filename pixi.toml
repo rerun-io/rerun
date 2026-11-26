@@ -275,6 +275,10 @@ link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref 
 link-check = { cmd = "git ls-files -- '*.cpp' '*.hpp' '*.html' '*.md' '*.proto' '*.py' '*.rs' '*.toml' '*.txt' '*.yml' ':(exclude,attr:linguist-generated=true)' | lychee --cache --max-cache-age 1d --root-dir \"$PIXI_PROJECT_ROOT\" --files-from -", depends-on = [
   "speculative-links",
 ] }
+# Offline and fast: checks that local links and their `#fragments` resolve, in all files.
+link-check-local = { cmd = "git ls-files -- '*.cpp' '*.hpp' '*.html' '*.md' '*.proto' '*.py' '*.rs' '*.toml' '*.txt' '*.yml' ':(exclude,attr:linguist-generated=true)' | python -m scripts.ci.local_lychee --offline --include-fragments --no-progress --root-dir \"$PIXI_PROJECT_ROOT\" --files-from -", depends-on = [
+  "speculative-links",
+] }
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"

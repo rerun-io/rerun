@@ -185,7 +185,7 @@ The pull request description lists the follow-up steps.
 For `rc` and `final` releases it also creates a **draft** [GitHub release](https://github.com/rerun-io/rerun/releases) (in the `tag-release` job) and attaches a comment to the release PR pointing at it.
 The draft's description is pre-filled with the standard preamble (what Rerun is, plus install instructions) and the release's section of `CHANGELOG.md`.
 
-Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, check the draft's description, add a header video or picture, then click `Publish release`.
+Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, check the draft's description, then click `Publish release`.
 Publishing the release triggers the [`GitHub Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml), which syncs the binary assets from `build.rerun.io` onto the published GitHub release.
 **Make sure that workflow also finishes successfully** so the release ends up with all of its assets attached.
 

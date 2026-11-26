@@ -61,6 +61,12 @@ pub async fn dataset_ui_test() {
     });
 
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
+
+    // The dataset has no card layout, so the cards view offers to set one up.
+    harness.get_by_label("Cards view").click();
+    harness.run();
+    harness.get_by_label("Set up cards with agent");
+    snapshot_results.add(harness.try_snapshot("dataset_ui_no_cards"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

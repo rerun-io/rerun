@@ -1,26 +1,24 @@
 //! The parts of the agent panel that only exist where agent harnesses (Claude Code, Codex, …)
-//! can run: the `rerun mcp` server they drive the viewer through, the skills and docs we
-//! unpack for them, and self-improvement.
+//! can run: the `rerun mcp` server they drive the viewer through, the skills we unpack for
+//! them, and self-improvement.
 
 use std::path::Path;
 
-use re_agent::{AgentSettings, McpServerConfig, SessionContext};
+use re_agent::{AgentSettings, McpStdioServer, SessionContext};
 use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
 
-use super::{DOCS_SUBDIR, MCP_SERVER_NAME, SKILLS_SUBDIR, preamble, self_improve};
+use super::{MCP_SERVER_NAME, embedded, preamble, self_improve};
 
-/// Sub-directory of the viewer cache that the agent may read. Holds the skills and docs.
+/// Sub-directory of the viewer cache that the agent may read. Holds the skills.
 const AGENT_CACHE_SUBDIR: &str = "agent";
+
+/// Sub-directory of the agent directory that the panel owns, and replaces on every start.
+const AGENT_CONTEXT_SUBDIR: &str = "agent_context";
 
 /// Sub-directory of the viewer cache that the agent works in, in our own development builds.
 /// See [`Harness::user_like_cwd`].
 const SCRATCH_CWD_SUBDIR: &str = "agent-cwd";
-
-/// The skills and docs from the repository, embedded by `build.rs`.
-mod embedded {
-    include!(concat!(env!("OUT_DIR"), "/agent_files.rs"));
-}
 
 /// What the agent panel keeps for agent harnesses.
 #[derive(Default)]
@@ -43,41 +41,39 @@ pub struct Harness {
 
     /// Counts the self-improvement conversations started, so their transcripts get separate files.
     self_improvements_started: usize,
+
+    /// `rerun mcp` pointed at this viewer, or `None` if no `rerun` executable was found.
+    rerun_mcp_server: Option<McpStdioServer>,
 }
 
 impl Harness {
     /// A new agent panel that can also run agent harnesses, which drive this viewer through
-    /// `rerun mcp` and read the skills and docs we unpack for them.
+    /// `rerun mcp` and read the skills we unpack for them.
     ///
     /// `viewer_endpoint` is the gRPC address of this viewer, which `rerun mcp` connects to.
     /// `cache_dir` is where the skills are unpacked for the agent to read.
     /// `is_in_rerun_workspace` marks one of our own development builds; see [`Self::user_like_cwd`].
     pub fn new_panel(
         &mut self,
-        mut settings: AgentSettings,
+        settings: AgentSettings,
         async_runtime: AsyncRuntimeHandle,
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
     ) -> AgentPanel {
-        // The viewer's port can change between runs, so the persisted entry is replaced.
-        settings
-            .mcp_servers
-            .retain(|server| server.name != MCP_SERVER_NAME);
-        if let Some(server) = rerun_mcp_server(viewer_endpoint) {
-            settings.mcp_servers.insert(0, server);
-        } else {
+        self.rerun_mcp_server = rerun_mcp_server(viewer_endpoint);
+        if self.rerun_mcp_server.is_none() {
             re_log::warn_once!(
                 "Could not find the `rerun` executable, so the agent cannot connect to the viewer"
             );
         }
 
         let agent_dir = cache_dir
-            .filter(|_| !embedded::AGENT_FILES.is_empty())
+            .filter(|_| !embedded::SKILL_FILES.is_empty())
             .and_then(|cache_dir| {
                 let agent_dir = cache_dir.join(AGENT_CACHE_SUBDIR);
                 // The directory itself has to exist before the agent is told about it;
-                // filling it is thousands of small writes, so that happens off this thread.
+                // filling it is many small writes, so that happens off this thread.
                 match std::fs::create_dir_all(&agent_dir) {
                     Ok(()) => {
                         install_agent_files_in_background(agent_dir.clone());
@@ -113,6 +109,7 @@ impl Harness {
             default_cwd: self.scratch_cwd.clone(),
             off_limits_directories,
             model_preselect: Default::default(),
+            rerun_mcp_server: self.rerun_mcp_server.clone(),
         });
         panel
     }
@@ -135,6 +132,7 @@ impl Harness {
             rerun_workspace,
             transcript_dir,
             self_improvements_started,
+            rerun_mcp_server,
             ..
         } = self;
         let Some(workspace) = rerun_workspace.as_ref() else {
@@ -179,7 +177,7 @@ impl Harness {
         *self_improvements_started += 1;
 
         panel.open_conversation(
-            self_improve::session_context(workspace, dir.path()),
+            self_improve::session_context(workspace, dir.path(), rerun_mcp_server.clone()),
             self_improve::opening_prompt(&transcript),
         );
     }
@@ -241,7 +239,7 @@ pub fn record_mcp_startup_failures(reports: &[re_agent::McpStartupReport]) {
 /// The name check keeps this honest: `re_viewer` is a library, so the running executable may be a
 /// custom viewer or one of our examples, and only the `rerun` binary has an `mcp` subcommand.
 /// It is case-insensitive because the macOS bundle names the executable `Rerun`.
-fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
+fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpStdioServer> {
     let current_exe = std::env::current_exe();
     let mut args = vec!["mcp".to_owned()];
     let rerun = match &current_exe {
@@ -272,17 +270,21 @@ fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
         args.push("--endpoint".to_owned());
         args.push(endpoint.to_owned());
     }
-    Some(McpServerConfig::new(MCP_SERVER_NAME, &rerun, &args))
+    Some(McpStdioServer {
+        name: MCP_SERVER_NAME.to_owned(),
+        command: rerun,
+        args,
+    })
 }
 
-/// Unpacks the embedded skills and docs into `agent_dir` on a background thread.
+/// Unpacks the embedded skills into `agent_dir` on a background thread.
 ///
 /// The agent is told about the directory right away. The files land well before it has read a
 /// prompt and gone looking for a skill, and an agent that looks too early simply finds nothing.
 fn install_agent_files_in_background(agent_dir: std::path::PathBuf) {
     let install = move || {
         if let Err(err) = install_agent_files(&agent_dir) {
-            re_log::warn_once!("Failed to unpack the agent skills and docs: {err}");
+            re_log::warn_once!("Failed to unpack the agent skills: {err}");
         }
     };
     if let Err(err) = std::thread::Builder::new()
@@ -293,17 +295,15 @@ fn install_agent_files_in_background(agent_dir: std::path::PathBuf) {
     }
 }
 
-/// Writes the embedded skills and docs into `agent_dir`, replacing what was there.
+/// Writes the embedded skills into `agent_dir`, replacing everything in its `agent_context`.
 fn install_agent_files(agent_dir: &Path) -> std::io::Result<()> {
     re_tracing::profile_function!();
 
-    for subdir in [SKILLS_SUBDIR, DOCS_SUBDIR] {
-        let dir = agent_dir.join(subdir);
-        if dir.exists() {
-            std::fs::remove_dir_all(&dir)?;
-        }
+    let context_dir = agent_dir.join(AGENT_CONTEXT_SUBDIR);
+    if context_dir.exists() {
+        std::fs::remove_dir_all(&context_dir)?;
     }
-    for (relative_path, contents) in embedded::AGENT_FILES {
+    for (relative_path, contents) in embedded::SKILL_FILES {
         let path = agent_dir.join(relative_path);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -318,18 +318,21 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(feature = "agent_context")]
-    fn skills_and_docs_are_embedded() {
-        let has = |wanted: &str| {
-            embedded::AGENT_FILES
-                .iter()
-                .any(|(path, _)| *path == wanted)
-        };
-        assert!(has("agent_context/skills/rerun-docs/SKILL.md"));
-        assert!(has("agent_context/docs/snippets/INDEX.md"));
-        assert!(has("agent_context/docs/content/index.md"));
+    #[cfg(feature = "agent_skills")]
+    fn skills_are_embedded() {
         assert!(
-            !embedded::AGENT_FILES.iter().any(|(path, _)| {
+            embedded::SKILL_FILES
+                .iter()
+                .any(|(path, _)| *path == "agent_context/skills/rerun-blueprint/SKILL.md")
+        );
+        assert!(
+            embedded::SKILL_FILES
+                .iter()
+                .all(|(path, _)| { path.starts_with(&format!("{}/", crate::SKILLS_SUBDIR)) }),
+            "every embedded file must be inside the directory the agent is pointed at"
+        );
+        assert!(
+            !embedded::SKILL_FILES.iter().any(|(path, _)| {
                 Path::new(path)
                     .extension()
                     .is_some_and(|ext| ext == "rrd" || ext == "png")
@@ -384,7 +387,7 @@ mod tests {
     fn install_writes_every_file() {
         let dir = tempfile::tempdir().expect("tempdir");
         install_agent_files(dir.path()).expect("install");
-        for (relative_path, contents) in embedded::AGENT_FILES {
+        for (relative_path, contents) in embedded::SKILL_FILES {
             let path = dir.path().join(relative_path);
             assert_eq!(std::fs::read(&path).expect("read").as_slice(), *contents);
         }

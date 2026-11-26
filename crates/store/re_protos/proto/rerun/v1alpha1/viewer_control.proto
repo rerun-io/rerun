@@ -195,7 +195,7 @@ message ViewerControlRequest {
     // A recording's blueprint has the layout, views, their properties and overrides. A table's
     // blueprint only has what it sets, such as row filters, the layout, and column settings.
     // `GetTableSchema` names all columns of a table.
-    // See https://rerun.io/docs/viewer/blueprints.
+    // See https://rerun.io/docs/viewer/inspect-recordings/recording-layout.
     //
     // Set at most one of `recording` and `table`, such as `{"recording": {}}` or
     // `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
@@ -403,8 +403,8 @@ message ViewerControlRequest {
     // The FFmpeg path and the cache directory are read-only.
     SetSettingsRequest set_settings = 26;
 
-    // When adding an operation, decide whether agents may run it without asking the user:
-    // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
+    // When adding an operation, add it to `Operation` in
+    // `crates/viewer_support/re_viewer_control_tools/src/operation.rs` too.
   }
 }
 
@@ -1259,7 +1259,7 @@ message ViewerTimeline {
 // Request for `HighlightRect`.
 message HighlightRectRequest {
   // The rectangle to outline, in logical points from the top-left corner of the viewer — the
-  // same coordinate frame `get_widget` reports a widget's `bounds` in, so those bounds can be
+  // same coordinate frame `ui_get_widget` reports a widget's `bounds` in, so those bounds can be
   // passed straight through.
   //
   // Omit it to dismiss the current highlight instead.
@@ -1272,7 +1272,7 @@ message HighlightRectRequest {
 // A rectangle on the viewer's screen.
 //
 // In logical points from the top-left corner of the viewer window — the same coordinate frame
-// `get_widget` reports a widget's `bounds` in, so those can be passed straight through.
+// `ui_get_widget` reports a widget's `bounds` in, so those can be passed straight through.
 message ScreenRect {
   // Distance from the left edge of the viewer to the left edge of the rectangle.
   float x = 1;
@@ -1471,11 +1471,12 @@ message SetBlueprintRequest {
     //
     // The entity paths and archetypes of a table blueprint are described by
     // `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in
-    // <https://rerun.io/docs/viewer/blueprints/configure-table-blueprints>.
+    // <https://rerun.io/docs/viewer/browse-datasets/table-layout>.
     //
     // `TableBlueprint` at `/table` has these fields:
     // * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a
-    //   `CardLayout`, and the table shows otherwise. `Cards` without a `CardLayout` shows the table.
+    //   `CardLayout`, and the table shows otherwise. `Cards` without a `CardLayout` shows the table,
+    //   except in a dataset's segment table, where it shows a screen to set up the cards.
     // * `column_display_mode`: how column names show, `Compact`, `Component` or `Full`.
     //   Defaults to `Compact`.
     // * `filters`: SQL row filters, described below.
@@ -1651,7 +1652,8 @@ message SubmitFeedbackRequest {
   FeedbackCategory category = 2;
 
   // The tool, command, or API that let you down, e.g. `viewer_set_blueprint` or `rr.log`.
-  optional string surface = 3;
+  // 1 to 64 characters: letters, digits, `_`, `.`, `:`, and `-`.
+  string surface = 3;
 
   // More detail: the error message, what you expected instead, and how you worked around it.
   optional string summary = 4;
@@ -1661,6 +1663,15 @@ message SubmitFeedbackRequest {
 
   // How much the problem got in your way.
   FeedbackSeverity severity = 6;
+
+  // How often the problem happens when you try again.
+  optional FeedbackReproducibility reproducibility = 7;
+
+  // What kind of thing `surface` names.
+  optional FeedbackSurfaceKind kind = 8;
+
+  // How sure you are of this report, from 0 to 1.
+  optional double confidence = 9;
 }
 
 // What kind of problem a `SubmitFeedback` reports.
@@ -1703,6 +1714,46 @@ enum FeedbackSeverity {
 
   // A small annoyance.
   FEEDBACK_SEVERITY_LOW = 4;
+}
+
+// How often the problem of a `SubmitFeedback` happens.
+enum FeedbackReproducibility {
+  // Not said.
+  FEEDBACK_REPRODUCIBILITY_UNSPECIFIED = 0;
+
+  // It happens every time you try.
+  FEEDBACK_REPRODUCIBILITY_ALWAYS = 1;
+
+  // It happens on some tries, and you know what makes it happen.
+  FEEDBACK_REPRODUCIBILITY_SOMETIMES = 2;
+
+  // It happens on some tries, and you do not know why.
+  FEEDBACK_REPRODUCIBILITY_INTERMITTENT = 3;
+
+  // It happened once, or you did not try again.
+  FEEDBACK_REPRODUCIBILITY_ONCE = 4;
+}
+
+// What kind of thing the `surface` of a `SubmitFeedback` names.
+enum FeedbackSurfaceKind {
+  // Not said.
+  FEEDBACK_SURFACE_KIND_UNSPECIFIED = 0;
+
+  // A gRPC or HTTP endpoint, or an MCP tool, e.g. `viewer_set_blueprint`.
+  FEEDBACK_SURFACE_KIND_API_ENDPOINT = 1;
+
+  // An example or a skill, e.g. `rerun-catalog-queries`.
+  // For wrong docs about an API, name the API instead.
+  FEEDBACK_SURFACE_KIND_DOCS_PAGE = 2;
+
+  // A command of the `rerun` CLI, e.g. `rerun rrd split`.
+  FEEDBACK_SURFACE_KIND_CLI_COMMAND = 3;
+
+  // A function or method of a Rerun SDK, e.g. `rr.log`.
+  FEEDBACK_SURFACE_KIND_SDK_METHOD = 4;
+
+  // Anything else.
+  FEEDBACK_SURFACE_KIND_OTHER = 5;
 }
 
 // Response for `SubmitFeedback`.

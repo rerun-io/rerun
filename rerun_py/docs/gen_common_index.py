@@ -59,6 +59,7 @@ DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
     "rerun.experimental.spans": ("Experimental", "Spans"),
     "rerun.server": ("Server",),
     "rerun.urdf": ("URDF Support",),
+    "rerun.mjcf": ("MJCF Support",),
     "rerun.notebook": ("Notebook",),
     "rerun.auth": ("Authentication",),
     "rerun.utilities": ("Utilities",),

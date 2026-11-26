@@ -449,6 +449,66 @@ pub(crate) async fn connect_grpc_client(
     Ok(assemble_grpc_client(channel, credentials, client_name))
 }
 
+/// Decodes an [`ArrowMsg`](re_protos::log_msg::v1alpha1::ArrowMsg) into a chunk.
+fn decode_chunk(
+    arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
+    origin: &Origin,
+    trace_id: Option<opentelemetry::TraceId>,
+) -> Result<Chunk, ApiError> {
+    re_tracing::profile_function!();
+
+    use re_log_encoding::ToApplication as _;
+    let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
+        ApiError::deserialization_with_source(
+            origin,
+            trace_id,
+            err,
+            "failed to decode ArrowMsg payload",
+        )
+    })?;
+
+    Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
+        ApiError::deserialization_with_source(
+            origin,
+            trace_id,
+            err,
+            "failed to parse chunk from ArrowMsg",
+        )
+    })
+}
+
+/// What the chunks decoded from a `/FetchChunks` response may keep alive.
+///
+/// An uncompressed chunk is decoded without copying, so its arrays alias the gRPC receive buffer,
+/// which holds the whole response and can also hold neighboring responses.
+/// Size estimates of a chunk (`heap_size_bytes`) do not include the rest of that buffer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FetchedPayloads {
+    /// Chunks alias the receive buffer, which stays alive until every chunk sliced from it is dropped.
+    ///
+    /// Dropping only some of those chunks frees none of their bytes, so a memory budget that
+    /// refunds the `heap_size_bytes` of dropped chunks overstates what was freed.
+    Shared,
+
+    /// Each uncompressed payload is copied out before decoding, so a chunk keeps alive only its
+    /// own bytes (see [`re_protos::log_msg::v1alpha1::ArrowMsg::unshare_payload`]).
+    ///
+    /// For callers that retain chunks in a store whose garbage collection is sized by
+    /// `heap_size_bytes`.
+    Copied,
+}
+
+impl FetchedPayloads {
+    fn detach(self, response: &mut [re_protos::log_msg::v1alpha1::ArrowMsg]) {
+        if self == Self::Copied {
+            re_tracing::profile_function!();
+            for arrow_msg in response {
+                arrow_msg.unshare_payload();
+            }
+        }
+    }
+}
+
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
 ///
 /// The chunks do not say which segment they belong to: the recording id in their `store_id` is
@@ -460,6 +520,7 @@ pub(crate) async fn connect_grpc_client(
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunks(
     response: crate::FetchChunksResponseStream,
+    payloads: FetchedPayloads,
     decode_time_us: Option<Arc<AtomicU64>>,
 ) -> crate::ApiResponseStream<Vec<Chunk>> {
     let origin = response.origin().clone();
@@ -484,7 +545,7 @@ pub fn fetch_chunks_response_to_chunks(
                 // the Tokio runtime (which would slow down every other futures currently scheduled!).
                 tokio::task::spawn_blocking(move || {
                     let _parent_guard = parent_span.enter();
-                    let r = resp?;
+                    let mut r = resp?;
                     let _span = tracing::trace_span!(
                         parent: &parent_span,
                         "fetch_chunks::batch_decode",
@@ -495,31 +556,11 @@ pub fn fetch_chunks_response_to_chunks(
                     // Time the decode loop from inside the blocking task so we
                     // capture true CPU time, not scheduling wait.
                     let decode_start = web_time::Instant::now();
+                    payloads.detach(&mut r.chunks);
                     let result: Result<Vec<Chunk>, ApiError> = r
                         .chunks
                         .into_iter()
-                        .map(|arrow_msg| {
-                            re_tracing::profile_scope!("fetch_chunks_response_to_chunks");
-
-                            use re_log_encoding::ToApplication as _;
-                            let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                            ApiError::deserialization_with_source(
-                                &origin,
-                                trace_id,
-                                err,
-                                "failed to get arrow data for item in /FetchChunks response stream",
-                            )
-                        })?;
-
-                            re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
-                                ApiError::deserialization_with_source(
-                                    &origin,
-                                    trace_id,
-                                    err,
-                                    "failed to parse item in /FetchChunks response stream",
-                                )
-                            })
-                        })
+                        .map(|arrow_msg| decode_chunk(&arrow_msg, &origin, trace_id))
                         .try_collect();
                     if let Some(acc) = &decode_time_us {
                         acc.fetch_add(decode_start.elapsed().as_micros() as u64, Ordering::Relaxed);
@@ -549,6 +590,7 @@ pub fn fetch_chunks_response_to_chunks(
 #[cfg(target_arch = "wasm32")]
 pub fn fetch_chunks_response_to_chunks(
     response: crate::FetchChunksResponseStream,
+    payloads: FetchedPayloads,
     decode_time_us: Option<Arc<std::sync::atomic::AtomicU64>>,
 ) -> crate::ApiResponseStream<Vec<Chunk>> {
     let origin = response.origin().clone();
@@ -557,36 +599,18 @@ pub fn fetch_chunks_response_to_chunks(
         let origin = origin.clone();
         move |resp| {
             let origin = origin.clone();
-            let resp = resp?;
+            let mut resp = resp?;
 
             let _span =
                 tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
                     .entered();
 
             let decode_start = web_time::Instant::now();
+            payloads.detach(&mut resp.chunks);
             let result: Result<Vec<Chunk>, ApiError> = resp
                 .chunks
                 .into_iter()
-                .map(|arrow_msg| {
-                    use re_log_encoding::ToApplication as _;
-                    let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            &origin,
-                            trace_id,
-                            err,
-                            "failed to get arrow data for item in /FetchChunks response stream",
-                        )
-                    })?;
-
-                    re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            &origin,
-                            trace_id,
-                            err,
-                            "failed to parse item in /FetchChunks response stream",
-                        )
-                    })
-                })
+                .map(|arrow_msg| decode_chunk(&arrow_msg, &origin, trace_id))
                 .try_collect();
             if let Some(acc) = &decode_time_us {
                 acc.fetch_add(
@@ -1368,7 +1392,8 @@ async fn load_small_chunk_batch(
 ) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut chunk_stream = fetch_chunks_response_to_chunks(chunk_stream, None);
+    let mut chunk_stream =
+        fetch_chunks_response_to_chunks(chunk_stream, FetchedPayloads::Copied, None);
     let trace_id = chunk_stream.trace_id();
 
     let mut batch_bytes: u64 = 0;
@@ -1389,7 +1414,7 @@ async fn load_small_chunk_batch(
                                 client.origin(),
                                 trace_id,
                                 err,
-                                "failed to parse chunk in /FetchChunks response stream",
+                                "failed to re-encode chunk from /FetchChunks response stream as ArrowMsg",
                             )
                         })?,
                     )
@@ -1441,4 +1466,46 @@ fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
     let sorted = arrow::compute::take_record_batch(batch, &indices)?;
 
     Ok(sorted)
+}
+
+#[cfg(test)]
+mod tests {
+    use re_protos::external::prost::bytes::Bytes;
+    use re_protos::log_msg::v1alpha1::ArrowMsg;
+
+    use super::FetchedPayloads;
+
+    /// Two payloads sliced out of one shared receive buffer.
+    fn response() -> (Bytes, Vec<ArrowMsg>) {
+        let buffer = Bytes::from(vec![7_u8; 64]);
+        let msgs = [0..32, 32..64]
+            .into_iter()
+            .map(|range| ArrowMsg {
+                payload: buffer.slice(range),
+                ..Default::default()
+            })
+            .collect();
+        (buffer, msgs)
+    }
+
+    fn aliases(buffer: &Bytes, msg: &ArrowMsg) -> bool {
+        buffer.as_ptr_range().contains(&msg.payload.as_ptr())
+    }
+
+    #[test]
+    fn copied_payloads_stop_aliasing_the_receive_buffer() {
+        let (buffer, mut msgs) = response();
+        FetchedPayloads::Copied.detach(&mut msgs);
+        for msg in &msgs {
+            assert!(!aliases(&buffer, msg));
+            assert_eq!(&msg.payload[..], &[7_u8; 32]);
+        }
+    }
+
+    #[test]
+    fn shared_payloads_keep_aliasing() {
+        let (buffer, mut msgs) = response();
+        FetchedPayloads::Shared.detach(&mut msgs);
+        assert!(msgs.iter().all(|msg| aliases(&buffer, msg)));
+    }
 }

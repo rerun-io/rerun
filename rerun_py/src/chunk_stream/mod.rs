@@ -54,6 +54,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<hdf5_reader::PyHdf5ReaderInternal>()?;
     m.add_class::<lerobot_reader::PyLeRobotReaderInternal>()?;
     m.add_class::<mp4_reader::PyMp4TranscodeOptions>()?;
+    m.add_class::<mp4_reader::PyMp4InfoInternal>()?;
     m.add_class::<parquet_reader::PyParquetReaderInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamIterator>()?;

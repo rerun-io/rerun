@@ -8,7 +8,7 @@ use agent_client_protocol_schema::v1::{
 };
 use re_agent_tools::ModelPreselect;
 
-use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
+use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId, McpStdioServer};
 use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
 
 /// An MCP server the agent should connect to, spawned by the agent over stdio.
@@ -80,6 +80,14 @@ pub struct SessionContext {
     /// [`crate::TurnReport::off_limits_paths`] so that the host can tell whether the agent
     /// honored the request.
     pub off_limits_directories: Vec<PathBuf>,
+
+    /// The host's own MCP server, e.g. `rerun mcp` pointed at this viewer.
+    ///
+    /// An agent harness gets it before [`AgentSettings::mcp_servers`], unless
+    /// [`AgentSettings::rerun_mcp_enabled`] is off, and with `--catalog-read-only` when the user
+    /// took away the agent's catalog write access. Not a setting, since only the host knows how
+    /// to start it, e.g. on which port.
+    pub rerun_mcp_server: Option<McpStdioServer>,
 }
 
 /// A conversation with an agent harness, kept so that it can be continued after a restart.
@@ -122,8 +130,12 @@ pub struct AgentSettings {
     /// e.g. `CLAUDE_CONFIG_DIR=~/.claude-work` to pick a profile.
     pub env_vars: String,
 
-    /// MCP servers handed to the agent when a session starts.
+    /// The user's own MCP servers, handed to the agent when a session starts.
     pub mcp_servers: Vec<McpServerConfig>,
+
+    /// Whether to hand the agent the host's own MCP server, see
+    /// [`SessionContext::rerun_mcp_server`].
+    pub rerun_mcp_enabled: bool,
 
     /// Show the agent's reasoning in the transcript, not just its answers.
     pub show_thoughts: bool,
@@ -133,6 +145,11 @@ pub struct AgentSettings {
 
     /// The tools a model-API agent's provider runs for it on its own servers.
     pub model_api_hosted_tools: HostedTools,
+
+    /// What the agent may do with a catalog server.
+    ///
+    /// An agent harness reads this when its session starts, a model-API agent on every call.
+    pub catalog_access: re_agent_tools::CatalogAccess,
 
     /// What the user last picked in the chat footer, per agent profile.
     pub preferences: BTreeMap<AgentProfileId, AgentPreferences>,
@@ -382,9 +399,11 @@ impl Default for AgentSettings {
             cwd: String::new(),
             env_vars: String::new(),
             mcp_servers: Vec::new(),
+            rerun_mcp_enabled: true,
             show_thoughts: true,
             log_protocol: false,
             model_api_hosted_tools: HostedTools::default(),
+            catalog_access: re_agent_tools::CatalogAccess::ReadWrite,
             preferences: BTreeMap::new(),
             share_redacted_prompts: false,
             setup_done: false,
@@ -407,6 +426,10 @@ mod tests {
             panic!("empty settings should deserialize");
         };
         assert!(!settings.share_redacted_prompts);
+        assert_eq!(
+            settings.catalog_access,
+            re_agent_tools::CatalogAccess::ReadWrite
+        );
         assert_eq!(settings.model_api_hosted_tools, HostedTools::default());
         assert!(settings.preferences.is_empty());
     }

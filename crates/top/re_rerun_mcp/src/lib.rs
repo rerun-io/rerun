@@ -13,6 +13,8 @@
 //! - The viewer toolset drives a running viewer through its `ViewerControlService`
 //!   (`re_protos`' `viewer_control.proto`), which the viewer serves on the same port as its SDK
 //!   connections.
+//! - The egui toolset drives the widgets of the viewer the viewer toolset is connected to,
+//!   through the tools of `egui_inspection_tools`.
 //! - The catalog toolset describes the datasets of a Rerun catalog server through
 //!   `re_catalog_tools`, with or without a viewer.
 //!
@@ -20,6 +22,7 @@
 //! `rerun mcp` CLI subcommand.
 
 mod catalog;
+mod egui;
 mod toolbox;
 mod viewer;
 
@@ -38,10 +41,12 @@ use rmcp::{
 };
 use url::Url;
 
+pub use re_agent_tools::CatalogAccess;
 use re_agent_tools::ToolEffect;
 use re_catalog_tools::CatalogTool;
 
 use self::catalog::CatalogToolset;
+use self::egui::{EguiToolbox, EguiToolset};
 use self::viewer::ViewerToolset;
 
 /// How long a client may treat the tool list as fresh.
@@ -55,7 +60,7 @@ const TOOL_LIST_TTL: Duration = Duration::from_mins(5);
 /// The default offers every toolset, none of them bound to an endpoint up front.
 #[derive(Clone, Debug)]
 pub struct Config {
-    /// The viewer toolset, or `None` to leave it out.
+    /// The viewer toolset, and with it the egui toolset, or `None` to leave both out.
     pub viewer: Option<ViewerConfig>,
 
     /// The catalog toolset, or `None` to leave it out.
@@ -72,7 +77,9 @@ impl Default for Config {
 }
 
 /// How the viewer toolset starts.
-#[derive(Clone, Debug, Default)]
+///
+/// The default offers the egui toolset too, and starts unconnected.
+#[derive(Clone, Debug)]
 pub struct ViewerConfig {
     /// gRPC address of a running Rerun viewer's `ViewerControlService`,
     /// e.g. `http://127.0.0.1:9876`, the same port the viewer serves SDK connections on.
@@ -82,6 +89,19 @@ pub struct ViewerConfig {
     /// When `None`, the agent picks the viewer with `viewer_connect`, which defaults to
     /// `http://127.0.0.1:9876`.
     pub endpoint: Option<Url>,
+
+    /// Whether to also offer the egui toolset, which drives the widgets of the connected viewer
+    /// over the viewer toolset's connection.
+    pub egui: bool,
+}
+
+impl Default for ViewerConfig {
+    fn default() -> Self {
+        Self {
+            endpoint: None,
+            egui: true,
+        }
+    }
 }
 
 /// How the catalog toolset starts.
@@ -92,6 +112,9 @@ pub struct CatalogConfig {
     /// When `None`, the tools act on the catalog of the connected viewer, if it runs on this
     /// machine, until the agent calls `catalog_connect`.
     pub origin: Option<re_uri::Origin>,
+
+    /// Whether to offer the tools that change the catalog.
+    pub access: CatalogAccess,
 }
 
 /// A recoverable tool failure (not connected, a bad endpoint, a bridge or gRPC error, …), carried
@@ -99,8 +122,7 @@ pub struct CatalogConfig {
 ///
 /// It is *not* a JSON-RPC protocol error: a `String` already implements `rmcp`'s `IntoContents`,
 /// so when a `#[tool]` method returns `Err(ToolError)`, `rmcp` renders it into a `CallToolResult`
-/// with `isError: true` (per the MCP spec). `String` is also the [`egui_mcp::Bridge`]'s error
-/// type, so the handlers `?`-propagate bridge failures with no conversion.
+/// with `isError: true` (per the MCP spec).
 type ToolError = String;
 
 /// The result of a tool handler — see [`ToolError`].
@@ -125,6 +147,7 @@ pub enum ServeError {
 #[derive(Clone)]
 struct RerunMcpServer {
     viewer: Option<Arc<ViewerToolset>>,
+    egui: Option<Arc<EguiToolset>>,
     catalog: Option<Arc<CatalogToolset>>,
 }
 
@@ -132,31 +155,64 @@ impl RerunMcpServer {
     /// Must be called inside the Tokio runtime the server runs on.
     fn new(config: Config) -> Result<Self, ServeError> {
         let Config { viewer, catalog } = config;
+        let (viewer, egui) = match viewer {
+            Some(ViewerConfig { endpoint, egui }) => {
+                let viewer = Arc::new(ViewerToolset::new(endpoint));
+                let egui = egui.then(|| {
+                    let viewer = Arc::clone(&viewer);
+                    Arc::new(EguiToolset::new(Arc::new(move || viewer.ui_transport())))
+                });
+                (Some(viewer), egui)
+            }
+            None => (None, None),
+        };
         let catalog = catalog
-            .map(|CatalogConfig { origin }| CatalogToolset::new(origin).map(Arc::new))
+            .map(|CatalogConfig { origin, access }| {
+                CatalogToolset::new(origin, access).map(Arc::new)
+            })
             .transpose()?;
+        // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+        if let (Some(viewer), Some(catalog)) = (&viewer, &catalog) {
+            let viewer = Arc::clone(viewer);
+            catalog.on_catalog_change(move |origin| {
+                let viewer = Arc::clone(&viewer);
+                let origin = origin.clone();
+                tokio::spawn(async move { viewer.show_catalog_changes(&origin).await });
+            });
+        }
         Ok(Self {
-            viewer: viewer.map(|ViewerConfig { endpoint }| Arc::new(ViewerToolset::new(endpoint))),
+            viewer,
+            egui,
             catalog,
         })
     }
 
     /// Every tool of every enabled toolset.
     fn all_tools(&self) -> Vec<Tool> {
-        let Self { viewer, catalog } = self;
+        let Self {
+            viewer,
+            egui,
+            catalog,
+        } = self;
         let viewer = viewer.iter().flat_map(|viewer| viewer.tools());
+        let egui = egui.iter().flat_map(|egui| egui.tools());
         let catalog = catalog.iter().flat_map(|catalog| catalog.tools());
-        std::iter::chain(viewer, catalog).collect()
+        itertools::chain!(viewer, egui, catalog).collect()
     }
 
     /// The MCP `instructions`: one section per enabled toolset.
     fn instructions(&self) -> String {
-        let Self { viewer, catalog } = self;
+        let Self {
+            viewer,
+            egui,
+            catalog,
+        } = self;
         let catalog = catalog
             .iter()
             .map(|catalog| catalog.instructions(viewer.is_some()));
         let viewer = viewer.iter().map(|viewer| viewer.instructions());
-        std::iter::chain(viewer, catalog)
+        let egui = egui.iter().map(|_| EguiToolset::instructions().to_owned());
+        itertools::chain!(viewer, egui, catalog)
             .map(|section| section.trim().to_owned())
             .collect::<Vec<_>>()
             .join("\n\n")
@@ -209,24 +265,14 @@ fn asks_the_viewer_for_its_catalog(name: &str, catalog: &CatalogToolset) -> bool
 }
 
 /// The MCP hints for a tool, telling the agent harness what it can change.
-fn annotations(effect: ToolEffect) -> ToolAnnotations {
-    match effect {
-        ToolEffect::ReadOnly => ToolAnnotations::new()
-            .read_only(true)
-            .destructive(false)
-            .idempotent(true)
-            .open_world(false),
-        ToolEffect::NonDestructive => ToolAnnotations::new()
-            .read_only(false)
-            .destructive(false)
-            .idempotent(false)
-            .open_world(false),
-        ToolEffect::Destructive => ToolAnnotations::new()
-            .read_only(false)
-            .destructive(true)
-            .idempotent(false)
-            .open_world(true),
-    }
+///
+/// `open_world` is [`re_agent_tools::ToolDefinition::open_world`].
+fn annotations(effect: ToolEffect, open_world: bool) -> ToolAnnotations {
+    ToolAnnotations::new()
+        .read_only(effect.read_only())
+        .destructive(effect.destructive())
+        .idempotent(effect.idempotent())
+        .open_world(open_world)
 }
 
 /// Shape a recoverable failure as an `isError: true` tool result, for the `ServerHandler`
@@ -288,12 +334,17 @@ impl ServerHandler for RerunMcpServer {
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, McpError> {
         let name = request.name.clone();
-        let result = match (&self.viewer, &self.catalog) {
-            (_, Some(catalog)) if CatalogToolset::owns(&name) => {
+        let result = match (&self.viewer, &self.egui, &self.catalog) {
+            (_, _, Some(catalog)) if CatalogToolset::owns(&name) => {
                 self.call_catalog(catalog, request).await
             }
-            (Some(viewer), _) => viewer.call(request, context).await?,
-            (None, _) => text_error(format!("unknown tool `{name}`")),
+            (Some(viewer), Some(egui), _) if EguiToolbox::owns(&name) => {
+                let mut result = egui.call(&name, request.arguments).await;
+                viewer.append_new_logs(&mut result).await;
+                result
+            }
+            (Some(viewer), _, _) => viewer.call(request, context).await?,
+            (None, _, _) => text_error(format!("unknown tool `{name}`")),
         };
 
         let is_error = result.is_error == Some(true);
@@ -342,6 +393,14 @@ mod tests {
         RerunMcpServer::new(Config { viewer, catalog }).expect("server")
     }
 
+    /// Every `backticked` word of `text` that could be a tool name.
+    pub fn backticked_names(text: &str) -> impl Iterator<Item = &str> {
+        text.split('`')
+            .skip(1)
+            .step_by(2)
+            .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'))
+    }
+
     fn default_server() -> RerunMcpServer {
         RerunMcpServer::new(Config::default()).expect("server")
     }
@@ -352,7 +411,7 @@ mod tests {
         for name in [
             "viewer_connect",
             "viewer_get_state",
-            "click",
+            "ui_click",
             "catalog_list_entries",
         ] {
             assert_eq!(server.tool_name_for_analytics(name), name);
@@ -369,6 +428,52 @@ mod tests {
         let server = server(None, None);
         assert!(server.all_tools().is_empty());
         assert_eq!(server.get_info().instructions, None);
+    }
+
+    #[tokio::test]
+    async fn the_egui_toolset_is_optional() {
+        let has_egui_tools = |server: &RerunMcpServer| {
+            server
+                .all_tools()
+                .iter()
+                .any(|tool| tool.name == "ui_click")
+        };
+        assert!(has_egui_tools(&default_server()));
+
+        let without_egui = server(
+            Some(ViewerConfig {
+                endpoint: None,
+                egui: false,
+            }),
+            None,
+        );
+        assert!(!has_egui_tools(&without_egui));
+        let instructions = without_egui.instructions();
+        assert!(!instructions.contains("widget_tree"), "{instructions}");
+    }
+
+    #[tokio::test]
+    async fn egui_instructions_name_available_tools() {
+        /// The argument and field names the instructions mention.
+        const NOT_TOOLS: &[&str] = &[
+            "bounds",
+            "content_contains",
+            "id",
+            "label",
+            "pos",
+            "rect",
+            "role",
+        ];
+
+        let tools = default_server().all_tools();
+        let names =
+            backticked_names(EguiToolset::instructions()).filter(|name| !NOT_TOOLS.contains(name));
+        for name in names {
+            assert!(
+                tools.iter().any(|tool| tool.name == name),
+                "unknown tool: {name}"
+            );
+        }
     }
 
     #[tokio::test]
@@ -416,6 +521,7 @@ mod tests {
             viewer: Some(ViewerConfig::default()),
             catalog: Some(CatalogConfig {
                 origin: Some("rerun+http://127.0.0.1:51234".parse().expect("valid")),
+                access: CatalogAccess::ReadWrite,
             }),
         })
         .expect("server");
@@ -424,6 +530,29 @@ mod tests {
         let instructions = server.instructions();
         assert!(
             instructions.contains("acting on the catalog at `rerun+http://127.0.0.1:51234`"),
+            "{instructions}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_read_only_catalog_offers_no_writes() {
+        let server = server(
+            None,
+            Some(CatalogConfig {
+                origin: None,
+                access: CatalogAccess::ReadOnly,
+            }),
+        );
+        let names: Vec<String> = server
+            .all_tools()
+            .into_iter()
+            .map(|tool| tool.name.to_string())
+            .collect();
+        assert!(names.iter().any(|name| name == "catalog_list_entries"));
+        assert!(!names.iter().any(|name| name == "catalog_create_datasets"));
+        let instructions = server.instructions();
+        assert!(
+            !instructions.contains("catalog_create_datasets"),
             "{instructions}"
         );
     }
@@ -455,6 +584,7 @@ mod tests {
             Some(ViewerConfig::default()),
             Some(CatalogConfig {
                 origin: Some("rerun+http://127.0.0.1:51234".parse().expect("valid")),
+                access: CatalogAccess::ReadWrite,
             }),
         );
         let catalog = configured.catalog.as_ref().expect("catalog toolset");

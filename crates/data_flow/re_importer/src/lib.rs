@@ -20,6 +20,8 @@ use re_log_types::{EntityPath, RecordingId, StoreId, TimePoint};
 mod import_file;
 mod importer_archetype;
 mod importer_directory;
+#[cfg(feature = "mjcf")]
+mod importer_mjcf;
 #[cfg(feature = "puffin")]
 mod importer_puffin;
 mod importer_rrd;
@@ -47,6 +49,11 @@ pub use self::importer_directory::DirectoryImporter;
 pub use self::importer_lerobot::LeRobotDatasetImporter;
 #[cfg(feature = "mcap")]
 pub use self::importer_mcap::McapImporter;
+#[cfg(feature = "mjcf")]
+pub use self::importer_mjcf::{
+    MjcfBody, MjcfBodyId, MjcfImporter, MjcfJoint, MjcfJointFrames, MjcfJointId, MjcfJointType,
+    MjcfTree,
+};
 #[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
 pub use self::importer_parquet::ParquetImporter;
 #[cfg(feature = "puffin")]
@@ -67,6 +74,8 @@ pub use self::{
 };
 
 pub mod external {
+    #[cfg(feature = "mjcf")]
+    pub use mjcf_rs;
     #[cfg(feature = "urdf")]
     pub use urdf_rs;
 }
@@ -581,6 +590,8 @@ static BUILTIN_IMPORTERS: LazyLock<Vec<Arc<dyn Importer>>> = LazyLock::new(|| {
         Arc::new(PuffinImporter),
         #[cfg(feature = "urdf")]
         Arc::new(UrdfImporter),
+        #[cfg(feature = "mjcf")]
+        Arc::new(MjcfImporter),
     ]
 });
 
@@ -642,7 +653,13 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
 /// 3rd party formats with built-in support.
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "puffin", "urdf"];
+///
+/// `.xml` is only imported if it is an MJCF model.
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "mjcf", "puffin", "urdf", "xml"];
+
+/// Extensions that a builtin importer only handles for some file contents, so external importers must still see them.
+#[cfg(not(target_arch = "wasm32"))]
+const CONTENT_DEPENDENT_EXTENSIONS: &[&str] = &["xml"];
 
 pub const SUPPORTED_PARQUET_EXTENSIONS: &[&str] = &["parquet"];
 
@@ -713,6 +730,8 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
     assert!(is_supported_file_extension("urdf"));
+    assert!(is_supported_file_extension("mjcf"));
+    assert!(is_supported_file_extension("xml"));
 
     // `.ply` holds either, so anyone probing the public lists must find it in both.
     assert!(SUPPORTED_MESH_EXTENSIONS.contains(&"ply"));

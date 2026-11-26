@@ -185,7 +185,8 @@ impl ChunkProvider for SegmentChunkProvider {
             .fetch_segment_chunks_by_id(&rb)
             .await
             .map_err(SegmentProviderError::Api)?;
-        let mut stream = fetch_chunks_response_to_chunks(response, None);
+        let mut stream =
+            fetch_chunks_response_to_chunks(response, crate::FetchedPayloads::Copied, None);
 
         let mut out = Vec::with_capacity(ids.len());
         while let Some(batch) = stream.next().await {

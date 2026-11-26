@@ -96,6 +96,9 @@ pub enum CodecError {
     )]
     InvalidUncompressedSize { declared: u64, max: u64 },
 
+    #[error("LZ4 payload decompressed to {actual} bytes, but {declared} were declared")]
+    UncompressedSizeMismatch { declared: u64, actual: u64 },
+
     #[error("Could not allocate the decompression buffer: {0}")]
     DecompressionAllocation(#[from] std::collections::TryReserveError),
 
@@ -126,6 +129,23 @@ const _: () = assert!(
 impl From<re_protos::TypeConversionError> for CodecError {
     fn from(value: re_protos::TypeConversionError) -> Self {
         Self::TypeConversion(Box::new(value))
+    }
+}
+
+impl From<ext::IpcDecodeError> for CodecError {
+    fn from(err: ext::IpcDecodeError) -> Self {
+        match err {
+            ext::IpcDecodeError::Allocation(err) => Self::DecompressionAllocation(err),
+            ext::IpcDecodeError::Arrow(err) => Self::ArrowDeserialization(err),
+            ext::IpcDecodeError::InvalidUncompressedSize { declared, max } => {
+                Self::InvalidUncompressedSize { declared, max }
+            }
+            ext::IpcDecodeError::Lz4(err) => Self::Lz4(err),
+            ext::IpcDecodeError::SizeDoesNotFit(err) => Self::Overflow(err),
+            ext::IpcDecodeError::UncompressedSizeMismatch { declared, actual } => {
+                Self::UncompressedSizeMismatch { declared, actual }
+            }
+        }
     }
 }
 

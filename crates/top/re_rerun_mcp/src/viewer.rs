@@ -1,10 +1,7 @@
 //! The viewer toolset: drives a running Rerun Viewer over its `ViewerControlService`.
 //!
-//! The tools come in two groups.
-//!
-//! The egui UI tools (`widget_tree`, `screenshot`, `click`, …) are `egui_mcp`'s, reused unchanged.
-//! Each call becomes one `egui_inspection` request/response exchange carried inside a single
-//! `egui_inspect` operation instead of `egui_mcp`'s local inspection socket.
+//! It owns the connection to the viewer, which the egui toolset (see [`crate::egui`]) also runs
+//! over: each of its `egui_inspection` request/response exchanges is one `EguiInspect` call.
 //!
 //! The viewer-control tools (`viewer_get_state`, `viewer_set_time_cursor`, `viewer_close`, …) are
 //! generated from `viewer_control.proto`: one tool per operation in the request envelope's
@@ -32,9 +29,9 @@ use tonic::transport::Channel;
 use url::Url;
 
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
-use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
+use egui_inspection_tools::{BoxFuture, Transport};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetLogsRequest, GetStateRequest, ListCommandsRequest,
+    EguiInspectRequest, GetLogsRequest, GetStateRequest, ListCommandsRequest, RunCommandRequest,
     UnexpectedResponseKind, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
@@ -43,6 +40,9 @@ use re_viewer_control_tools::ScreenshotDelivery;
 use crate::{ToolResult, annotations, complete, text_error};
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
+
+/// The viewer command that re-reads a catalog server's entries ("Refresh server").
+const REFRESH_SERVER_COMMAND: &str = "server.refresh";
 
 /// Agents on MCP are coding agents that can read files. See [`ScreenshotDelivery::File`].
 const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::File;
@@ -66,8 +66,7 @@ const UI_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Operating guidance for the viewer tools, part of the MCP `instructions`. The per-tool
 /// descriptions cover each command in isolation; this establishes the cross-cutting workflow —
-/// `viewer_connect` first, then the observe→act→verify loop the egui tools share — that an agent
-/// otherwise has to infer.
+/// `viewer_connect` first — that an agent otherwise has to infer.
 const INSTRUCTIONS: &str = include_str!("viewer_instructions.md");
 
 /// Why the catalog server of the connected viewer is unknown.
@@ -113,15 +112,15 @@ async fn execute<Op: ViewerControlOp>(
     Op::from_envelope(response).map_err(|source| ExecuteError::UnexpectedResponse { source })
 }
 
-/// An [`egui_mcp::Transport`] that carries each `egui_inspection` request/response over a unary
-/// `EguiInspect` gRPC call to the running viewer.
+/// An [`egui_inspection_tools::Transport`] that carries each `egui_inspection` request/response
+/// over a unary `EguiInspect` gRPC call to the running viewer.
 #[derive(Clone)]
 struct GrpcInspector {
     client: ViewerControlServiceClient<Channel>,
 }
 
 impl Transport for GrpcInspector {
-    // relint: allow(string_error): the signature of `egui_mcp::Transport::request`
+    // relint: allow(string_error): the signature of `egui_inspection_tools::Transport::request`
     fn request(&self, req: Request) -> BoxFuture<'_, Result<Response, String>> {
         Box::pin(async move {
             let request = protocol::encode_body(&req).map_err(|err| err.to_string())?;
@@ -178,12 +177,23 @@ fn unreachable_message(endpoint: &Url, err: &tonic::transport::Error) -> re_erro
     .with_detail(format!("Endpoint: {endpoint}"))
 }
 
-/// Dial the viewer once and build both the [`Bridge`] (which tunnels the egui tools over the
-/// unary `egui_inspect` operation) and the gRPC client the rerun-specific tools call through —
-/// sharing the single connection between them.
+/// Identity of the connected viewer, captured at connect time.
+#[derive(Clone, Debug, serde::Serialize)]
+struct PeerInfo {
+    /// The gRPC endpoint dialed.
+    endpoint: Url,
+
+    /// The `egui_inspection` protocol version this server speaks.
+    protocol_version: u32,
+
+    /// The name the viewer gives itself, if any.
+    label: Option<String>,
+}
+
+/// Dial the viewer and ask it who it is.
 async fn connect_grpc(
     endpoint: &Url,
-) -> Result<(Bridge, ViewerControlServiceClient<Channel>), ConnectError> {
+) -> Result<(PeerInfo, ViewerControlServiceClient<Channel>), ConnectError> {
     // No `Endpoint::timeout` here: that is one deadline for every RPC on the channel, and the
     // two kinds of call have very different expectations of how long the viewer may take.
     // Each call site applies its own instead.
@@ -212,23 +222,17 @@ async fn connect_grpc(
         _ => return Err(ConnectError::UnexpectedResponse),
     };
 
-    let bridge = Bridge::with_transport(
-        inspector,
-        PeerInfo {
-            transport: endpoint.to_string(),
-            protocol_version: PROTOCOL_VERSION,
-            label,
-        },
-    );
-    Ok((bridge, client))
+    let peer = PeerInfo {
+        endpoint: endpoint.clone(),
+        protocol_version: PROTOCOL_VERSION,
+        label,
+    };
+    Ok((peer, client))
 }
 
-/// The live connection to the viewer: the egui [`UiServer`] (which tunnels the egui tools over
-/// the `egui_inspect` operation) and the raw gRPC client (used by the rerun-specific tools).
-/// Both are established together on `viewer_connect` and dropped together on `viewer_disconnect`, so they live
-/// behind a single lock.
+/// The live connection to the viewer, established on `viewer_connect` and dropped on
+/// `viewer_disconnect`.
 struct Connection {
-    ui: UiServer,
     client: ViewerControlServiceClient<Channel>,
 
     /// The Viewer gRPC endpoint this connection was dialed with.
@@ -245,31 +249,20 @@ struct Connection {
     command_ids: Option<Vec<String>>,
 }
 
-/// Prefix on every tool this toolset defines, so a `viewer_*` name is a viewer-control operation and
-/// an unprefixed one is an egui widget tool.
-///
-/// The egui tools keep their upstream names on purpose: they are the same tools the standalone
-/// `egui-mcp` binary serves, and its `batch` tool re-enters its own router by unprefixed name, so
-/// renaming them here would make a name inside `batch` differ from the same name outside it.
+/// Prefix on every tool this toolset defines.
 const VIEWER_PREFIX: &str = re_viewer_control_tools::TOOL_NAME_PREFIX;
 
 /// Tools whose results cannot include viewer log entries.
 const TOOLS_WITHOUT_LOG: &[&str] = &["viewer_disconnect"];
 
-/// The viewer toolset: the connection tools, the viewer-control operations, and the reusable
-/// `egui_mcp` [`UiServer`], built on `viewer_connect` and dropped on `viewer_disconnect`, that
-/// drives the live viewer.
+/// The viewer toolset: the connection tools and the viewer-control operations.
 pub struct ViewerToolset {
     /// The active connection, `Some` while connected and `None` otherwise. Tool handlers clone
     /// the `Arc<Connection>` out of the lock (sync, so it can't be held across an await) and
     /// then use it freely.
     conn: Arc<Mutex<Option<Arc<Connection>>>>,
 
-    /// Router over the egui UI/inspection tools. Independent of the connection, so the tools
-    /// stay listed while disconnected; a call before `viewer_connect` returns `no app connected`.
-    ui_router: ToolRouter<UiServer>,
-
-    /// Router for the rerun-specific tools layered on top of the egui ones.
+    /// Router for the hand-written tools.
     tool_router: ToolRouter<Self>,
 
     /// Set when the server was started for one specific viewer, which it connects to on startup.
@@ -295,10 +288,19 @@ impl ViewerToolset {
     pub fn new(viewer_endpoint: Option<Url>) -> Self {
         Self {
             conn: Arc::new(Mutex::new(None)),
-            ui_router: UiServer::router(),
             tool_router: Self::tool_router(),
             viewer_endpoint,
         }
+    }
+
+    /// What the egui toolset drives the connected viewer's widgets over, `None` while
+    /// disconnected.
+    pub fn ui_transport(&self) -> Option<Arc<dyn Transport>> {
+        self.conn.lock().as_ref().map(|conn| {
+            Arc::new(GrpcInspector {
+                client: conn.client.clone(),
+            }) as Arc<dyn Transport>
+        })
     }
 
     /// Dial `endpoint` and install the connection.
@@ -311,10 +313,9 @@ impl ViewerToolset {
         {
             return Ok(conn.peer.clone());
         }
-        let (bridge, mut client) = connect_grpc(endpoint)
+        let (peer, mut client) = connect_grpc(endpoint)
             .await
             .map_err(|err| format!("connect failed: {err}"))?;
-        let peer = bridge.peer_info.clone();
         let newest_log = execute(
             &mut client,
             GetLogsRequest {
@@ -347,7 +348,6 @@ impl ViewerToolset {
                 .collect()
         });
         *self.conn.lock() = Some(Arc::new(Connection {
-            ui: egui_mcp::UiServer::new(bridge),
             client,
             viewer_endpoint: endpoint.clone(),
             peer: peer.clone(),
@@ -379,43 +379,35 @@ impl ViewerToolset {
     }
 
     /// Run one tool of this toolset, appending the viewer's new log entries to its result.
-    ///
-    /// Our own tools carry [`VIEWER_PREFIX`]. The egui ones keep their upstream names and go to
-    /// the attached UI server, which exists only while connected.
     pub async fn call(
         &self,
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         let name = request.name.clone();
-        let ours = name
+        let Some(ours) = name
             .strip_prefix(VIEWER_PREFIX)
-            .map(ToOwned::to_owned)
             .filter(|name| {
                 self.tool_router.has_route(name) || re_viewer_control_tools::is_operation(name)
-            });
+            })
+            .map(ToOwned::to_owned)
+        else {
+            return Ok(text_error(format!("unknown tool `{name}`")));
+        };
 
-        let mut result = if let Some(ours) = ours {
-            if self.tool_router.has_route(&ours) {
-                let mut request = request;
-                request.name = std::borrow::Cow::Owned(ours);
-                complete(
-                    self.tool_router
-                        .call(ToolCallContext::new(self, request, context))
-                        .await?,
-                )
-            } else {
-                match self.call_operation(&ours, request.arguments).await {
-                    Ok(result) => result,
-                    Err(err) => text_error(err),
-                }
-            }
+        let mut result = if self.tool_router.has_route(&ours) {
+            let mut request = request;
+            request.name = std::borrow::Cow::Owned(ours);
+            complete(
+                self.tool_router
+                    .call(ToolCallContext::new(self, request, context))
+                    .await?,
+            )
         } else {
-            let conn = self.conn.lock().clone();
-            let Some(conn) = conn else {
-                return Ok(text_error("no app connected — call `viewer_connect` first"));
-            };
-            conn.ui.dispatch(&self.ui_router, request, context).await?
+            match self.call_operation(&ours, request.arguments).await {
+                Ok(result) => result,
+                Err(err) => text_error(err),
+            }
         };
 
         if !TOOLS_WITHOUT_LOG.contains(&name.as_ref()) {
@@ -444,6 +436,25 @@ impl ViewerToolset {
             .transpose()
     }
 
+    // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+    /// Has the connected viewer refresh the catalog server at `origin`, so that the user sees a
+    /// change the agent made. Does nothing if the viewer is not connected to that server.
+    pub async fn show_catalog_changes(&self, origin: &re_uri::Origin) {
+        let Some(conn) = self.conn.lock().clone() else {
+            return;
+        };
+        let mut client = conn.client.clone();
+        let request = RunCommandRequest {
+            id: REFRESH_SERVER_COMMAND.to_owned(),
+            store_id: None,
+            server_origin: Some(origin.to_string()),
+            allow_blocking_native_modal: None,
+        };
+        if let Err(err) = execute(&mut client, request).await {
+            re_log::debug!("Failed to refresh the changed catalog in the viewer: {err}");
+        }
+    }
+
     /// Whether the connected viewer runs on this machine.
     pub fn is_on_this_machine(&self) -> bool {
         self.conn
@@ -459,7 +470,7 @@ impl ViewerToolset {
 
     /// Appends the viewer log entries since the previous tool call to `result`,
     /// so the agent sees warnings and errors as they happen.
-    async fn append_new_logs(&self, result: &mut CallToolResult) {
+    pub async fn append_new_logs(&self, result: &mut CallToolResult) {
         let conn = self.conn.lock().clone();
         let Some(conn) = conn else {
             return;
@@ -494,16 +505,14 @@ impl ViewerToolset {
         )));
     }
 
-    /// Every tool of this toolset: the connection tools, the operations generated from
-    /// `viewer_control.proto`, and the reusable egui UI tools.
+    /// Every tool of this toolset: the connection tools, and the operations generated from
+    /// `viewer_control.proto`.
     ///
-    /// Both routers are independent of the connection, so their tools stay listed even while
-    /// disconnected. Only `run_command` depends on it: it lists the connected viewer's command ids.
+    /// They stay listed even while disconnected. Only `run_command` depends on the connection:
+    /// it lists the connected viewer's command ids.
     pub fn tools(&self) -> Vec<Tool> {
         let command_ids = self.command_ids();
         let mut tools = self.tool_router.list_all();
-        // TODO(rerun-io/egui_crates#205): serve the viewer tools through `toolbox` too, once the
-        // egui tools are an `AgentToolbox`.
         tools.extend(
             re_viewer_control_tools::tools(SCREENSHOT_DELIVERY, command_ids.as_deref())
                 .into_iter()
@@ -513,22 +522,20 @@ impl ViewerToolset {
                          description,
                          input_schema,
                          effect,
+                         open_world,
                      }| {
                         Tool::new(
                             name,
                             format!("{description}{REQUIRES_CONNECT}"),
                             Arc::new(input_schema),
                         )
-                        .with_annotations(annotations(effect))
+                        .with_annotations(annotations(effect, open_world))
                     },
                 ),
         );
         for tool in &mut tools {
             tool.name = std::borrow::Cow::Owned(format!("{VIEWER_PREFIX}{}", tool.name));
         }
-
-        // The egui tools keep their upstream names, so they are added after the prefixing.
-        tools.extend(self.ui_router.list_all());
         tools
     }
 
@@ -624,7 +631,7 @@ impl ViewerToolset {
         })))
     }
 
-    /// Disconnect from the viewer, dropping the gRPC-backed bridge.
+    /// Disconnect from the viewer.
     /// The tools stop working until `viewer_connect` is called again.
     #[tool(annotations(
         read_only_hint = false,
@@ -721,12 +728,8 @@ mod tests {
     #[test]
     fn instructions_name_available_tools() {
         let tools = ViewerToolset::new(None).tools();
-        let names = INSTRUCTIONS
-            .split('`')
-            .skip(1)
-            .step_by(2)
-            .filter(|name| name.starts_with(VIEWER_PREFIX))
-            .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
+        let names = crate::tests::backticked_names(INSTRUCTIONS)
+            .filter(|name| name.starts_with(VIEWER_PREFIX));
         for name in names {
             assert!(
                 tools.iter().any(|tool| tool.name == name),

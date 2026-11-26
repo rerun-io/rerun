@@ -723,7 +723,7 @@ export type BlueprintTarget =
 
 /**
  * A whole blueprint, keyed by blueprint entity path, then archetype, then field.
- * See [Blueprints](https://rerun.io/docs/viewer/blueprints).
+ * See [Blueprints](https://rerun.io/docs/viewer/inspect-recordings/recording-layout).
  *
  * An integer is a `number` if a `number` holds it exactly, and a `bigint` if not, such as most nanosecond times.
  * So the same field can be either, depending on its value: handle both, e.g. with `BigInt(value)`.

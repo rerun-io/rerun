@@ -14,7 +14,7 @@ use re_agent::acp::schema::v1::{
 };
 use re_agent::{
     AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSession, AgentSettings,
-    McpServerConfig, ModelApiProvider, Prompt, PromptImage,
+    McpStdioServer, ModelApiProvider, Prompt, PromptImage, SessionContext,
 };
 use re_agent_ui::{AgentPanel, RECOMMENDED_WIDTH};
 
@@ -41,11 +41,6 @@ fn settings() -> AgentSettings {
     AgentSettings {
         profile_id: AgentProfileId::new("claude"),
         cwd: "/home/user/robot-project".to_owned(),
-        mcp_servers: vec![McpServerConfig {
-            name: "rerun".to_owned(),
-            command_line: "rerun mcp".to_owned(),
-            enabled: true,
-        }],
         ..Default::default()
     }
 }
@@ -70,6 +65,14 @@ fn panel() -> AgentPanel {
         .collect();
     let mut panel = AgentPanel::with_agents(settings(), None, agents, Vec::new());
     panel.set_example_prompts(crate::example_prompts());
+    panel.set_context(SessionContext {
+        rerun_mcp_server: Some(McpStdioServer {
+            name: "rerun".to_owned(),
+            command: PathBuf::from("rerun"),
+            args: vec!["mcp".to_owned()],
+        }),
+        ..Default::default()
+    });
     panel
 }
 

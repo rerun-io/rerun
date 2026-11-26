@@ -1402,6 +1402,7 @@ mod tests {
                     } else {
                         re_agent_tools::ToolEffect::ReadOnly
                     },
+                    open_world: false,
                 })
                 .collect()
         }
@@ -1437,6 +1438,7 @@ mod tests {
                 description: "Takes a screenshot".to_owned(),
                 input_schema: serde_json::Map::new(),
                 effect: re_agent_tools::ToolEffect::ReadOnly,
+                open_world: false,
             }]
         }
 

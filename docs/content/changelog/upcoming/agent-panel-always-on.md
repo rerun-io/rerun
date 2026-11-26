@@ -27,7 +27,7 @@ This is the most capable option:
 The panel can also run the agent itself and call the Anthropic or OpenAI API directly.
 This works in both the native and the web Viewer, and needs no agent installed.
 On native, set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in your environment; on the web, enter your key in the panel.
-This agent can only use the Viewer and catalog tools, not your files or your own agent configuration.
+This agent can only use the Viewer and catalog tools and read the Rerun skills, not your files or your own agent configuration.
 
 Previous releases shipped an early version of the panel behind an experimental setting.
 

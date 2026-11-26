@@ -12,7 +12,7 @@ Rounded surfaces, animated menus and dialogs, and refined list items make naviga
 The top bar also has a single toggle for diagnostic metrics.
 The macOS menu bar and web menu share commands and shortcuts with the command palette.
 
-See [Configure the Viewer](../viewer/tutorial.md) for an introduction to the Viewer.
+See the [Viewer overview](../viewer/ui/overview.md) for an introduction to the Viewer.
 
 <picture>
   <img src="https://static.rerun.io/viewer-design-refresh/b790d059288a5c1dca91974b556df497cff78f8c/full.png" alt="The refreshed Viewer showing a robot manipulation episode, with the command palette in the top bar">
@@ -57,7 +57,7 @@ rrb.TableBlueprint(
 
 A side effect of using SQL for filters is that they are also much faster in many cases: about 1000× faster for timestamp columns, and 20–300× faster on list columns.
 
-See [Filtering rows](../viewer/blueprints-and-views/configure-table-blueprints.md#filtering-rows) for the full list of filters.
+See [Filtering rows](../viewer/blueprints/configure-table-blueprints.md#filtering-rows) for the full list of filters.
 The `rerun.blueprint.table` API is experimental and may change in future releases.
 
 ### Catalog API improvements

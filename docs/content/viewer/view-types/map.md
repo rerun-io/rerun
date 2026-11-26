@@ -9,7 +9,9 @@ It is useful for inspecting GPS tracks, routes, and the geographic context of an
 
 See the [`MapView` reference](../../reference/types/views/map_view.md) for properties and examples.
 
-## Coordinate system
+## Data for this view
+
+### Coordinate system
 
 The map view uses the [EPSG:3857](https://epsg.io/3857) [spherical mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection) commonly used by web services such as [OpenStreetMap](https://www.openstreetmap.org/).
 This enables the use of commonly available web tiles for the background map.
@@ -30,7 +32,7 @@ Note that Rerun always expects latitudes first and longitudes second.
 As there is [no accepted ordering standard](https://stackoverflow.com/questions/7309121/preferred-order-of-writing-latitude-longitude-tuples-in-gis-services), the `lat_lon` argument is keyword-only, so its name states the order.
 
 
-## Types of geometries
+### Types of geometries
 
 The map view supports two types of geometries:
 
@@ -46,7 +48,10 @@ For the latter case, the map view uses meters as scene units.
 Apart from the use of latitude and longitude, `GeoPoints` and `GeoLineStrings` are otherwise similar to the [`Points2D`](../../reference/types/archetypes/points2d.md) and [`LineStrips2D`](../../reference/types/archetypes/line_strips2d.md) archetypes used in the [2D view](../../reference/types/views/spatial2d_view.md).
 
 
-## Using Mapbox background maps <!-- NOLINT -->
+
+## Configure the view
+
+### Using Mapbox background maps <!-- NOLINT -->
 
 The map view supports several types of background maps, including a few from [Mapbox](https://www.mapbox.com).
 A Mapbox access token is required to use them.
@@ -54,13 +59,9 @@ It must be provided either using the `RERUN_MAPBOX_ACCESS_TOKEN` environment var
 An access token may be freely obtained by creating a Mapbox account.
 
 
-## Creating a map view from code
+### Creating a map view from code
 
-Like other views, the map view can be configured using the [blueprint API](../blueprints.md#3-programmatically):
-
-snippet: views/map
-
-Check the [map view](../../reference/types/views/map_view.md) reference for details.
+See the [MapView reference](../../reference/types/views/map_view.md) for an example and [Configure a recording layout from code](../inspect-recordings/configure-from-code.md) for the blueprint workflow.
 
 
 ## Limitations
@@ -74,3 +75,7 @@ Check the [map view](../../reference/types/views/map_view.md) reference for deta
 - **No polygons** yet, see above.
 
 See [missing features](../../development/roadmap.md#missing-features).
+
+## Related
+
+See [2D views](2d.md) and [3D views](3d.md) for non-geographic spatial data.

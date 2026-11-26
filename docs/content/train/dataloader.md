@@ -36,6 +36,8 @@ The dataloader assembles those samples on demand from the per-recording [chunks]
 
 ## How to use it
 
+Install `rerun-sdk[dataloader]` to include the dataloader's dependencies, including PyTorch 2.11 or newer.
+
 ### Register data with a catalog
 
 The dataloader reads from a Rerun catalog, so you must first register [RRDs](../logging-and-ingestion/data-model/recordings.md#storage-formats). Start the open-source server in a separate terminal:
@@ -116,6 +118,33 @@ Buffers are allocated on demand and returned to the pool after the consumer rele
 Pool limits bound cached buffers per worker; retained batches and uncached fallback allocations can use additional memory.
 It works with either dataset style; see the [pooled-batch example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader_pooled_batches) for usage and ownership constraints.
 
+Set `packed=True` to combine tensor fields into one shared buffer and use one parent-side pinning copy.
+With worker processes, unpinned batches are `PackedBatch` dictionaries: a `dict` subclass containing the usual tensor fields and nested values.
+When DataLoader performs accelerator pinning, it returns an ordinary dictionary with pinned tensor views.
+PyTorch can disable pinning when no supported accelerator is available, even if `pin_memory=True`.
+With `num_workers=0`, the collator returns an ordinary dictionary without pooling.
+The training loop consumes batches directly in every case:
+
+```python
+from torch.utils.data import DataLoader
+
+from rerun.experimental.dataloader import PooledBatchCollator
+
+loader = DataLoader(
+    dataset,
+    batch_size=32,
+    num_workers=4,
+    multiprocessing_context="spawn",
+    pin_memory=True,
+    collate_fn=PooledBatchCollator(packed=True),
+)
+
+for batch in loader:
+    train_step(batch)
+```
+
+Keep source tensors alive until non-blocking device transfers finish.
+
 #### Video decoding is GOP-aware
 
 A `VideoFrameDecoder` looks like a regular field from the outside, but decoding any one frame of compressed video requires running the codec from the previous keyframe forward through the target frame. The chain of frames the codec has to walk through is bounded by the [GOP](https://en.wikipedia.org/wiki/Group_of_pictures) length:
@@ -147,6 +176,8 @@ Validate these properties when preparing the data; the loader does not scan the 
 It checks each computed decode start's `is_keyframe` marker alongside the requested video data as it loads.
 A missing or false marker makes that video field unresolved, so live iterable loading skips the sample under the same `max_consecutive_skipped_samples` policy as other missing values.
 The default `timeline_sampling=None` preserves each field's filling behavior and discovers keyframes from the data.
+
+To validate the keyframes of video imported from MP4 with `rerun.experimental.Mp4Reader` and not transcoded, `Mp4Reader.info()` gives the keyframe frame numbers and GOP sizes from the file's metadata, without decoding it.
 
 To avoid CPU RGB conversion and reduce the size of decoded samples, keep video in YUV420 through collation.
 `Yuv420Collator` is an optional convenience for applications whose other fields can use PyTorch's default collation:

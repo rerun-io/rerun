@@ -1,6 +1,6 @@
 ---
 name: rerun-data-model
-description: "How raw multimodal robot data maps onto the Rerun data model. Read FIRST, before modeling or converting a dataset — and whenever you are about to convert/ingest/preprocess robot data into an .rrd or build a Rerun recording, even if not asked for the data model. Resolves the entity-vs-component, property-vs-component-vs-layer, and static-vs-temporal decisions and routes to the mechanism (do it with readers and lenses, not hand-built chunks or per-message rr.log): rerun-chunk-processing and the importer skills rerun-mcap, rerun-urdf, rerun-parquet, rerun-mp4, rerun-lerobot."
+description: "How raw multimodal robot data maps onto the Rerun data model. Read FIRST, before modeling or converting a dataset — and whenever you are about to convert/ingest/preprocess robot data into an .rrd or build a Rerun recording, even if not asked for the data model. Resolves the entity-vs-component, property-vs-component-vs-layer, and static-vs-temporal decisions and routes to the mechanism (do it with readers and lenses, not hand-built chunks or per-message rr.log): rerun-chunk-processing and the importer skills rerun-mcap, rerun-robot-model, rerun-parquet, rerun-mp4, rerun-lerobot."
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -10,7 +10,7 @@ allowed-tools: Read, Grep, Bash, WebFetch
 The hard part of ingesting a dataset is the **modeling decision**, not the API call.
 Get the model right and any mechanism works; get it wrong and queries, views, and training all break.
 This skill is just the decisions.
-For mechanism details see `rerun-chunk-processing` (pipeline mechanics) and the importer skills it routes to: `rerun-mcap`,`rerun-urdf`,`rerun-parquet`, `rerun-mp4`, `rerun-lerobot`.
+For mechanism details see `rerun-chunk-processing` (pipeline mechanics) and the importer skills it routes to: `rerun-mcap`, `rerun-robot-model`, `rerun-parquet`, `rerun-mp4`, `rerun-lerobot`.
 For exact signatures, the docs at `rerun.io/docs/logging-and-ingestion`.
 
 **Before writing conversion code, fill in the mapping table below.** It is the design, and a human can review it in seconds.

@@ -1,6 +1,6 @@
 ---
 title: Visible time ranges
-order: 550
+order: 400
 description: Show trails and a scrolling window of past data in 2D, 3D, and plot views
 ---
 
@@ -48,59 +48,36 @@ To give one entity a different range than the rest of the view, add a `VisibleTi
 
 snippet: howto/visualization/blueprint_view_options[per_entity_time_range]
 
-Override paths must be full entity paths.
-They do not support `$origin` or wildcards.
+See [Override path rules](customize-views.md#override-path-rules) for the required entity paths.
 
 You can also set time ranges in the Viewer: select a view or an entity, and edit "Visible time range" in the selection panel.
 
-## Why does old data stay visible?
+## Missing or persistent data
 
-Views use [latest-at semantics](../../logging-and-ingestion/data-model/latest-at.md): without a time range, each entity shows the last value logged at or before the time cursor.
-A value stays visible until you log a new value to the same entity.
+See [Why does my data disappear?](../performance/missing-data.md) and [Latest-at semantics](../../logging-and-ingestion/data-model/latest-at.md) for data that is missing or stays visible.
 
-To remove an entity from the view at a given time, log a [`Clear`](../../reference/types/archetypes/clear.md) to it:
+## Query range and axis window
 
-```python
-rr.log("detections", rr.Clear(recursive=False))
-```
+A visible time range controls which data a view queries, while a plot's axis window controls what part of the time axis is visible.
+See [Query range and axis window](../view-types/time-series.md#query-range-and-axis-window).
 
-[Static data](../../logging-and-ingestion/data-model/static.md) is not on any timeline, so it is always visible and is never affected by time ranges.
+## Show history in 2D and 3D
 
-## Why does my data disappear?
+### 2D history
 
-Common reasons:
+By default, a 2D view shows the latest value of each entity at the time cursor.
+Set `time_ranges` on `Spatial2DView` to show trails or accumulate data over time.
+The 3D history example below also applies to 2D views: replace `Spatial3DView` with `Spatial2DView`.
 
-- The data is logged on a different timeline than the one that is active in the time panel.
-  Select the matching timeline in the time panel.
-- The time cursor is before the first value of the entity.
-- A visible time range is set, and the data is outside of it.
 
-## Scrolling plots and the time axis
+### 3D trails
 
-In a `TimeSeriesView`, there are two different settings:
+Pass a `VisibleTimeRange` to the `time_ranges` parameter of the view:
 
-- `time_ranges` selects _which data_ the view queries.
-  With a cursor-relative range, older data is dropped from the plot.
-- `axis_x=rrb.TimeAxis(view_range=…)` sets the _visible window of the X axis_.
-  The view only queries data that is inside both this window and `time_ranges`.
+snippet: archetypes/line_strips3d_time_window
 
-This plot shows the last 10 seconds of data and keeps the X axis on that window:
-
-snippet: howto/visualization/blueprint_view_options[scrolling_plot]
-
-`zoom_lock=True` keeps the X axis on the window when you zoom.
-
-For a complete scrolling plot, see [Visualize fixed-window plots](../view-types/time-series.md#visualize-fixed-window-plots) and the [live scrolling plot example](https://github.com/rerun-io/rerun/tree/latest/examples/python/live_scrolling_plot).
-
-In a state timeline view, `time_view` configures the axis window, while `time_ranges` filters the states.
-See [State timeline configuration](../view-types/state-timeline.md#setting-up-the-view-via-blueprint).
-
-## View specific guides
-
-- [3D trails and history](../view-types/3d.md#show-recent-history-in-a-3d-view)
-- [2D history](../view-types/2d.md#show-history)
-- [Scrolling plots](../view-types/time-series.md#visualize-fixed-window-plots)
-- [State timeline configuration](../view-types/state-timeline.md#setting-up-the-view-via-blueprint)
+Everything logged in the 5 seconds before the time cursor is now drawn at once.
+This is how you draw trails: log one short line segment or one point per time step, and let the time range accumulate them.
 
 ## Link the time axis of several plots
 

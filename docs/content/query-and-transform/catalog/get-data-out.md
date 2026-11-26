@@ -160,6 +160,24 @@ df = selection.reader(index="frame_nr")
 print(df)
 ```
 
+## Streaming Arrow batches
+
+To process a dataset as one table of component columns aligned on a timeline, call `read_arrow()` to directly stream PyArrow record batches.
+Rows are ordered by segment ID, then by index within each segment; equal keys have no guaranteed order.
+
+For example, select one segment and process each batch as it arrives:
+
+```python
+selection = dataset.filter_segments("my_segment_id").filter_contents("/world/robot/**")
+
+for batch in selection.read_arrow(index="frame_nr"):
+    print(batch.num_rows)
+```
+
+`read_arrow()` returns a PyArrow `RecordBatchReader` that you can iterate over.
+Calling `read_all()` on the reader collects all remaining batches in memory.
+Streaming can still download all matching chunks, so restrict segments and entities or use `reader()` for component projection and time filtering.
+
 ## Filtering with DataFusion
 
 DataFusion also supports filtering, projection, and joins.

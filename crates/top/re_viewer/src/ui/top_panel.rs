@@ -680,40 +680,7 @@ fn panel_buttons_r2l(
         app.toggle_agent_panel();
     }
 
-    user_menu_ui(app, ui);
-
-    app.notifications.notification_toggle_button(ui);
-
-    let selection = app.selection_state.selected_items();
-    let time_ctrl = app
-        .active_recording_id()
-        .and_then(|id| app.stores.time_controls.get(id));
-    app.modals.share.button_ui(
-        ui,
-        store_hub,
-        app.navigation.routes.current(),
-        time_ctrl,
-        selection,
-    );
-
     let route = app.navigation.routes.current();
-
-    #[cfg(target_arch = "wasm32")]
-    if app.is_fullscreen_allowed() {
-        let (icon, label) = if app.is_fullscreen_mode() {
-            (&re_ui::icons::MINIMIZE, "Minimize")
-        } else {
-            (&re_ui::icons::MAXIMIZE, "Maximize")
-        };
-
-        if ui
-            .medium_icon_toggle_button(icon, label, &mut true)
-            .on_hover_text("Toggle fullscreen")
-            .clicked()
-        {
-            app.toggle_fullscreen();
-        }
-    }
 
     // selection panel
     ui.add_enabled_ui(
@@ -768,6 +735,41 @@ fn panel_buttons_r2l(
             }
         },
     );
+
+    ui.add_space(item_spacing);
+
+    user_menu_ui(app, ui);
+
+    app.notifications.notification_toggle_button(ui);
+
+    let selection = app.selection_state.selected_items();
+    let time_ctrl = app
+        .active_recording_id()
+        .and_then(|id| app.stores.time_controls.get(id));
+    app.modals.share.button_ui(
+        ui,
+        store_hub,
+        app.navigation.routes.current(),
+        time_ctrl,
+        selection,
+    );
+
+    #[cfg(target_arch = "wasm32")]
+    if app.is_fullscreen_allowed() {
+        let (icon, label) = if app.is_fullscreen_mode() {
+            (&re_ui::icons::MINIMIZE, "Minimize")
+        } else {
+            (&re_ui::icons::MAXIMIZE, "Maximize")
+        };
+
+        if ui
+            .medium_icon_toggle_button(icon, label, &mut true)
+            .on_hover_text("Toggle fullscreen")
+            .clicked()
+        {
+            app.toggle_fullscreen();
+        }
+    }
 
     ui.spacing_mut().item_spacing.x = item_spacing;
 

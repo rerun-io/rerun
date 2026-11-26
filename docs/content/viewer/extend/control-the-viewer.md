@@ -6,7 +6,7 @@ description: Set playback speed, timeline, and time cursor from code
 
 ## Configure playback in the blueprint
 
-The time panel of the [blueprint](../blueprints.md) controls playback:
+The time panel of the [blueprint](../inspect-recordings/recording-layout.md) controls playback:
 
 snippet: howto/visualization/playback_blueprint[blueprint]
 

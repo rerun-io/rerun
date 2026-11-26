@@ -20,6 +20,7 @@ mod latest_at_partial_updates;
 mod magnification_filter;
 mod mesh;
 mod mesh_face_rendering;
+mod mjcf_model;
 mod opacity_2d;
 mod partial_view_visibility;
 mod pinhole_camera;

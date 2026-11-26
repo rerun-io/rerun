@@ -153,6 +153,7 @@ define_redap_tests! {
     get_schemas::get_schemas_too_many_ids,
     protocol_level::dataset_with_segment_id_override_refuses_older_clients,
     protocol_level::new_dataset_serves_clients_without_protocol_level,
+    protocol_level::who_am_i_advertises_protocol_level,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_has_uncompressed_sizes,
     query_dataset::query_dataset_matches_find_chunks,

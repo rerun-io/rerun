@@ -410,7 +410,7 @@ impl Conversation {
         let next_screen = egui::CentralPanel::default()
             .frame(egui::Frame::new())
             .show(ui, |ui| {
-                setup_ui(ui, settings, agents, &self.available_model_apis)
+                setup_ui(ui, settings, context, agents, &self.available_model_apis)
             })
             .inner;
 

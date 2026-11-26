@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, overload
+
+import numpy as np
+import pyarrow as pa
 
 from rerun_bindings import Mp4ReaderInternal, Mp4TranscodeOptionsInternal
 
@@ -10,6 +13,8 @@ from ..chunk import LazyChunkStream
 from ..components import VideoCodec
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
+
     from rerun_bindings.types import TemporalTimelineType
 
 
@@ -60,6 +65,95 @@ class Mp4TranscodeOptions:
             try_gpu=self.try_gpu,
             ffmpeg_override=None if self.ffmpeg_override is None else Path(self.ffmpeg_override).absolute(),
         )
+
+
+@dataclass(frozen=True, kw_only=True)
+class Mp4Info:
+    """
+    Information about an MP4 file as stored, taken from its container metadata.
+
+    It describes the source file, and is unaffected by the reader's `mode`, `transcode`, and timeline
+    settings. A stream that gets transcoded emits different samples, and its keyframes may differ from the
+    ones listed here.
+    """
+
+    codec: VideoCodec
+    """The codec of the video track."""
+
+    codec_string: str
+    """The codec in the form used by the WebCodecs codec registry, e.g. `avc1.64001f`."""
+
+    width: int
+    """The width of the video in pixels."""
+
+    height: int
+    """The height of the video in pixels."""
+
+    bit_depth: int | None
+    """The bit depth per color component, or `None` if the metadata doesn't state it."""
+
+    num_frames: int
+    """The number of frames, which is the number of rows of `samples`."""
+
+    duration_ns: int
+    """
+    The duration of the video track as declared by the container, in nanoseconds.
+
+    It includes the time the last frame is presented, so it is longer than the span between the first
+    and the last presentation time. It can be longer still when the file has B-frames.
+    """
+
+    has_b_frames: bool
+    """
+    Whether any frame is decoded at a different time than it is presented.
+
+    `mode="stream"` always transcodes such a file with FFmpeg.
+    """
+
+    gop_size_min: int
+    """
+    The number of frames in the smallest GOP, the last one included.
+
+    Frames before the first keyframe belong to no GOP. `0` if the video has no keyframe.
+    """
+
+    gop_size_max: int
+    """
+    The number of frames in the largest GOP, the last one included.
+
+    Frames before the first keyframe belong to no GOP. `0` if the video has no keyframe.
+    """
+
+    samples: pa.RecordBatch = field(repr=False, hash=False)
+    """
+    One row per frame, in decode order, which is the order of the frames in the file.
+
+    | Column        | Type           | Meaning                                  |
+    | ------------- | -------------- | ---------------------------------------- |
+    | `frame_nr`    | `int64`        | Index of the frame in presentation order |
+    | `pts`         | `duration[ns]` | Presentation time                        |
+    | `dts`         | `duration[ns]` | Decode time, which can be negative       |
+    | `duration`    | `duration[ns]` | Frame duration                           |
+    | `is_keyframe` | `bool`         | Whether the frame starts a GOP           |
+    | `byte_offset` | `uint64`       | Offset of the frame's bytes in the file  |
+    | `byte_size`   | `uint64`       | Length of the frame's bytes              |
+
+    `pts` holds the values that `mode="stream"` puts on the video timeline, as long as the stream is
+    not transcoded.
+    """
+
+    @property
+    def keyframe_timestamps_ns(self) -> npt.NDArray[np.int64]:
+        """The presentation times of the keyframes in nanoseconds, ascending."""
+        return np.sort(self._keyframes().column("pts").cast(pa.int64()).to_numpy())
+
+    @property
+    def keyframe_frame_nrs(self) -> npt.NDArray[np.int64]:
+        """The `frame_nr` of each keyframe, ascending."""
+        return np.sort(self._keyframes().column("frame_nr").to_numpy())
+
+    def _keyframes(self) -> pa.RecordBatch:
+        return self.samples.filter(self.samples.column("is_keyframe"))
 
 
 class Mp4Reader:
@@ -178,6 +272,38 @@ class Mp4Reader:
     def stream(self) -> LazyChunkStream:
         """Return a lazy stream over all chunks in the MP4 file."""
         return LazyChunkStream(self._internal.stream())
+
+    def info(self) -> Mp4Info:
+        """
+        Return information about the MP4 file as stored.
+
+        Only the container metadata is read, not the video data, so this is much cheaper than
+        streaming the file. VP8 and VP9 are the exception: their keyframe flags are recovered from
+        the video data, which reads every frame.
+
+        The reader's `mode`, `transcode`, and timeline settings do not affect the result.
+        The file is read again on each call.
+
+        Raises
+        ------
+        RuntimeError
+            If the file is not a valid MP4, or its video codec is not supported.
+
+        """
+        internal = self._internal.info()
+        return Mp4Info(
+            codec=VideoCodec(internal.codec),
+            codec_string=internal.codec_string,
+            width=internal.width,
+            height=internal.height,
+            bit_depth=internal.bit_depth,
+            num_frames=internal.num_frames,
+            duration_ns=internal.duration_ns,
+            has_b_frames=internal.has_b_frames,
+            gop_size_min=internal.gop_size_min,
+            gop_size_max=internal.gop_size_max,
+            samples=internal.samples,
+        )
 
     @property
     def path(self) -> Path:

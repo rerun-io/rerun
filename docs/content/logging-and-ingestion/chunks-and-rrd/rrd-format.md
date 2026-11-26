@@ -9,7 +9,7 @@ An RRD is the file format Rerun uses to persist recordings and blueprints. At th
 ## Stores
 
 Logical groupings of chunks form so-called stores.
-They come in two flavors: [recording](../data-model/recordings.md) and [blueprint](../../viewer/blueprints.md).
+They come in two flavors: [recording](../data-model/recordings.md) and [blueprint](../../viewer/inspect-recordings/recording-layout.md).
 Both are structurally identical and distinguished only by a flag (store kind).
 
 A single RRD can hold any number of stores.

@@ -5,6 +5,7 @@ use re_ui::{UiExt as _, icons};
 use re_agent::{AgentSession, ToolCallState};
 
 use super::conversation_list::status_dot_ui;
+use super::tool_call_title::short_tool_title;
 
 /// A collapsible row for one tool call: status, kind, title, and the details underneath.
 ///
@@ -59,7 +60,8 @@ pub fn subdued_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Respo
     ui.visuals_mut().widgets.inactive.fg_stroke.color = default;
 }
 
-/// The title is truncated while collapsed and wraps when expanded, so no tooltip is needed.
+/// The title is truncated while collapsed and wraps when expanded.
+/// Shortened paths in it show in full on hover.
 fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is_open: bool) {
     ui.spacing_mut().item_spacing.x = 6.0;
 
@@ -90,12 +92,16 @@ fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is
     } else {
         egui::TextWrapMode::Truncate
     };
-    ui.add(
-        egui::Label::new(RichText::new(title).color(tokens.text_subdued))
+    let short_title = short_tool_title(session, &title);
+    let response = ui.add(
+        egui::Label::new(RichText::new(&short_title).color(tokens.text_subdued))
             .wrap_mode(wrap_mode)
             .show_tooltip_when_elided(false)
             .selectable(false),
     );
+    if short_title != title {
+        response.on_hover_text(title);
+    }
 }
 
 fn body_ui(ui: &mut egui::Ui, call: &ToolCallState) {
@@ -114,7 +120,7 @@ fn body_ui(ui: &mut egui::Ui, call: &ToolCallState) {
     }
 
     for (index, content) in call.content.iter().enumerate() {
-        match content {
+        ui.push_id(index, |ui| match content {
             ToolCallContent::Content(content) => {
                 content_block_ui(ui, &content.content, ui.make_persistent_id(index));
             }
@@ -126,7 +132,7 @@ fn body_ui(ui: &mut egui::Ui, call: &ToolCallState) {
                 );
             }
             _ => {}
-        }
+        });
     }
 
     if let Some(raw_input) = &call.raw_input {
@@ -167,11 +173,11 @@ const MAX_INLINE_CHARS: usize = 120;
 /// Anything else is pretty-printed JSON.
 pub fn tool_input_ui(ui: &mut egui::Ui, value: &serde_json::Value) {
     match value {
-        serde_json::Value::String(text) => code_ui(ui, text, None),
+        serde_json::Value::String(text) => code_ui(ui, "code", text, None),
         serde_json::Value::Object(fields) => tool_fields_ui(ui, fields),
         other => {
             let json = serde_json::to_string_pretty(other).unwrap_or_else(|_| other.to_string());
-            code_ui(ui, &json, None);
+            code_ui(ui, "code", &json, None);
         }
     }
 }
@@ -202,7 +208,7 @@ pub fn tool_fields_ui<'a>(
                         if MARKDOWN_FIELDS.contains(&key.as_str()) {
                             markdown_ui(ui, text);
                         } else {
-                            code_ui(ui, text, None);
+                            code_ui(ui, "code", text, None);
                         }
                     });
             }
@@ -223,7 +229,7 @@ pub fn tool_fields_ui<'a>(
                 egui::CollapsingHeader::new(RichText::new(key).small())
                     .id_salt(key)
                     .default_open(false)
-                    .show(ui, |ui| code_ui(ui, &json, None));
+                    .show(ui, |ui| code_ui(ui, "code", &json, None));
             }
         }
     }
@@ -354,13 +360,15 @@ fn diff_ui(ui: &mut egui::Ui, diff: &Diff) {
     if let Some(old_text) = &diff.old_text
         && !old_text.is_empty()
     {
-        code_ui(ui, old_text, Some(removed));
+        code_ui(ui, "old_text", old_text, Some(removed));
     }
-    code_ui(ui, &diff.new_text, Some(added));
+    code_ui(ui, "new_text", &diff.new_text, Some(added));
 }
 
 /// Read-only monospace block that keeps long lines scrollable instead of wrapping the whole panel.
-pub fn code_ui(ui: &mut egui::Ui, text: &str, fill: Option<Color32>) {
+///
+/// `id_salt` must be unique among the code blocks in the same parent `ui`.
+pub fn code_ui(ui: &mut egui::Ui, id_salt: impl egui::AsIdSalt, text: &str, fill: Option<Color32>) {
     let tokens = ui.tokens();
     egui::Frame::new()
         .fill(fill.unwrap_or(tokens.extreme_bg_color))
@@ -368,7 +376,7 @@ pub fn code_ui(ui: &mut egui::Ui, text: &str, fill: Option<Color32>) {
         .inner_margin(6)
         .show(ui, |ui| {
             egui::ScrollArea::horizontal()
-                .id_salt("code")
+                .id_salt(id_salt)
                 .show(ui, |ui| {
                     ui.add(
                         egui::Label::new(RichText::new(text).monospace())

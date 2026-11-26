@@ -1,12 +1,11 @@
 ---
-title: Customize views
-order: 200
+title: Customize your visualization
+order: 100
 description: Visualizers, overrides, and per-entity customization in views
 ---
 
 This page explains how the Viewer turns logged data into a visualization, and how to change that per view, from the UI or from code.
-
-## How are visualizations produced?
+## How a view draws your data
 
 <!-- schematics source: https://excalidraw.com/#json=AZT206K0Tsph5vuZpJHFA,Tc13rWiMnD2ISMWHH7t2QA -->
 
@@ -18,7 +17,7 @@ This page explains how the Viewer turns logged data into a visualization, and ho
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/customize-view-diagram/65d8c5a579c74606d147dfa693a09da9fa734411/1200w.png">
 </picture>
 
-In the Rerun Viewer, visualizations happen within _views_, which are defined by their [_blueprint_](../blueprints.md).
+In the Rerun Viewer, visualizations happen within _views_, which are defined by their [_blueprint_](../inspect-recordings/recording-layout.md).
 
 The first step for a view to display its content is to determine which entities are involved.
 This is determined by the [entity path filter](entity-path-filter.md), which is part of the view blueprint.
@@ -31,16 +30,18 @@ Which visualizers are available is highly dependent on the specific kind of view
 For example, the `SeriesLines` visualizer only exists for time series views — not, e.g., for 3D views.
 
 For a given view, each entity's components determine which visualizers are available.
+For most visualizers, this is decided by Arrow datatype.
+The visualizer is available when the entity has a component with the datatype of the visualizer's required input, whatever that component is named.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../../reference/types/archetypes.md).
 For example, in a 3D view, an entity logged with the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
 This happens because the components of an [archetype](../../reference/types/archetypes.md) are tagged with the archetype's name.
 With a few exceptions, archetypes are directly associated with a single visualizer, but it's also possible to add multiple visualizers of the same type to a given entity via blueprints or the UI.
 
-Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../../reference/types/components/position3d.md), [`Radius`](../../reference/types/components/radius.md), and [`Color`](../../reference/types/components/color.md) components.
+Then, each selected visualizer determines the values for its inputs. For example, the `Points3D` visualizer reads, among others, `Points3D:positions` ([`Position3D`](../../reference/types/components/position3d.md)), `Points3D:radii` ([`Radius`](../../reference/types/components/radius.md)), and `Points3D:colors` ([`Color`](../../reference/types/components/color.md)).
 
 <!-- It's a feature that we don't need to specify any details for the visualizers here. -->
 
-## Select visualizers
+## Choose visualizers
 
 Sometimes it makes sense to explicitly set the visualizers, to change the way entities are visualized.
 
@@ -58,19 +59,20 @@ Here is how the visualizers are displayed in the user interface:
 
 The next section describes how to precisely control what data each visualizer operates on, to fully customize the contents of a view.
 
-## Component mappings
+<span id="component-mappings"></span>
+<span id="selectors-for-nested-data"></span>
 
-Each visualizer takes various components as input. Values are automatically sourced from the chunk store. When no matching data exists (except for required components like point cloud positions or plot scalars), the Viewer generates sensible default values, which depend on the view class.
+For component mappings and nested selectors, see [Remap your data](component-mappings.md).
 
-Component mappings let you customize this behavior, for example to:
+## Where a visualizer input gets its value
 
-* Control what data is picked from the store - this allows you to visualize arbitrary data, _even when it was not logged with Rerun-semantics_.
-* Specify the styling of a visualization as part of your blueprint
+A visualizer normally reads components from the recording.
+If a value is missing, it can use a view default; you can also override a value for an entity or [remap an input](component-mappings.md) to another component.
+Required inputs, such as point positions, must be available for the visualizer to draw data.
 
-Component mappings can be modified via the Viewer UI by navigating to a visualizer and expanding the component of interest.
+## Set a value for one entity
 
-### Custom values
-
+An override sets a custom value for one entity in one view.
 A common way of customizing a visualization is by setting custom values, for example for visualizers that expect a [`Color`](../../reference/types/components/color.md) component.
 In the UI this can be done via the visualizer UI, by clicking and modifying the color component, or by selecting "Add custom" from the Source dropdown.
 
@@ -98,42 +100,14 @@ The following snippet shows how the same customization can be achieved with the 
 snippet: concepts/viscomp-component-override
 
 
-### Remapping of components
+## Set a default for a view
 
-<!-- TODO(andreas): Should we start lighter and first introduce the concept without arbitrary semantics? -->
+You can also force a visualizer to use a specific source kind.
+Setting the source to `Default` makes the visualizer ignore any store data and use the view's default instead:
 
-Visualizers can source their components from other data logged on the same entity, even data with arbitrary semantics.
+snippet: howto/component_mapping[custom_value]
 
-Within a view, a visualizer can pick up any component that has the same datatype as the builtin type that it expects.
-For example, the `SeriesLines` and `SeriesPoints` visualizers can pick up any numerical data for their [`Scalar`](../../reference/types/components/scalar.md) component.
-The same holds for String-like components that can be selected for [`Name`](../../reference/types/components/name.md).
-Likewise, the state timeline view's visualizer can source its `StateChange:state` input from any string, boolean, or numeric component (see [Visualize state changes](../view-types/state-timeline.md)).
-
-Such data often comes from MCAP data that has user-defined message types, or from components that were flexibly logged via [`AnyValues`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) or [`DynamicArchetype`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DynamicArchetype).
-The Viewer can even look for data with compatible datatypes in nested fields of Arrow [`StructArrays`](https://docs.rs/arrow/latest/arrow/array/struct.StructArray.html).
-
-Suitable components show up in the source dropdown:
-
-<picture>
-  <img src="https://static.rerun.io/source_dropdown_scalars/9fb672d6984475010dfb58df485281c327f80368/full.png" alt="Source dropdown for the scalars of a SeriesLines visualizer, listing JointState joint_positions, velocities, efforts and timestamp fields">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/source_dropdown_scalars/9fb672d6984475010dfb58df485281c327f80368/480w.png">
-</picture>
-
-
-This applies to required components too, not only to optional ones: you can reinterpret a mesh as a point cloud, or graph node positions as plain 2D points.
-Two kinds of component are excluded.
-Enum components such as [`FillMode`](../../reference/types/components/fill_mode.md) only accept data that carries the matching Rerun semantics.
-Image-like visualizers take an arbitrary buffer as their pixel data, but still require a proper [`ImageFormat`](../../reference/types/components/image_format.md) alongside it.
-
-As always, component mappings can be set via the blueprint APIs:
-
-snippet: howto/component_mapping[source_mapping]
-
-
-<!-- TODO(grtlr): We probably should create a dedicated selector page in the docs once they have matured a bit. -->
-To select nested fields in `StructArrays`, Rerun uses so-called selectors, which are filters that are inspired by [`jq`](https://jqlang.org/), a tool for processing JSON data.
-
-## Per-view component default
+### View defaults
 
 The viewer picks default component values based on a wide variety of different heuristics, ranging from simple local properties like
 an entity's name all the way to things like the size of a view's bounding box or how many plots are within it.
@@ -170,15 +144,8 @@ And as before, this also shows up in the View's component defaults.
   <img src="https://static.rerun.io/viscomp-component-default-2/c6943e2139dc7271075999a71b09596f07aa0776/full.png" alt="Component defaults section of a view listing a blue colors default for Boxes2D">
 </picture>
 
-## Hide entities by default
 
-To hide an entity (and its children) in a view, use the [`EntityBehavior`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes/#rerun.blueprint.archetypes.EntityBehavior) blueprint archetype as an override.
-The entity is still part of the view, so the user can show it again by clicking the eye icon in the blueprint panel.
-You can also make entities non-interactive, so that they cannot be hovered or selected in the view.
+## Override path rules
 
-snippet: archetypes/entity_behavior
-
-`EntityBehavior` currently only has an effect when you set it in the blueprint, as above.
-Logging it together with your data does nothing yet.
-
-To remove an entity from a view completely, exclude it in the view's [entity path filter](entity-path-filter.md) instead, for example with `contents=["+ /**", "- /debug/**"]`.
+Keys in `overrides={…}` must be full entity paths from the root.
+They do not support `$origin` or wildcards such as `/**`.

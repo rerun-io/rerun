@@ -4,7 +4,7 @@ use re_sdk_types::archetypes::Transform3D;
 use re_sdk_types::external::glam;
 use urdf_rs::{Joint, JointType};
 
-use super::quat_from_rpy;
+use super::{quat_from_rpy, unit_joint_axis};
 use crate::{JointTransform, MultiDofJointType, UnsupportedJointType};
 
 /// The error returned by [`compute_transform3d`].
@@ -49,6 +49,9 @@ pub mod internal {
 ///
 /// If `clamp` is true, values outside joint limits are clamped and a warning is added.
 /// If `clamp` is false, values outside limits are used as-is without warnings.
+///
+/// The joint axis does not have to be a unit vector.
+/// A joint whose axis is zero-length or not finite does not move.
 pub fn compute_joint_transform(
     joint: &Joint,
     value: f64,
@@ -60,7 +63,7 @@ pub fn compute_joint_transform(
         origin,
         parent,
         child,
-        axis,
+        axis: _,
         limit,
         calibration: _,
         dynamics: _,
@@ -80,7 +83,7 @@ pub fn compute_joint_transform(
         origin_xyz[2] as f32,
     );
 
-    let axis = glam::Vec3::new(axis.xyz[0] as f32, axis.xyz[1] as f32, axis.xyz[2] as f32);
+    let axis = unit_joint_axis(joint).unwrap_or(glam::Vec3::ZERO);
     let mut warnings = Vec::new();
     let mut clamped = |quantity: &str, unit: &str| {
         if clamp && !(limit.lower <= value && value <= limit.upper) {
@@ -103,13 +106,13 @@ pub fn compute_joint_transform(
         // Continuous joints have no limits.
         JointType::Continuous => (
             origin_translation,
-            origin_quat * glam::Quat::from_axis_angle(axis, value as f32),
+            origin_quat * glam::Quat::from_scaled_axis(axis * value as f32),
         ),
         JointType::Revolute => {
             let value = clamped("angle", "rad");
             (
                 origin_translation,
-                origin_quat * glam::Quat::from_axis_angle(axis, value as f32),
+                origin_quat * glam::Quat::from_scaled_axis(axis * value as f32),
             )
         }
 
@@ -197,5 +200,41 @@ mod tests {
         let joint = &robot.joints[0];
         let transform = compute_joint_transform(joint, 0.5, false).expect("revolute is supported");
         assert!((transform.translation - glam::Vec3::new(0.088, 0.0, 0.0)).length() < 1e-6);
+    }
+
+    /// Non-unit axes, which are common in URDF files, act like their unit-length direction.
+    #[test]
+    fn test_non_unit_axis_is_normalized() {
+        const URDF: &str = r#"
+            <robot name="arm">
+              <link name="a"/><link name="b"/><link name="c"/>
+              <joint name="hinge" type="continuous">
+                <parent link="a"/><child link="b"/><axis xyz="0 0 0.1"/>
+              </joint>
+              <joint name="slide" type="prismatic">
+                <parent link="b"/><child link="c"/><axis xyz="0 2 2"/>
+                <limit lower="0" upper="1" effort="1" velocity="1"/>
+              </joint>
+            </robot>"#;
+
+        let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+
+        for angle in [0.5, -0.5] {
+            let hinge = compute_joint_transform(&robot.joints[0], angle, false).expect("supported");
+            let expected = glam::Quat::from_rotation_z(angle as f32);
+            assert!(
+                hinge.quaternion.angle_between(expected) < 1e-6,
+                "hinge rotation at {angle}: {:?}",
+                hinge.quaternion
+            );
+        }
+
+        let slide = compute_joint_transform(&robot.joints[1], 1.0, false).expect("supported");
+        let expected = glam::Vec3::new(0.0, 1.0, 1.0) / 2.0_f32.sqrt();
+        assert!(
+            (slide.translation - expected).length() < 1e-6,
+            "slide translation {:?}",
+            slide.translation
+        );
     }
 }

@@ -1,0 +1,8 @@
+<mujoco model="test_scene">
+  <include file="robot.xml"/>
+
+  <worldbody>
+    <geom name="floor" type="plane" size="0 0 0.05"/>
+    <geom name="table" type="plane" size="1 1 0.05" pos="0 0 -0.01"/>
+  </worldbody>
+</mujoco>

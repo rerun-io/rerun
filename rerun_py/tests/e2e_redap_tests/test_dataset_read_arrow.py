@@ -1,4 +1,4 @@
-"""Tests for `DatasetSelection._read_arrow`."""
+"""Tests for `DatasetSelection.read_arrow`."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 def read_both(selection: DatasetSelection, **kwargs: Any) -> tuple[pa.Table, pa.Table]:
     """Return `(read_arrow, reader)` results for the same query."""
 
-    reader = selection._read_arrow(**kwargs)
+    reader = selection.read_arrow(**kwargs)
     assert isinstance(reader, pa.RecordBatchReader)
 
     return reader.read_all(), pa.table(selection.reader(**kwargs))
@@ -92,7 +92,7 @@ def test_read_arrow_orders_across_batches(entry_factory: EntryFactory, tmp_path:
     rows_per_segment = 5000
     selection = scalar_dataset_selection(entry_factory, tmp_path, "read_arrow_batches", num_segments, rows_per_segment)
 
-    reader = selection._read_arrow(index="frame")
+    reader = selection.read_arrow(index="frame")
     batches = list(reader)
     actual = pa.Table.from_batches(batches, schema=reader.schema)
 
@@ -110,7 +110,7 @@ def test_read_arrow_close_mid_stream_stops_the_query(entry_factory: EntryFactory
     selection = scalar_dataset_selection(entry_factory, tmp_path, "read_arrow_close", 1, num_rows)
 
     with query_metrics() as metrics:
-        reader = selection._read_arrow(index="frame")
+        reader = selection.read_arrow(index="frame")
         assert reader.read_next_batch().num_rows > 0
         assert metrics.last_query() is None, "the query finished before the reader was closed"
 
@@ -133,11 +133,11 @@ def test_read_arrow_into_table(entry_factory: EntryFactory, tmp_path: Path) -> N
     # `TableEntry.append` pulls the reader from a tokio worker thread.
     selection = scalar_dataset_selection(entry_factory, tmp_path, "read_arrow_into_table", 2, 1000)
 
-    reader = selection._read_arrow(index="frame")
+    reader = selection.read_arrow(index="frame")
     table = entry_factory.create_table("read_arrow_table", reader.schema, (tmp_path / "table").as_uri())
     table.append(reader)
 
-    assert_same_rows(pa.table(table.reader()), selection._read_arrow(index="frame").read_all())
+    assert_same_rows(pa.table(table.reader()), selection.read_arrow(index="frame").read_all())
 
 
 def test_read_arrow_static_only(readonly_test_dataset: DatasetEntry) -> None:
@@ -194,13 +194,13 @@ def test_read_arrow_using_index_values(readonly_test_dataset: DatasetEntry) -> N
 
 def test_read_arrow_empty_selection(readonly_test_dataset: DatasetEntry) -> None:
     known = min(readonly_test_dataset.segment_ids())
-    full_schema = readonly_test_dataset.filter_segments([known])._read_arrow(index="time_1").schema
+    full_schema = readonly_test_dataset.filter_segments([known]).read_arrow(index="time_1").schema
 
     for empty in [
         readonly_test_dataset.filter_segments([]),
         readonly_test_dataset.filter_segments([known]).filter_segments(["does-not-exist"]),
     ]:
-        table = empty._read_arrow(index="time_1").read_all()
+        table = empty.read_arrow(index="time_1").read_all()
 
         assert table.num_rows == 0
         assert table.schema.equals(full_schema, check_metadata=True)
@@ -208,7 +208,7 @@ def test_read_arrow_empty_selection(readonly_test_dataset: DatasetEntry) -> None
 
 def test_read_arrow_is_single_pass(readonly_test_dataset: DatasetEntry) -> None:
     known = min(readonly_test_dataset.segment_ids())
-    reader = readonly_test_dataset.filter_segments([known])._read_arrow(index="time_1")
+    reader = readonly_test_dataset.filter_segments([known]).read_arrow(index="time_1")
 
     first = reader.read_all()
     second = reader.read_all()

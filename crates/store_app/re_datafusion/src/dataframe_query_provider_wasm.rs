@@ -134,6 +134,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
         let decode_us = Arc::new(std::sync::atomic::AtomicU64::new(0));
         let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(
             response_stream,
+            re_redap_client::FetchedPayloads::Shared,
             Some(Arc::clone(&decode_us)),
         );
 

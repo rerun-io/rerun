@@ -1,23 +1,59 @@
 ---
-title: Component mappings
-order: 500
-description: Point a visualizer at a different component, e.g. to recolor a point cloud
+title: Remap your data
+order: 200
+description: Visualize custom messages and existing components in a view using component mappings
+keywords: ROS 2, MCAP, Protobuf, custom messages, selector
 ---
 
-By default, each visualizer reads its input components from its own archetype — for example, the `Points3D` visualizer reads colors from `Points3D:colors`.
-**Component mappings** let you override this, redirecting any visualizer input to a different component on the same entity.
-This makes it possible to store multiple variants of the same data and switch between them per view.
+Remapping makes a visualizer read an existing component or nested field that was not logged for that visualizer.
+The recording blueprint setting is called a **component mapping**.
+For example, plot a custom numeric field as a time series without changing the recording.
+The MCAP importer can expose custom ROS 2 and Protobuf fields using [schema reflection](../../logging-and-ingestion/import/mcap/message-formats.md#schema-reflection).
 
-To learn more about how visualizers are set up in general, also have a look at the [concept page on customizing Views](customize-views.md).
+## What remapping is
 
-To log custom components, see [Logging custom data](../../logging-and-ingestion/send-data/custom-data.md#logging-custom-data).
+Visualizers can source their components from other data logged on the same entity, even data with arbitrary semantics.
 
-The first example uses a point cloud with two color sets.
-The later sections use scalars to show nested data selectors and default values.
-For computing the colors, see [Color a point cloud by height or intensity](../view-types/3d.md#color-a-point-cloud-by-height-or-intensity).
+Within a view, a visualizer can pick up any component that has the same datatype as the builtin type that it expects.
+For example, the `SeriesLines` and `SeriesPoints` visualizers can pick up any numerical data for their [`Scalar`](../../reference/types/components/scalar.md) component.
+The same holds for String-like components that can be selected for [`Name`](../../reference/types/components/name.md).
+Likewise, the state timeline view's visualizer can source its `StateChange:state` input from any string, boolean, or numeric component (see [Visualize state changes](../view-types/state-timeline.md)).
+
+Such data often comes from MCAP data that has user-defined message types, or from components that were flexibly logged via [`AnyValues`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) or [`DynamicArchetype`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DynamicArchetype).
+The Viewer can even look for data with compatible datatypes in nested fields of Arrow [`StructArrays`](https://docs.rs/arrow/latest/arrow/array/struct.StructArray.html).
+
+This applies to required components too, not only to optional ones: you can reinterpret a mesh as a point cloud, or graph node positions as plain 2D points.
+Two kinds of component are excluded.
+Enum components such as [`FillMode`](../../reference/types/components/fill_mode.md) only accept data that carries the matching Rerun semantics.
+Image-like visualizers take an arbitrary buffer as their pixel data, but still require a proper [`ImageFormat`](../../reference/types/components/image_format.md) alongside it.
+
+## Remap in the Viewer
+
+Select an entity in a view, expand the visualizer input in the selection panel, and choose another compatible component in its source menu.
+You can also drag a compatible component from the streams panel onto a time series or state timeline view to add a visualizer.
+
+Suitable components show up in the source dropdown:
+
+<picture>
+  <img src="https://static.rerun.io/source_dropdown_scalars/9fb672d6984475010dfb58df485281c327f80368/full.png" alt="Source dropdown for the scalars of a SeriesLines visualizer, listing JointState joint_positions, velocities, efforts and timestamp fields">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/source_dropdown_scalars/9fb672d6984475010dfb58df485281c327f80368/480w.png">
+</picture>
 
 
-## Full example
+
+
+For a time series view, drag a compatible numeric component from the streams panel onto the view to add a `SeriesLines` visualizer.
+For a state timeline view, drag a compatible string, boolean, or numeric component onto the view to add a lane.
+Incompatible components and components already visualized are rejected.
+
+## Remap from code
+
+Set the visualizer input in a recording blueprint to point to another component:
+
+snippet: howto/component_mapping[source_mapping]
+
+
+## Example: two point cloud colorings
 
 You can find the full example here:
 
@@ -32,9 +68,9 @@ You can find the full example here:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/1200w.png">
 </picture>
 
-## How it works
+### How the example works
 
-### Storing multiple component variants with custom archetypes
+#### Storing multiple component variants with custom archetypes
 
 A standard archetype like `Points3D` assigns a fixed column name, as well as component type & archetype metainformation, to every component it logs (`Points3D:colors`, `Points3D:positions`, etc.).
 To store additional variants of a component on the same entity, log them as **custom archetypes**.
@@ -55,7 +91,7 @@ You can inspect this in the viewer by selecting the entity in the streams panel:
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/component-mappings-selection/92c625844b0ad513c5985e71b825ee7121134959/768w.png">
 </picture>
 
-### Configuring component mappings in blueprint
+#### Configuring component mappings in blueprint
 
 To make a visualizer read from an arbitrary source, we need to explicitly set the **component mapping** for a visualizer.
 The mapping specifies a *target* (the component the visualizer expects) and a *source* (the component to actually read from).
@@ -63,7 +99,7 @@ Everything that isn't explicitly mapped keeps its default behavior.
 
 snippet: howto/dual_color_point_cloud[blueprint]
 
-In this example, each view overrides only the color source for the `Points3D` visualizer - positions, radii, and everything else are still read from their default sources automatically.
+In this example, each view overrides only the color source for the `Points3D` visualizer — positions, radii, and everything else are still read from their default sources automatically.
 
 In the viewer you can access this in the visualizer settings, presented when selecting an entity in a view:
 
@@ -76,7 +112,7 @@ In the viewer you can access this in the visualizer settings, presented when sel
 </picture>
 
 
-### Configuring component mappings in the UI
+#### Configuring component mappings in the UI
 
 You can set up the same mappings interactively without writing any blueprint code:
 
@@ -86,7 +122,9 @@ You can set up the same mappings interactively without writing any blueprint cod
 - Click on the component row you want to remap (e.g. **colors**) to expand the component mapping options.
 - Change the source from the default to the desired custom archetype component (e.g. `HeightColors:colors`).
 
-## Selectors for nested data
+## Select nested fields
+
+See [Selector syntax](../../query-and-transform/lenses.md#selectors) for the shared selector language.
 
 When your data lives inside an Arrow `StructArray`, use a _selector_ to extract a specific field.
 Selectors use a `jq`-inspired syntax (e.g. `.values` to select the `values` field).
@@ -102,9 +140,33 @@ The following remaps the `Scalars:scalars` input to read from `custom:my_nested_
 
 snippet: howto/component_mapping[selector_mapping]
 
-## Providing default values
 
-You can also force a visualizer to use a specific source kind.
-Setting the source to `Default` makes the visualizer ignore any store data and use the view's default instead:
+## More examples
 
-snippet: howto/component_mapping[custom_value]
+- [Plot any scalar](../view-types/time-series.md#plot-any-scalar)
+- [Visualize any component as state](../view-types/state-timeline.md#visualize-any-component-as-state)
+- [Visualize custom message scalars from an MCAP](../../logging-and-ingestion/import/mcap/message-formats.md#example-time-series-plot-for-custom-message-scalars)
+
+## Lens or remapping?
+
+A component mapping selects an existing component on the same entity, or a nested field, when one visualizer reads data in one view.
+It is stored in the recording blueprint and does not change the recording.
+Change the mapping to change that view without affecting other views or queries.
+
+A [lens](../../query-and-transform/lenses.md) transforms chunks: it can compute values, create component columns, move data to another entity, or create timelines.
+When used during ingestion, the transformed data can be stored so views and queries see it; lenses can also transform chunks read from existing data.
+Changing a stored transformation requires processing the data again.
+Both features use selectors to address fields.
+
+| | Component mapping | Lens |
+| --- | --- | --- |
+| When | When a view reads data | When chunks are processed |
+| Where | Recording blueprint or Viewer | SDK, importer, or chunk stream |
+| Effect | Changes what one visualizer reads | Transforms data for downstream consumers |
+| Scope | A component on the same entity or a nested field | Can create or move data across entities and timelines |
+| Computation | Select a field or cast a compatible type | Compute and transform values |
+
+
+If the value already exists and only one view needs it, remap it.
+If it needs to be computed or moved, or other consumers need the transformed data, use a lens.
+For a fixed visual style such as a color, use a [visualizer override](customize-views.md#set-a-value-for-one-entity).

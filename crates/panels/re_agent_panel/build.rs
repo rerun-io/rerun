@@ -5,10 +5,8 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// File extensions to embed from `agent_context`.
-const AGENT_SOURCE_FILTER: &[&str] = &[
-    "cpp", "h", "hpp", "in", "md", "py", "rs", "toml", "txt", "yaml",
-];
+/// File extensions to embed from `agent_context/skills`.
+const SKILL_FILE_EXTENSIONS: &[&str] = &["md", "py"];
 
 fn main() {
     cfg_aliases::cfg_aliases! {
@@ -16,42 +14,37 @@ fn main() {
         agent_harness_backend: { not(target_arch = "wasm32") },
     }
 
-    // The context is a couple of megabytes of documentation, and only agent harnesses read it,
-    // which the web viewer cannot run.
-    let embed_context = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default() != "wasm32"
-        && std::env::var_os("CARGO_FEATURE_AGENT_CONTEXT").is_some();
-    embed_agent_context(embed_context);
+    embed_skills(std::env::var_os("CARGO_FEATURE_AGENT_SKILLS").is_some());
 }
 
-/// Writes `$OUT_DIR/agent_files.rs` holding every matching file from `agent_context` as
-/// `(path relative to the agent directory, contents)`.
+/// Writes `$OUT_DIR/skill_files.rs` holding `SKILL_FILES`: every matching file from
+/// `agent_context/skills`, as `(path relative to the crate root, contents)`.
 ///
-/// The list is empty unless `embed_context`, so that the module compiles either way.
-fn embed_agent_context(embed_context: bool) {
+/// The list is empty unless `embed`, so that the module compiles either way.
+fn embed_skills(embed: bool) {
     let crate_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let source_dir = crate_root.join("agent_context");
-    re_build_tools::rerun_if_changed_or_doesnt_exist(&source_dir);
+    let skills_dir = crate_root.join("agent_context/skills");
+    re_build_tools::rerun_if_changed_or_doesnt_exist(&skills_dir);
 
     let mut files = Vec::new();
-    if embed_context && source_dir.is_dir() {
-        collect_files(crate_root, &source_dir, &mut files);
+    if embed && skills_dir.is_dir() {
+        collect_files(crate_root, &skills_dir, &mut files);
     }
     files.sort();
 
-    if embed_context && files.is_empty() {
-        // `agent_context/docs` and `agent_context/skills` are symlinks out of the crate, and
-        // `cargo package` drops symlinked directories without a word. Say so, rather than
-        // shipping an agent panel that has quietly lost its skills and documentation.
+    if embed && files.is_empty() {
+        // `agent_context/skills` is a symlink out of the crate, and `cargo package` drops
+        // symlinked directories without a word. Say so, rather than shipping an agent panel that
+        // has quietly lost its skills.
         println!(
-            "cargo::warning=No agent context found in {}; \
-             the agent panel will run without Rerun skills or documentation. \
-             Build with `--no-default-features` or without the `agent_context` feature to \
-             make this deliberate.",
-            source_dir.display()
+            "cargo::warning=No skills found in {}; \
+             the agent panel will run without Rerun skills. \
+             Build without the `agent_skills` feature to make this deliberate.",
+            skills_dir.display()
         );
     }
 
-    let mut code = String::from("pub const AGENT_FILES: &[(&str, &[u8])] = &[\n");
+    let mut code = String::from("pub const SKILL_FILES: &[(&str, &[u8])] = &[\n");
     for (relative_path, absolute_path) in files {
         re_build_tools::rerun_if_changed(&absolute_path);
         writeln!(
@@ -68,9 +61,9 @@ fn embed_agent_context(embed_context: bool) {
         Err(err) => panic!("OUT_DIR is not set: {err}"),
     };
     if let Err(err) =
-        re_build_tools::write_file_if_necessary(out_dir.join("agent_files.rs"), code.as_bytes())
+        re_build_tools::write_file_if_necessary(out_dir.join("skill_files.rs"), code.as_bytes())
     {
-        panic!("Failed to write agent_files.rs: {err}");
+        panic!("Failed to write skill_files.rs: {err}");
     }
 }
 
@@ -85,7 +78,7 @@ fn collect_files(root: &Path, dir: &Path, files: &mut Vec<(String, PathBuf)>) {
             continue;
         }
         let extension = path.extension().map(|ext| ext.to_string_lossy());
-        let wanted = extension.is_some_and(|ext| AGENT_SOURCE_FILTER.contains(&ext.as_ref()));
+        let wanted = extension.is_some_and(|ext| SKILL_FILE_EXTENSIONS.contains(&ext.as_ref()));
         if wanted && let Ok(relative) = path.strip_prefix(root) {
             let relative = relative.to_string_lossy().replace('\\', "/");
             files.push((relative, path));

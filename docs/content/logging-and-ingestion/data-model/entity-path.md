@@ -59,7 +59,7 @@ Path hierarchy plays an important role in a number of different functions within
  * With the [Transform System](transforms.md), a `Transform3D` logged to an entity without explicit `parent_frame`/`child_frame` describes
 the relationship between that entity and its direct parent.
  * When resolving the meaning of [`ClassId`](../../reference/types/components/class_id.md) and [`KeypointId`](../../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](../../viewer/view-concepts/annotation-context.md) from the nearest ancestor in the hierarchy.
- * When adding data to [Blueprints](../../viewer/ui/blueprint-panel.md), it is common to add a path and all of its descendants.
+ * When adding data to [Blueprints](../../viewer/inspect-recordings/configure-layout.md#blueprint-panel), it is common to add a path and all of its descendants.
  * When using `rr.log("entity/path", rr.Clear(recursive=True))`, it marks an entity *and all of its descendants* as being cleared.
 
 ### Entity path filters

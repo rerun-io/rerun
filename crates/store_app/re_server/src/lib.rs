@@ -24,6 +24,13 @@ pub use self::{
     server::{Server, ServerBuilder, ServerError, ServerHandle},
 };
 
+/// The protocol level this build of the server implements.
+///
+/// Same as what `/WhoAmI` advertises, for a client that talks to the server in-process and never
+/// makes that call.
+pub const PROTOCOL_LEVEL: re_protos::protocol_level::ProtocolLevel =
+    re_protos::protocol_level::ProtocolLevel::CHUNK_SEGMENT_FROM_REQUEST;
+
 /// The capability names this build supports.
 ///
 /// On wasm the server reads `file://` sources from OPFS, and only the viewer itself puts files

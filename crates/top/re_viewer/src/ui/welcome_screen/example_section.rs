@@ -305,6 +305,7 @@ impl ExampleSection {
             .floor()
             .min(MAX_COLUMN_WIDTH)
             .min(max_width);
+        let description_width = (column_width - 2.0 * DESCRIPTION_INNER_MARGIN.x).at_least(0.0);
 
         ui.horizontal(|ui| {
             // this space is added on the left so that the grid is centered
@@ -377,12 +378,7 @@ impl ExampleSection {
                             re_tracing::profile_scope!("row");
                             let description_height = row_of_examples
                                 .iter()
-                                .map(|example| {
-                                    example.description_height(
-                                        ui,
-                                        column_width - 2.0 * DESCRIPTION_INNER_MARGIN.x,
-                                    )
-                                })
+                                .map(|example| example.description_height(ui, description_width))
                                 .fold(0.0, f32::max);
 
                             for example in row_of_examples {
@@ -596,10 +592,10 @@ impl ExampleDescLayout {
             egui::StrokeKind::Inside,
         );
 
-        let content_rect = egui::Rect::from_min_max(
-            description_rect.min + DESCRIPTION_INNER_MARGIN,
-            description_rect.max - DESCRIPTION_INNER_MARGIN,
-        );
+        let content_rect = description_rect.shrink2(DESCRIPTION_INNER_MARGIN);
+        if !content_rect.is_positive() {
+            return false;
+        }
         let mut main_ui = ui.new_child(
             egui::UiBuilder::new()
                 .max_rect(content_rect)

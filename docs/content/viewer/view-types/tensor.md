@@ -9,11 +9,19 @@ Choose which dimensions to display and step through the others to explore featur
 
 See the [`TensorView` reference](../../reference/types/views/tensor_view.md) for properties and examples.
 
-## Select a slice and its appearance
+## Data for this view
+
+Log a [`Tensor`](../../reference/types/archetypes/tensor.md) to inspect its multidimensional values.
+
+## Configure the view
+
+### Select a slice and its appearance
 
 Use `slice_selection` to choose the displayed dimensions and the indices of the remaining dimensions.
 Use `scalar_mapping` for the colormap, gamma, and magnification filter, and `view_fit` for sizing.
 If `slider` is omitted, every dimension in `indices` gets a slider.
-This example logs a tensor with shape `(32, 240, 320, 3)`.
+See the [TensorView reference](../../reference/types/views/tensor_view.md) for an example and [Configure a recording layout from code](../inspect-recordings/configure-from-code.md) for the blueprint workflow.
 
-snippet: views/tensor
+## Related
+
+See [Dataframe](dataframe.md) for values in a table and [Raw data](raw-data.md) for component inspection.
