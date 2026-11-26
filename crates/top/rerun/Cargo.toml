@@ -86,6 +86,12 @@ audio = ["re_viewer?/audio"]
 ## This adds a lot of extra dependencies.
 map_view = ["re_viewer?/map_view"]
 
+## Support the web view, which shows web pages.
+##
+## Only the web can show pages so far.
+## The app must create a `re_viewer::WebViewRuntime` early in `main`.
+webview = ["re_viewer?/webview"]
+
 ## Add support for math type conversions using [`mint`](https://crates.io/crates/mint/).
 ## Only relevant if feature `sdk` is enabled.
 mint = ["re_sdk_types?/mint"]

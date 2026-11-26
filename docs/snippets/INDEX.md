@@ -390,6 +390,7 @@ _All snippets, organized by the [`View`](https://rerun.io/docs/reference/types/v
 | **[`TimeSeriesView`](https://rerun.io/docs/reference/types/views/time_series_view)** | `tutorials⁠/⁠visualization⁠/⁠save_blueprint` | Craft an example blueprint with the python API and save it to a file | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/visualization/save_blueprint.py) |  |  |
 | **[`TimeSeriesView`](https://rerun.io/docs/reference/types/views/time_series_view)** | `tutorials⁠/⁠visualizer-overrides` | Log a scalar over time and override the visualizer | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/visualizer-overrides.py) |  |  |
 | **[`TimeSeriesView`](https://rerun.io/docs/reference/types/views/time_series_view)** | `views⁠/⁠timeseries` | Use a blueprint to customize a TimeSeriesView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/timeseries.py) |  |  |
+| **[`WebView`](https://rerun.io/docs/reference/types/views/web_view)** | `views⁠/⁠web` | Use a blueprint to show a web page | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/web.py) |  |  |
 
 
 ### Archetypes (blueprint)
@@ -444,3 +445,4 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 | **`VisualBounds2D`** | `tutorials⁠/⁠extra_values` | Log extra values with a `Points2D` | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.cpp) |
 | **`VisualBounds2D`** | `views⁠/⁠graph` | Use a blueprint to customize a graph view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/graph.py) |  |  |
 | **`VisualBounds2D`** | `views⁠/⁠spatial2d` | Use a blueprint to customize a Spatial2DView | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/spatial2d.py) |  |  |
+| **`WebViewContent`** | `views⁠/⁠web` | Use a blueprint to show a web page | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/web.py) |  |  |

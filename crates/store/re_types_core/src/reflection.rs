@@ -545,6 +545,9 @@ pub struct ViewReflection {
 
     /// Property archetypes that are used to configure this view.
     pub property_archetypes: Vec<ArchetypeName>,
+
+    /// Whether the viewer marks the view as experimental where users pick a view.
+    pub experimental: bool,
 }
 
 impl ViewReflection {
@@ -561,6 +564,7 @@ impl Default for ViewReflection {
             keywords: Vec::new(),
             applicability: ViewApplicability::Archetypes(Vec::new()),
             property_archetypes: Vec::new(),
+            experimental: false,
         }
     }
 }

@@ -108,10 +108,15 @@ pub trait UiExt {
 
     /// Small orange "Experimental" pill, marking a feature as experimental.
     fn experimental_tag(&mut self) -> egui::WidgetAtomResponse {
-        let ui = self.ui_mut();
-        let tokens = ui.tokens();
+        let tag = self.experimental_tag_atom();
+        egui::WidgetAtom::new(tag).show(self.ui_mut())
+    }
+
+    /// The pill of [`Self::experimental_tag`], as an atom to put in another widget.
+    fn experimental_tag_atom(&self) -> egui::ContainerAtom<'static> {
+        let tokens = self.ui().tokens();
         let alert = &tokens.alert_warning;
-        egui::WidgetAtom::new(
+        egui::ContainerAtom::new(
             egui::RichText::new("Experimental")
                 .small()
                 .color(alert.icon),
@@ -122,7 +127,6 @@ pub trait UiExt {
                 .corner_radius(tokens.normal_corner_radius())
                 .inner_margin(egui::Margin::symmetric(6, 1)),
         )
-        .show(ui)
     }
 
     /// Shows a success label with a large border.

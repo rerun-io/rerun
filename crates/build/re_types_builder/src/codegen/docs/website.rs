@@ -686,6 +686,17 @@ fn write_visualized_archetypes(
 
     let is_archetype_agnostic = view.is_attr_set(DocsAttr::ArchetypeAgnostic);
 
+    if view.is_attr_set(DocsAttr::NoData) {
+        if !archetype_fqnames.is_empty() || is_archetype_agnostic {
+            reporter.error(
+                &view.virtpath,
+                &view.fqname,
+                "A `#[docs(no_data)]` view can't visualize archetypes.",
+            );
+        }
+        return;
+    }
+
     if archetype_fqnames.is_empty() && !is_archetype_agnostic {
         reporter.error(&view.virtpath, &view.fqname, "No archetypes use this view.");
         return;

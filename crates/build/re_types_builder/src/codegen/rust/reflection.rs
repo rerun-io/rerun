@@ -440,6 +440,8 @@ fn generate_view_reflection(reporter: &Reporter, objects: &Objects) -> TokenStre
                 quote!(ViewApplicability::Archetypes(vec![#(#archetypes),*]))
             };
 
+            let experimental = view.is_attr_set(RerunAttr::Experimental);
+
             let property_archetypes = view.fields.iter().filter_map(|field| {
                 let fqname = field.typ.fqname()?;
                 Some(quote!(ArchetypeName::from(#fqname)))
@@ -453,6 +455,7 @@ fn generate_view_reflection(reporter: &Reporter, objects: &Objects) -> TokenStre
                         keywords: vec![#(#keywords.to_owned()),*],
                         applicability: #applicability,
                         property_archetypes: vec![#(#property_archetypes),*],
+                        experimental: #experimental,
                     },
                 )
             })

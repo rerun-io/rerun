@@ -83,6 +83,12 @@ audio = ["rerun/audio"]
 ## This adds a lot of extra dependencies.
 map_view = ["rerun/map_view"]
 
+## Support the web view, which shows web pages.
+##
+## Only the web can show pages so far.
+## The app must create a `re_viewer::WebViewRuntime` early in `main`.
+webview = ["rerun/webview"]
+
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["rerun/nasm"]

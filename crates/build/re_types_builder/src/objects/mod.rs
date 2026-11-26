@@ -39,6 +39,20 @@ impl Objects {
                     "`#[docs(archetype_agnostic)]` is only valid on views",
                 );
             }
+            if obj.is_attr_set(RerunAttr::Experimental) && obj.kind != ObjectKind::View {
+                reporter.error(
+                    &obj.virtpath,
+                    &obj.fqname,
+                    "`#[rerun(experimental)]` is only valid on views",
+                );
+            }
+            if obj.is_attr_set(DocsAttr::NoData) && obj.kind != ObjectKind::View {
+                reporter.error(
+                    &obj.virtpath,
+                    &obj.fqname,
+                    "`#[docs(no_data)]` is only valid on views",
+                );
+            }
 
             for field in &obj.fields {
                 let virtpath = &field.virtpath;

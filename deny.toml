@@ -79,6 +79,7 @@ deny = [
     "re_integration_test",
   ], reason = "Pulls in a GPL-3.0 crate so may only ever be used in tests." },
 
+  { name = "cef", reason = "Downloads about 1 GB at build time. The plan is to download CEF at run time instead." },
   { name = "cgmath", reason = "We use glam" },
   { name = "cmake", reason = "Never again" },
   { name = "derive_more", wrappers = [
@@ -106,6 +107,7 @@ skip = [
   { name = "cpufeatures" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
   { name = "crypto-common" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
   { name = "digest" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
+  { name = "dirs" }, # `wry` (via `egui_webview`) uses 7.0, `lance-index` uses 6.0
   { name = "getrandom" }, # ring uses 0.2, ahash/arrow/datafusion use 0.3
   { name = "hashbrown" }, # Old version used by polar-rs
   { name = "itertools" }, # Too popular; `datafusion` requires 0.14, we use 0.15
