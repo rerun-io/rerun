@@ -4,9 +4,6 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from typing_extensions import deprecated
-
-from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import _ServerInternal
 
 from .catalog import CatalogClient
@@ -54,7 +51,6 @@ class Server:
         port: int | None = None,
         datasets: dict[str, str | PathLike[str] | Sequence[str | PathLike[str]]] | None = None,
         tables: dict[str, PathLike[str]] | None = None,
-        addr: str = "0.0.0.0",  # noqa: S104
     ) -> None:
         """
         Create a new Rerun server instance and start it.
@@ -79,18 +75,8 @@ class Server:
         tables:
             Optional dictionary mapping table names to lance file paths which will be loaded and made available when the
             server starts.
-        addr:
-            Deprecated: Renamed to `host`
 
         """
-
-        if host == "0.0.0.0" and addr != "0.0.0.0":  # noqa: S104
-            host = addr
-            _send_warning_or_raise(
-                "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `host`.",
-                depth_to_user_code=1,
-                warning_type=DeprecationWarning,
-            )
 
         # Port 0 lets the OS pick a free port for us. `url()` reports the actual port.
         resolved_port = 0 if port is None else port
@@ -126,10 +112,6 @@ class Server:
     def url(self) -> str:
         """Get the URL of the server to which clients can connect."""
         return self._internal.url()
-
-    @deprecated("Renamed to `url`.")
-    def address(self) -> str:
-        return self.url()
 
     def host(self) -> str:
         """Get the host (IP) that we've bound the server to."""

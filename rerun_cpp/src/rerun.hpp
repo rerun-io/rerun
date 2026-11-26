@@ -5,9 +5,6 @@
 #include "rerun/components.hpp"
 #include "rerun/encodings.hpp"
 
-// Deprecated alias: `rerun::datatypes` is now `rerun::encodings`.
-#include "rerun/datatypes.hpp"
-
 // Rerun API.
 #include "rerun/collection.hpp"
 #include "rerun/collection_adapter.hpp"
@@ -28,11 +25,6 @@ namespace rerun {
     /// should exit with this exit code.
     // NOTE: Always keep in sync with other languages.
     constexpr int EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE = 66;
-
-    /// \deprecated Deprecated since 0.32.0. Use `EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE` instead.
-    [[deprecated("Deprecated since 0.32.0. Use EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE instead."
-    )]] constexpr int EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE =
-        EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE;
 
     // Archetypes are the quick-and-easy default way of logging data to Rerun.
     // Make them available in the rerun namespace.

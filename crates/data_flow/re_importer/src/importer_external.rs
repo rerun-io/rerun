@@ -15,12 +15,6 @@ use crate::{ImportedData, Importer as _};
 // NOTE: this constant is duplicated in `rerun` to avoid an extra dependency there.
 pub const EXTERNAL_IMPORTER_PREFIX: &str = "rerun-importer-";
 
-/// Legacy prefix for external importers (deprecated since 0.32.0).
-///
-/// Executables with this prefix are still discovered for backwards compatibility,
-/// but a deprecation warning is logged.
-const EXTERNAL_IMPORTER_PREFIX_DEPRECATED: &str = "rerun-loader-";
-
 /// When an external [`crate::Importer`] is asked to load some data that it doesn't know
 /// how to load, it should exit with this exit code.
 // NOTE: Always keep in sync with other languages.
@@ -71,18 +65,7 @@ pub static EXTERNAL_IMPORTER_PATHS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
                 .map(|f| f.to_string_lossy().to_string())
                 .unwrap_or_default();
 
-            let is_new_prefix = filename_str.starts_with(EXTERNAL_IMPORTER_PREFIX);
-            let is_legacy_prefix = filename_str.starts_with(EXTERNAL_IMPORTER_PREFIX_DEPRECATED);
-
-            if is_executable(&filepath) && (is_new_prefix || is_legacy_prefix) {
-                if is_legacy_prefix {
-                    // relint: allow(log_sensitive_inline): `*_once` macros cannot take structured fields
-                    re_log::warn_once!(
-                        "Found external loader with deprecated `rerun-loader-` prefix: {filename_str}. \
-                         Please rename it to use the `rerun-importer-` prefix instead. \
-                         Support for the `rerun-loader-` prefix will be removed in a future release."
-                    );
-                }
+            if filename_str.starts_with(EXTERNAL_IMPORTER_PREFIX) && is_executable(&filepath) {
                 Some(filepath)
             } else {
                 None
@@ -122,8 +105,7 @@ pub fn iter_external_importers() -> impl ExactSizeIterator<Item = PathBuf> {
 // ---
 
 /// An [`crate::Importer`] that forwards the path to load to all executables present in
-/// the user's `PATH` with a name that starts with [`EXTERNAL_IMPORTER_PREFIX`]
-/// (or the legacy `rerun-loader-` prefix).
+/// the user's `PATH` with a name that starts with [`EXTERNAL_IMPORTER_PREFIX`].
 ///
 /// The external importers are expected to log rrd data to their standard output.
 ///

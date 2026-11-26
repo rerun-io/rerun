@@ -370,7 +370,7 @@ mod tests {
     use arrow::datatypes::{Field, Schema};
     use arrow::json::writer::{JsonArray, WriterBuilder};
 
-    use re_sdk_types::datatypes::{TimeInt, TimeRangeBoundary};
+    use re_sdk_types::encodings::{TimeInt, TimeRangeBoundary};
     use re_sdk_types::{FromArrowOpt as _, ToArrowOpt as _};
 
     use super::*;

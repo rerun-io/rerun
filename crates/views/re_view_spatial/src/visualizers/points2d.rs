@@ -341,7 +341,7 @@ mod tests {
         encodings::{ComponentSourceKind, VisualizerComponentMapping},
     };
     use re_sdk_types::components::{ClassId, Color};
-    use re_sdk_types::datatypes::{self, TimeRange, TimeRangeBoundary, VisibleTimeRange};
+    use re_sdk_types::encodings::{self, TimeRange, TimeRangeBoundary, VisibleTimeRange};
     use re_test_context::{TestContext, VisualizerBlueprintContext as _};
     use re_test_viewport::TestContextExt as _;
     use re_viewer_context::{ViewClass as _, ViewId};
@@ -349,11 +349,11 @@ mod tests {
 
     use crate::visualizers::{UiLabel, UiLabelStyle, collect_ui_labels};
 
-    const ANN: Color = Color(datatypes::Rgba32::from_rgb(30, 60, 90));
-    const LATE_ANN: Color = Color(datatypes::Rgba32::from_rgb(90, 60, 30));
-    const RED: Color = Color(datatypes::Rgba32::from_rgb(255, 0, 0));
-    const GREEN: Color = Color(datatypes::Rgba32::from_rgb(0, 255, 0));
-    const BLUE: Color = Color(datatypes::Rgba32::from_rgb(0, 0, 255));
+    const ANN: Color = Color(encodings::Rgba32::from_rgb(30, 60, 90));
+    const LATE_ANN: Color = Color(encodings::Rgba32::from_rgb(90, 60, 30));
+    const RED: Color = Color(encodings::Rgba32::from_rgb(255, 0, 0));
+    const GREEN: Color = Color(encodings::Rgba32::from_rgb(0, 255, 0));
+    const BLUE: Color = Color(encodings::Rgba32::from_rgb(0, 0, 255));
 
     fn setup_entities(ctx: &mut TestContext) {
         let timeline = re_log_types::Timeline::new_sequence("frame");
@@ -439,7 +439,7 @@ mod tests {
         ctx.log_entity("/", |builder| {
             builder.with_archetype_auto_row(
                 TimePoint::STATIC,
-                &AnnotationContext::new([datatypes::ClassDescription {
+                &AnnotationContext::new([encodings::ClassDescription {
                     info: (3, "class", ANN.0).into(),
                     keypoint_annotations: vec![(7, "keypoint", RED.0).into()],
                     keypoint_connections: Vec::new(),
@@ -563,7 +563,7 @@ mod tests {
         test_context.log_entity("/", |builder| {
             builder.with_archetype_auto_row(
                 TimePoint::STATIC,
-                &AnnotationContext::new([datatypes::ClassDescription {
+                &AnnotationContext::new([encodings::ClassDescription {
                     info: (0, "class", ANN.0).into(),
                     keypoint_annotations: vec![(7, "keypoint", RED.0).into()],
                     keypoint_connections: Vec::new(),

@@ -251,9 +251,6 @@ pub mod encodings {
     pub use self::_encodings::*;
 }
 
-#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
-pub use self::encodings as datatypes;
-
 /// The blueprint-specific components.
 pub mod blueprint;
 

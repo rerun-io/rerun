@@ -778,7 +778,7 @@ impl std::fmt::Display for FieldKind {
 /// The type of an [`ObjectField`], as the definition wrote it.
 ///
 /// This is the definition half of the type system, so the variants are the things a definition may
-/// spell: `f32`, `String`, `Vec<f32>`, `[f32; 3]`, `rerun::datatypes::Vec3D`. They are named after
+/// spell: `f32`, `String`, `Vec<f32>`, `[f32; 3]`, `rerun::encodings::Vec3D`. They are named after
 /// their arrow counterparts because that is what they become —
 /// [`TypeRegistry`](crate::TypeRegistry) derives a [`DataType`](crate::data_type::DataType) from
 /// each one — but they are not the same thing: a `Type` says what the author asked for, a
@@ -808,7 +808,7 @@ pub enum Type {
     /// the frontend rejects both.
     List { elem_type: Box<Self> },
 
-    /// Another definition, referred to by fully-qualified name, e.g. `rerun::datatypes::Vec3D`.
+    /// Another definition, referred to by fully-qualified name, e.g. `rerun::encodings::Vec3D`.
     Object { fqname: String },
 }
 

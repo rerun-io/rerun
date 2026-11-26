@@ -24,7 +24,10 @@ from .archetypes import (
     VisibleTimeRanges,
     VisualizerInstruction,
 )
-from .components import PanelState, PanelStateLike
+from .components import (
+    PanelState as PanelState,
+    PanelStateLike as PanelStateLike,  # noqa: TC001 - public runtime export
+)
 from .visualizers import VisualizableArchetype, Visualizer
 
 if TYPE_CHECKING:
@@ -387,18 +390,6 @@ class Container:
         return Viewer(blueprint=self)
 
 
-def _to_state(expanded: bool | None, state: PanelStateLike | None) -> PanelStateLike | None:
-    """Handle the case where `expanded` is used over `state`."""
-
-    if expanded is not None and state is not None:
-        raise ValueError("Cannot set both 'expanded' and 'state'")
-    if state is not None:
-        return state
-    if expanded is not None:
-        return PanelState.Expanded if expanded else PanelState.Collapsed
-    return None
-
-
 class Panel:
     """
     Base class for the panel types.
@@ -417,7 +408,6 @@ class Panel:
         self,
         *,
         blueprint_path: str,
-        expanded: bool | None = None,
         state: PanelStateLike | None = None,
     ) -> None:
         """
@@ -427,14 +417,12 @@ class Panel:
         ----------
         blueprint_path:
             The blueprint path of the panel.
-        expanded:
-            Deprecated. Use `state` instead.
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
         """
         self._blueprint_path = blueprint_path
-        self.state = _to_state(expanded, state)
+        self.state = state
 
     def blueprint_path(self) -> str:
         """
@@ -457,61 +445,55 @@ class Panel:
 class TopPanel(Panel):
     """The state of the top panel."""
 
-    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None) -> None:
+    def __init__(self, *, state: PanelStateLike | None = None) -> None:
         """
         Construct a new top panel.
 
         Parameters
         ----------
-        expanded:
-            Deprecated. Use `state` instead.
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
             Collapsed and hidden both fully hide the top panel.
 
         """
-        super().__init__(blueprint_path="top_panel", expanded=expanded, state=state)
+        super().__init__(blueprint_path="top_panel", state=state)
 
 
 class BlueprintPanel(Panel):
     """The state of the blueprint panel."""
 
-    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None) -> None:
+    def __init__(self, *, state: PanelStateLike | None = None) -> None:
         """
         Construct a new blueprint panel.
 
         Parameters
         ----------
-        expanded:
-            Deprecated. Use `state` instead.
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
             Collapsed and hidden both fully hide the blueprint panel.
 
         """
-        super().__init__(blueprint_path="blueprint_panel", expanded=expanded, state=state)
+        super().__init__(blueprint_path="blueprint_panel", state=state)
 
 
 class SelectionPanel(Panel):
     """The state of the selection panel."""
 
-    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None) -> None:
+    def __init__(self, *, state: PanelStateLike | None = None) -> None:
         """
         Construct a new selection panel.
 
         Parameters
         ----------
-        expanded:
-            Deprecated. Use `state` instead.
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
             Collapsed and hidden both fully hide the selection panel.
 
         """
-        super().__init__(blueprint_path="selection_panel", expanded=expanded, state=state)
+        super().__init__(blueprint_path="selection_panel", state=state)
 
 
 class TimePanel(Panel):
@@ -520,7 +502,6 @@ class TimePanel(Panel):
     def __init__(
         self,
         *,
-        expanded: bool | None = None,
         state: PanelStateLike | None = None,
         timeline: Utf8Like | None = None,
         playback_speed: float | None = None,
@@ -534,8 +515,6 @@ class TimePanel(Panel):
 
         Parameters
         ----------
-        expanded:
-            Deprecated. Use `state` instead.
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
@@ -563,7 +542,7 @@ class TimePanel(Panel):
             Selects a range of time on the time panel.
 
         """
-        super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
+        super().__init__(blueprint_path="time_panel", state=state)
 
         self.timeline = timeline
         self.playback_speed = playback_speed

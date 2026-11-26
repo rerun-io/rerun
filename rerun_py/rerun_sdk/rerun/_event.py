@@ -4,8 +4,6 @@ import json
 from dataclasses import dataclass
 from typing import Literal
 
-from typing_extensions import deprecated
-
 # Type definitions based on `crates/top/re_viewer/src/event.rs`
 # NOTE: In Python, we need to update both the type definitions
 #       and the serialization code, which is in `viewer_event_from_json`.
@@ -23,11 +21,6 @@ class ViewerEventBase:
 
     segment_id: str | None
     """The segment ID of the recording that triggered the event, if any."""
-
-    @property
-    @deprecated("Use `segment_id` instead.")
-    def partition_id(self) -> str | None:
-        return self.segment_id
 
 
 @dataclass

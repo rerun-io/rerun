@@ -7,7 +7,6 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, overload
 
 from rerun._tracing import with_tracing
-from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import (
     CatalogClientInternal,
     format_bytes,
@@ -128,7 +127,6 @@ class CatalogClient:
         *,
         token: str | None = None,
         object_store_auth: ObjectStoreAuth | None = None,
-        addr: str | None = None,
     ) -> None:
         """
         Connect to a remote Rerun catalog server.
@@ -142,18 +140,8 @@ class CatalogClient:
         object_store_auth:
             Authentication for fetching chunks directly from object storage, see
             [`ObjectStoreAuth`][rerun.experimental.ObjectStoreAuth].
-        addr:
-            Deprecated: Renamed to `url`
 
         """
-
-        if addr is not None:
-            url = addr
-            _send_warning_or_raise(
-                "The `addr` parameter is deprecated in Rerun 0.29, and has been renamed to `url`.",
-                depth_to_user_code=1,
-                warning_type=DeprecationWarning,
-            )
 
         from importlib.metadata import version
         from importlib.util import find_spec

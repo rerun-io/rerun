@@ -13,9 +13,6 @@ pub mod coordinates {
 
 pub use re_sdk_types::{archetypes, components, encodings};
 
-#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
-pub use re_sdk_types::encodings as datatypes;
-
 mod prelude {
     // Import all archetypes into the global namespace to minimize
     // the amount of typing for our users.

@@ -22,7 +22,7 @@ In these instances of unsupported files, we expose two ways of implementing and 
 
 ## External importers
 
-The easiest way to create your own `Importer` is by implementing what we call an "external importer": a stand alone executable written in any language that the Rerun SDK ships for. Any executable on your `$PATH` with a name that starts with `rerun-importer-` (or `rerun-loader-` for backwards compatibility) will be treated as an `Importer`.
+The easiest way to create your own `Importer` is by implementing what we call an "external importer": a stand alone executable written in any language that the Rerun SDK ships for. Any executable on your `$PATH` with a name that starts with `rerun-importer-` will be treated as an `Importer`.
 
 This executable takes a file path as a command line argument and outputs Rerun logs on `stdout`.
 It will be called by the Rerun Viewer/SDK when the user opens a file, and be passed the path to that file.

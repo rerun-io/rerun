@@ -3,8 +3,7 @@ from __future__ import annotations
 import functools
 import random
 import sys
-import warnings
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
+from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 import numpy as np
 
@@ -254,26 +253,6 @@ EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE = 66
 When an external `Importer` is asked to import some data that it doesn't know how to handle, it
 should exit with this exit code.
 """
-
-
-# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
-def __getattr__(name: str) -> Any:  # noqa: ANN401
-    """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
-    if name == "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE":
-        import warnings
-
-        warnings.warn(
-            "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE is deprecated since 0.32.0. "
-            "Use EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE
-    if name == "datatypes":
-        from . import datatypes  # The module itself warns.
-
-        return datatypes
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in

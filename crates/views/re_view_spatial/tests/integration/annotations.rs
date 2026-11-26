@@ -47,17 +47,17 @@ pub fn test_annotations() {
                     (
                         0,
                         "segmentation background",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(0, 0, 0),
                     ),
                     (
                         1,
                         "blue",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 255),
+                        re_sdk_types::encodings::Rgba32::from_rgb(0, 0, 255),
                     ),
                     (
                         2,
                         "yellow",
-                        re_sdk_types::datatypes::Rgba32::from_rgb(255, 255, 0),
+                        re_sdk_types::encodings::Rgba32::from_rgb(255, 255, 0),
                     ),
                 ]),
             )

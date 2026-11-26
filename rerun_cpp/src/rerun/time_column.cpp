@@ -26,21 +26,6 @@ namespace rerun {
         array = arrow::MakeArray(array_data);
     }
 
-    TimeColumn TimeColumn::from_seconds(
-        std::string timeline_name, Collection<double> times_in_secs, SortingStatus sorting_status
-    ) {
-        std::vector<int64_t> times_in_nanoseconds;
-        times_in_nanoseconds.reserve(times_in_secs.size());
-        for (auto time_in_secs : times_in_secs) {
-            times_in_nanoseconds.push_back(std::llround(time_in_secs * 1.0e9));
-        }
-        return TimeColumn(
-            Timeline(std::move(timeline_name), TimeType::Duration),
-            std::move(times_in_nanoseconds),
-            sorting_status
-        );
-    }
-
     Error to_rr_sorting_status(SortingStatus status, rr_sorting_status& out_status) {
         switch (status) {
             case SortingStatus::Unknown:

@@ -4,7 +4,7 @@ use arrow::datatypes::{DataType, UInt64Type};
 use serde_json::Value;
 
 use re_sdk_types::components::Color;
-use re_sdk_types::datatypes::Uuid;
+use re_sdk_types::encodings::Uuid;
 use re_sdk_types::reflection::{ComponentReflectionMap, ComponentTypeReflection};
 use re_sdk_types::{
     ChunkId, Component as _, ComponentDescriptor, ComponentType, DeserializationError,
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn only_rerun_components_become_uuids() {
-        let batch = re_sdk_types::datatypes::Uuid { bytes: [7; 16] }
+        let batch = re_sdk_types::encodings::Uuid { bytes: [7; 16] }
             .to_arrow()
             .unwrap();
 

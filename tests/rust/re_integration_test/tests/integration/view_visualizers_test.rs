@@ -17,7 +17,7 @@ use re_viewer::external::re_sdk_types::blueprint::components::VisibleTimeRange;
 use re_viewer::external::re_sdk_types::components::{
     AggregationPolicy, Color, InterpolationMode, Name, StrokeWidth, Visible,
 };
-use re_viewer::external::re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_viewer::external::re_sdk_types::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_viewer::external::re_sdk_types::{self, VisualizableArchetype as _, archetypes};
 use re_viewer::external::re_viewer_context::{
     BlueprintContext as _, Item, QueryRange, RecommendedView, ViewClass as _, ViewId,
@@ -499,7 +499,7 @@ pub async fn test_plot_overrides_and_visible_time_ranges_are_cloned() {
         ctx.save_blueprint_archetype(
             view_range_path,
             &VisibleTimeRanges::new([VisibleTimeRange(
-                re_sdk_types::datatypes::VisibleTimeRange {
+                re_sdk_types::encodings::VisibleTimeRange {
                     timeline: timeline.name().as_str().into(),
                     range: view_range,
                 },
@@ -510,7 +510,7 @@ pub async fn test_plot_overrides_and_visible_time_ranges_are_cloned() {
         ctx.save_blueprint_archetype(
             ViewContents::base_override_path_for_entity(view_id, &cos_path),
             &VisibleTimeRanges::new([VisibleTimeRange(
-                re_sdk_types::datatypes::VisibleTimeRange {
+                re_sdk_types::encodings::VisibleTimeRange {
                     timeline: timeline.name().as_str().into(),
                     range: entity_range,
                 },

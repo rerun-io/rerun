@@ -14,7 +14,7 @@ use re_viewer::external::re_sdk_types::archetypes::{
 };
 use re_viewer::external::re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_viewer::external::re_sdk_types::blueprint::components::PlayState;
-use re_viewer::external::re_sdk_types::datatypes::{
+use re_viewer::external::re_sdk_types::encodings::{
     TimeInt, TimeRange, TimeRangeBoundary, VisibleTimeRange,
 };
 use re_viewer::external::re_view_spatial::{SpatialView2D, SpatialView3D};

@@ -69,7 +69,7 @@ def blueprint(path: Path) -> rrb.Blueprint:
             ),
             name=f"{crate_name}/{test_name}",
         ),
-        rrb.TimePanel(expanded=False),
+        rrb.TimePanel(state="collapsed"),
     )
 
 

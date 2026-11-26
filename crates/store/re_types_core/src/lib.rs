@@ -95,9 +95,6 @@ pub mod components;
 /// There are also re-exported by `re_sdk_types`.
 pub mod encodings;
 
-#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
-pub use self::encodings as datatypes;
-
 // ---
 
 #[path = "macros.rs"]

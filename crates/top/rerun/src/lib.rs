@@ -170,18 +170,6 @@ pub const EXTERNAL_IMPORTER_PREFIX: &str = "rerun-importer-";
 // NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.
 pub const EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 
-/// Deprecated alias for [`EXTERNAL_IMPORTER_PREFIX`].
-#[deprecated(since = "0.32.0", note = "Use `EXTERNAL_IMPORTER_PREFIX` instead.")]
-pub const EXTERNAL_DATA_LOADER_PREFIX: &str = EXTERNAL_IMPORTER_PREFIX;
-
-/// Deprecated alias for [`EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE`].
-#[deprecated(
-    since = "0.32.0",
-    note = "Use `EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE` instead."
-)]
-pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 =
-    EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE;
-
 /// Re-exports of other crates.
 pub mod external {
     pub use ::re_entity_db::external::*;

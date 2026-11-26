@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from rerun.components import Scale3D, TransformRelation, TransformRelationLike
+from rerun.components import Scale3D, TransformRelationLike
 from rerun.encodings import (
     Float32Like,
     Mat3x3Like,
@@ -29,7 +29,6 @@ class Transform3DExt:
         quaternion: QuaternionLike | None = None,
         scale: Vec3DLike | Float32Like | None = None,
         mat3x3: Mat3x3Like | None = None,
-        from_parent: bool | None = None,
         relation: TransformRelationLike | None = None,
         child_frame: Utf8Like | None = None,
         parent_frame: Utf8Like | None = None,
@@ -58,17 +57,9 @@ class Transform3DExt:
             3x3 matrix representing scale and rotation, applied after translation.
             Not compatible with `rotation` and `scale` parameters.
             TODO(#3559): Support 4x4 and 4x3 matrices.
-        from_parent:
-            If true, the transform maps from the parent space to the space where the transform was logged.
-            Otherwise, the transform maps from the space to its parent.
-            Deprecated in favor of `relation=rerun.TransformRelation.ChildFromParent`.
-
-            Mutually exclusive with `relation`.
         relation:
             Allows to explicitly specify the transform's relationship with the parent entity.
             Otherwise, the transform maps from the space to its parent.
-
-            Mutually exclusive with `from_parent`.
         child_frame:
             The child frame this transform transforms from.
 
@@ -130,22 +121,6 @@ class Transform3DExt:
 
             if scale is not None and (not hasattr(scale, "__len__") or len(scale) == 1):  # type: ignore[arg-type]
                 scale = Scale3D(scale)  # type: ignore[arg-type]
-
-            if from_parent is not None:
-                import warnings
-
-                warnings.warn(
-                    message=(
-                        "`from_parent` is deprecated as an argument to `Transform3D`; prefer `relation=rerun.TransformRelation.ChildFromParent` instead"
-                    ),
-                    category=DeprecationWarning,
-                    stacklevel=2,
-                )
-
-                if relation is not None:
-                    raise ValueError("`from_parent` and `relation` parameters are mutually exclusive.")
-                if from_parent:
-                    relation = TransformRelation.ChildFromParent
 
             self.__attrs_init__(
                 translation=translation,

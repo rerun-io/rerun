@@ -12,7 +12,7 @@ use re_entity_db::EntityPath;
 use re_log_types::StoreId;
 use re_sdk_types::archetypes;
 use re_sdk_types::components::{AnnotationContext, Color, Text};
-use re_sdk_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
+use re_sdk_types::encodings::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
 use re_types_core::{Component as _, ComponentDescriptor, ComponentIdentifier};
 
 use super::auto_color_egui;

@@ -3,7 +3,7 @@ use re_log_types::TimePoint;
 use re_sdk_types::archetypes::{AnnotationContext, Points2D, Points3D};
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::{Position3D, Radius};
-use re_sdk_types::datatypes::{ClassDescription, KeypointPair, Rgba32};
+use re_sdk_types::encodings::{ClassDescription, KeypointPair, Rgba32};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::ViewClass as _;

@@ -93,11 +93,6 @@ EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
     "rerun.utilities.datafusion.functions",
     # Column-decoder internals
     "rerun.experimental.dataloader.decoders",
-    # Deprecated aliases for `rerun.encodings` / `rerun.blueprint.encodings`, which
-    # are documented. They forward every symbol and warn on import, so documenting
-    # them would advertise the spelling we want people to stop using.
-    "rerun.datatypes",
-    "rerun.blueprint.datatypes",
 }
 
 # Per-package, per-symbol allow-list of public symbols that should NOT be

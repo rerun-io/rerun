@@ -63,26 +63,6 @@ namespace rerun {
             SortingStatus sorting_status = SortingStatus::Unknown
         );
 
-        /// Creates a time column from an array of sequence points.
-        ///
-        /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param sequence_points The sequence points.
-        /// Make sure the sorting status is correctly specified.
-        /// \param sorting_status The sorting status of the sequence points.
-        /// Already sorted time points may perform better.
-        ///
-        /// \deprecated Use `from_sequence` instead.
-        [[deprecated("Use `from_sequence` instead.")]] static TimeColumn from_sequence_points(
-            std::string timeline_name, Collection<int64_t> sequence_points,
-            SortingStatus sorting_status = SortingStatus::Unknown
-        ) {
-            return TimeColumn(
-                Timeline(std::move(timeline_name), TimeType::Sequence),
-                std::move(sequence_points),
-                sorting_status
-            );
-        }
-
         /// Creates a column from an array of sequence points, e.g. frame numbers.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
@@ -100,40 +80,6 @@ namespace rerun {
                 sorting_status
             );
         }
-
-        /// Creates a time column from an array of nanoseconds.
-        ///
-        /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param times_in_nanoseconds Time values in nanoseconds.
-        /// Make sure the sorting status is correctly specified.
-        /// \param sorting_status The sorting status of the time points.
-        /// Already sorted time points may perform better.
-        [[deprecated("Use 'from_duration_nanos' or `from_nanos_since_epoch' instead"
-        )]] static TimeColumn
-            from_nanoseconds(
-                std::string timeline_name, Collection<int64_t> times_in_nanoseconds,
-                SortingStatus sorting_status = SortingStatus::Unknown
-            ) {
-            return TimeColumn(
-                Timeline(std::move(timeline_name), TimeType::Duration),
-                std::move(times_in_nanoseconds),
-                sorting_status
-            );
-        }
-
-        /// Creates a time column from an array of seconds.
-        ///
-        /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param times_in_secs Time values in seconds.
-        /// Make sure the sorting status is correctly specified.
-        /// \param sorting_status The sorting status of the time points.
-        /// Already sorted time points may perform better.
-        [[deprecated("Use 'from_duration_secs' or `from_secs_since_epoch' instead"
-        )]] static TimeColumn
-            from_seconds(
-                std::string timeline_name, Collection<double> times_in_secs,
-                SortingStatus sorting_status = SortingStatus::Unknown
-            );
 
         // -----------
         // Durations:
@@ -161,16 +107,6 @@ namespace rerun {
                 std::move(times),
                 sorting_status
             );
-        }
-
-        /// \deprecated Use `from_durations` instead.
-        template <typename TRep, typename TPeriod>
-        [[deprecated("Use `from_durations` instead.")]] static TimeColumn from_times(
-            std::string timeline_name,
-            const Collection<std::chrono::duration<TRep, TPeriod>>& chrono_times,
-            SortingStatus sorting_status = SortingStatus::Unknown
-        ) {
-            return from_durations<TRep, TPeriod>(timeline_name, chrono_times, sorting_status);
         }
 
         /// Creates a duration column from an array of nanoseconds.

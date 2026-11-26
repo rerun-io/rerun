@@ -130,23 +130,6 @@ pub use re_byte_size::SizeBytes;
 #[cfg(feature = "importers")]
 pub use re_importer::{ImportedData, Importer, ImporterError, ImporterSettings};
 
-#[cfg(feature = "importers")]
-#[deprecated(since = "0.32.0", note = "Renamed to `Importer`.")]
-#[doc(hidden)]
-pub use re_importer::Importer as DataLoader;
-#[cfg(feature = "importers")]
-#[deprecated(since = "0.32.0", note = "Renamed to `ImporterError`.")]
-#[doc(hidden)]
-pub type DataLoaderError = re_importer::ImporterError;
-#[cfg(feature = "importers")]
-#[deprecated(since = "0.32.0", note = "Renamed to `ImporterSettings`.")]
-#[doc(hidden)]
-pub type DataLoaderSettings = re_importer::ImporterSettings;
-#[cfg(feature = "importers")]
-#[deprecated(since = "0.32.0", note = "Renamed to `ImportedData`.")]
-#[doc(hidden)]
-pub type LoadedData = re_importer::ImportedData;
-
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;

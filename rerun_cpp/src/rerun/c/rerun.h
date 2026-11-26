@@ -181,9 +181,6 @@ typedef struct rr_importer_settings {
     bool static_;
 } rr_importer_settings;
 
-/* Deprecated since 0.32.0: use rr_importer_settings instead. */
-typedef rr_importer_settings rr_data_loader_settings;
-
 typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     rr_string application_id;

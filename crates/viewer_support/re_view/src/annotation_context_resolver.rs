@@ -412,7 +412,7 @@ impl BlueprintResolvedRangeResults<'_> {
 #[cfg(test)]
 mod tests {
     use re_log_types::{EntityPath, TimePoint, Timeline};
-    use re_sdk_types::datatypes::Rgba32;
+    use re_sdk_types::encodings::Rgba32;
     use re_types_core::{Component as _, ComponentDescriptor};
 
     use super::*;

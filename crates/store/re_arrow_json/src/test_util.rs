@@ -20,7 +20,7 @@ use re_sdk_types::blueprint::components::{
     RootContainer, ViewMaximized, VisualizerInstructionId,
 };
 use re_sdk_types::components::Color;
-use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary, Uuid};
+use re_sdk_types::encodings::{TimeInt, TimeRange, TimeRangeBoundary, Uuid};
 
 use crate::{chunks_from_json, json_from_store};
 

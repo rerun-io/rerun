@@ -26,6 +26,3 @@ pub mod components {
 pub mod encodings {
     pub use re_sdk_types::blueprint::encodings::*;
 }
-
-#[deprecated(since = "0.37.0", note = "renamed to `encodings`")]
-pub use self::encodings as datatypes;

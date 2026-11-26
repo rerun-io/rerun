@@ -225,21 +225,6 @@ class Entry(ABC, Generic[InternalEntryT]):
         """
         self._internal.set_name(name)
 
-    @deprecated("Entry.update() is deprecated. Use Entry.set_name() instead.")
-    def update(self, *, name: str | None = None) -> None:
-        """
-        Update this entry's properties.
-
-        Parameters
-        ----------
-        name:
-            New name for the entry
-
-        """
-
-        if name is not None:
-            self._internal.set_name(name)
-
     def __eq__(self, other: object) -> bool:
         """
         Compare this entry to another object.
@@ -884,28 +869,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return segment_table_df
 
-    @deprecated(
-        "DatasetEntry.manifest() is deprecated and will be removed in a future release. "
-        "It was intended for internal and debugging use only."
-    )
-    def manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
-        """
-        Return the dataset manifest as a DataFusion DataFrame.
-
-        Parameters
-        ----------
-        include_diagnostic_data:
-            Include diagnostic data in the manifest. That may include rows that correspond to layers which failed
-            registration or otherwise normally invisible internal state.
-
-            !!! note
-
-                Diagnostic data is subject to change in any release and should not be relied on for production.
-
-        """
-
-        return self._manifest(include_diagnostic_data=include_diagnostic_data)
-
     def _manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
         """Return the dataset manifest as a DataFusion DataFrame. Intended for internal and debugging use only."""
 
@@ -1176,7 +1139,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ```
 
         """
-        from rerun.error_utils import _send_warning_or_raise
 
         from ._registration_handle import RegistrationOperation
 
@@ -1184,16 +1146,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         storage_location = _resolve_storage_location(storage_location, object_store_config, stacklevel=4)
 
         if isinstance(recording_uri, str):
-            _send_warning_or_raise(
-                "`DatasetEntry.register` was called with a single string for `recording_uri`. "
-                "This is deprecated: pass a sequence of URIs instead, and prefer batching "
-                "many URIs into a single call rather than calling `register` in a loop.",
-                depth_to_user_code=2,
-                warning_type=DeprecationWarning,
-            )
-            recording_uris = [recording_uri]
-        else:
-            recording_uris = list(recording_uri)
+            raise TypeError("recording_uri must be a sequence of URIs, not a single string")
+        recording_uris = list(recording_uri)
 
         if isinstance(layer_name, str):
             layer_names = [layer_name] * len(recording_uris)
