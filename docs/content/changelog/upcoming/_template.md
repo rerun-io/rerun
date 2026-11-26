@@ -31,6 +31,7 @@ type: feature # highlight | misc | breaking | feature
  Stick to facts, not sales copy, and reserve `highlight` for flagship changes.
  Features that only work against Rerun Hub, and not against the OSS server, don't get an entry.
  If the feature is partial (e.g. data types without viewer support yet), say what doesn't work yet.
+ If the feature is experimental and may change ensure your changelog entry says so.
  A `breaking` entry is the migration guide for its change; never edit the migration guides of past releases.
 
  For each entry, consider:

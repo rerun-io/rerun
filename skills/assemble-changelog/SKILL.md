@@ -149,7 +149,8 @@ The generated section is a starting point; edit it by hand so readers can find t
   ```
 
   A file showing up in the first command does not mean the type is new: cross-reference the hits with the actual entries.
-  For each matching feature, say so where readers will see it: prefix the changeset heading with "Experimental" (as `### Experimental 3D gaussian splat support` did in 0.36), and add a sentence saying it may change in future releases (for unstable types: that the data may not stay backwards compatible).
+  The entries are authoritative: label a feature experimental only if its entry calls it experimental, and keep the entry's own heading and prose.
+  If a marker suggests a feature is experimental but its entry doesn't say so, ask the human instead of labeling it.
   If the feature is behind a flag, say how to enable it.
   In the `CHANGELOG.md` overview, move all of these entries into a final `#### 🧪 Experimental and unstable` subsection at the end of "Overview & highlights", or "Overview" when there are no highlights, with a one-line note that they may change and that unstable types may not stay backwards compatible.
   Order that subsection by impact too, and don't repeat "Experimental" in its entries.
