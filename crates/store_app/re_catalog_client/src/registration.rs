@@ -144,6 +144,14 @@ impl RegistrationHandle {
             .await?
             .task_completions(self.task_ids(), timeout)
             .await?;
+        Ok(self.indexed(completions))
+    }
+
+    /// Pair each completion with the descriptors of the segments its task registered.
+    fn indexed(
+        &self,
+        completions: ApiResponseStream<TaskCompletion>,
+    ) -> ApiResponseStream<IndexedRegistrationResult> {
         let query_trace_id = completions.trace_id();
         let origin = self.connection.origin().clone();
         let registration = self.inner.clone();
@@ -154,11 +162,7 @@ impl RegistrationHandle {
             tokio_stream::iter(results)
         });
 
-        Ok(ApiResponseStream::new(
-            self.connection.origin().clone(),
-            stream,
-            query_trace_id,
-        ))
+        ApiResponseStream::new(self.connection.origin().clone(), stream, query_trace_id)
     }
 
     /// Stream segment registration results as their tasks complete.
@@ -195,11 +199,24 @@ impl RegistrationHandle {
     /// Returns the registered segment IDs in descriptor order.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn wait(&self, timeout: Duration) -> Result<Vec<SegmentId>, RegistrationError> {
-        let results = self
-            .indexed_results(timeout)
+        if self.descriptors().is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let (completions, query_trace_id) = self
+            .connection
+            .client()
+            .await
+            .map_err(RegistrationError::Query)?
+            .task_outcomes(self.task_ids(), timeout)
             .await
             .map_err(RegistrationError::Query)?;
-        self.collect_results(results).await
+        let completions = ApiResponseStream::new(
+            self.connection.origin().clone(),
+            tokio_stream::iter(completions.into_iter().map(Ok)),
+            query_trace_id,
+        );
+        self.collect_results(self.indexed(completions)).await
     }
 
     async fn collect_results(

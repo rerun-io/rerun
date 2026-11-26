@@ -145,6 +145,7 @@ pub async fn open_stream<T: Send + 'static>(
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+    use crate::grpc_test_util::Frames;
     use arrow::array::RecordBatch;
     use arrow::datatypes::Schema;
     use http_body::{Body as _, Frame};
@@ -319,20 +320,6 @@ mod tests {
                     .to_string(),
                 format!("{last_rejection:032x}"),
             );
-        }
-    }
-
-    struct Frames(VecDeque<Frame<Bytes>>);
-
-    impl http_body::Body for Frames {
-        type Data = Bytes;
-        type Error = tonic::Status;
-
-        fn poll_frame(
-            mut self: std::pin::Pin<&mut Self>,
-            _: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<Option<tonic::Result<Frame<Bytes>>>> {
-            std::task::Poll::Ready(self.0.pop_front().map(Ok))
         }
     }
 

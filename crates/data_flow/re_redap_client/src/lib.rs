@@ -10,6 +10,8 @@ mod connection_handle;
 mod connection_registry;
 mod dataset_revisions;
 mod grpc;
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod grpc_test_util;
 #[cfg(not(target_arch = "wasm32"))]
 mod grpc_web_on_native;
 mod registration_response;
