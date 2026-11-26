@@ -3,6 +3,7 @@ use std::collections::hash_map::Entry;
 use std::error::Error as _;
 use std::fmt::Write as _;
 use std::sync::Arc;
+use std::time::Duration;
 
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
@@ -17,6 +18,10 @@ use tonic::Code;
 use crate::connection_client::{Connection, RedapClient};
 use crate::grpc::RedapClientStack;
 use crate::{ApiError, ApiResult, TonicStatusError};
+
+/// Budget for the diagnostic probe after gRPC has already failed, including retry backoff.
+/// Five seconds leaves room for transient failures without prolonging a failed connection.
+const VERSION_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Returns a suggested host if the user likely forgot the "api." prefix.
 ///
@@ -531,22 +536,34 @@ impl ConnectionRegistryHandle {
     /// Probe `{origin}/version` to detect non-Rerun endpoints (e.g. user typed
     /// `asdf.rerun.io` instead of `api.asdf.rerun.io`).
     ///
-    /// Returns `Ok(())` if the probe is inconclusive (server responded as expected),
-    /// `Err(_)` with a friendly diagnostic if the origin is clearly not a Rerun server.
+    /// A successful HTTP response leaves the original gRPC error in place. HTTP errors
+    /// and timeouts provide their own diagnostics.
     #[tracing::instrument(level = "info", skip_all)]
-    async fn ensure_is_rerun_server(origin: &re_uri::Origin) -> ApiResult<()> {
-        let res = crate::with_retry("http_version_fetch", || async {
-            ehttp::fetch_async(ehttp::Request::get(format!("{}/version", origin.as_url())))
-                .await
-                .map_err(|err| {
-                    let mut msg = format!("failed to connect to server '{origin}': {err}");
-                    if let Some(suggested) = suggest_api_prefix(origin) {
-                        write!(msg, ". Did you mean '{suggested}'?").ok();
-                    }
-                    ApiError::connection(origin, msg)
-                })
-        })
-        .await?;
+    async fn ensure_is_rerun_server(origin: &re_uri::Origin, timeout: Duration) -> ApiResult<()> {
+        let connection_error = |err: &str| {
+            let mut msg = format!("failed to connect to server '{origin}': {err}");
+            if let Some(suggested) = suggest_api_prefix(origin) {
+                write!(msg, ". Did you mean '{suggested}'?").ok();
+            }
+            ApiError::connection(origin, msg)
+        };
+
+        let probe = crate::with_retry("http_version_fetch", || async {
+            let request = ehttp::Request::get(format!("{}/version", origin.as_url()));
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            ehttp::fetch(request, move |result| {
+                // The probe deadline can drop the receiver before the HTTP request completes.
+                tx.send(result).ok();
+            });
+            rx.await
+                .map_err(|err| connection_error(&err.to_string()))?
+                .map_err(|err| connection_error(&err))
+        });
+        let res = re_async::timeout(timeout, probe)
+            .await
+            .map_err(|re_async::Elapsed| {
+                connection_error("timed out waiting for GET /version")
+            })??;
 
         if res.ok {
             // Server responded as expected — probe is inconclusive about why gRPC failed.
@@ -634,7 +651,7 @@ impl ConnectionRegistryHandle {
                 // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
                 // so if what we're trying to connect to is not a valid Rerun server, then cut out
                 // a layer of noise:
-                Self::ensure_is_rerun_server(&origin).await?;
+                Self::ensure_is_rerun_server(&origin, VERSION_PROBE_TIMEOUT).await?;
 
                 return Err(grpc_err);
             }
@@ -929,8 +946,90 @@ fn get_token_from_env() -> Option<Jwt> {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
-    use super::{ConnectionRegistry, Credentials};
+    use std::time::Duration;
+
+    use super::{ConnectionRegistry, ConnectionRegistryHandle, Credentials, VERSION_PROBE_TIMEOUT};
     use crate::ApiErrorKind;
+
+    fn version_probe_server() -> (tiny_http::Server, re_uri::Origin) {
+        let server = tiny_http::Server::http("127.0.0.1:0").expect("should bind loopback");
+        let origin = format!("rerun+http://{}", server.server_addr())
+            .parse()
+            .expect("origin should be valid");
+        (server, origin)
+    }
+
+    #[tokio::test]
+    async fn version_probe_times_out_while_waiting_for_response_headers() {
+        let (server, origin) = version_probe_server();
+        let mut request = tokio::task::spawn_blocking(move || {
+            let request = server
+                .recv_timeout(VERSION_PROBE_TIMEOUT)
+                .expect("should receive request")
+                .expect("client should send a request");
+            (server, request)
+        });
+
+        let timeout = Duration::from_secs(1);
+        let probe = ConnectionRegistryHandle::ensure_is_rerun_server(&origin, timeout);
+        tokio::pin!(probe);
+        let (_server, request) = tokio::select! {
+            request = &mut request => request.expect("server should finish reading the request"),
+            result = &mut probe => panic!("probe completed before the server withheld its response: {result:?}"),
+        };
+        assert_eq!(request.url(), "/version");
+
+        // Keep the socket open while the probe runs past its deadline.
+        tokio::time::pause();
+        tokio::time::advance(timeout).await;
+        let error = tokio::time::timeout(timeout, &mut probe)
+            .await
+            .expect("the probe should complete without an HTTP response")
+            .expect_err("the probe should report its deadline");
+        assert_eq!(error.kind, ApiErrorKind::Connection);
+        assert_eq!(
+            error.message,
+            format!("failed to connect to server '{origin}': timed out waiting for GET /version")
+        );
+
+        request
+            .respond(tiny_http::Response::empty(200))
+            .expect("should be able to send a late response");
+    }
+
+    #[tokio::test]
+    async fn version_probe_distinguishes_success_and_invalid_server_responses() {
+        for (status, expected_error) in [
+            (200, None),
+            (
+                404,
+                Some((
+                    ApiErrorKind::InvalidServer,
+                    "not a valid Rerun server (GET /version returned HTTP 404 Not Found): missing route"
+                        .to_owned(),
+                )),
+            ),
+        ] {
+            let (server, origin) = version_probe_server();
+            let respond = tokio::task::spawn_blocking(move || {
+                let request = server
+                    .recv_timeout(VERSION_PROBE_TIMEOUT)
+                    .expect("should receive request")
+                    .expect("client should send a request");
+                assert_eq!(request.url(), "/version");
+                request
+                    .respond(tiny_http::Response::from_string("missing route").with_status_code(status))
+                    .expect("should send response");
+            });
+
+            let result =
+                ConnectionRegistryHandle::ensure_is_rerun_server(&origin, VERSION_PROBE_TIMEOUT)
+                    .await;
+
+            respond.await.expect("server should respond");
+            assert_eq!(result.err().map(|err| (err.kind, err.message)), expected_error);
+        }
+    }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn connection_errors_take_precedence_over_credentials_errors() {
