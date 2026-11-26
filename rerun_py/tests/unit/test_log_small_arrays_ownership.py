@@ -64,6 +64,20 @@ def test_mutating_the_array_after_logging_does_not_change_the_logged_data(tmp_pa
     assert _position_rows(tmp_path / "mutate.rrd") == [[1.0, 2.0, 3.0]]
 
 
+def test_mutating_a_large_array_after_logging_changes_the_logged_data(tmp_path: Path) -> None:
+    # Large arrays are intentionally not copied (see `MAX_COPIED_ARRAY_BYTES`), so they stay zero-copy
+    # and the batcher still sees the caller's memory. This pins that tradeoff: if it starts failing,
+    # large arrays are being copied and the zero-copy path is gone.
+    positions = np.ones((2000, 3), dtype=np.float32)  # 24 kB, above the copy threshold
+
+    def mutate() -> None:
+        positions[:] = 99
+
+    _log_to_file(tmp_path / "mutate_large.rrd", rr.Points3D(positions), mutate_after_log=mutate)
+
+    assert _position_rows(tmp_path / "mutate_large.rrd") == [[99.0, 99.0, 99.0]] * 2000
+
+
 def test_sliced_arrow_array_is_logged_correctly(tmp_path: Path) -> None:
     # An array with a non-zero offset, which a naive buffer copy would get wrong.
     batch_type = rr.components.Position3DBatch._ARROW_DATATYPE
