@@ -906,19 +906,23 @@ fn hosted_tool_update(item: &serde_json::Value) -> Option<SessionUpdate> {
         | "text_editor_code_execution_tool_result"
         | "web_fetch_tool_result"
         | "web_search_tool_result" => {
-            let failed = item.pointer("/content/error_code").is_some()
-                || item
-                    .pointer("/content/return_code")
-                    .and_then(serde_json::Value::as_i64)
-                    .is_some_and(|code| code != 0);
-            let status = if failed {
+            let result = item
+                .get("content")
+                .map(HostedToolResult::from_content)
+                .unwrap_or_default();
+            let status = if result.failed() {
                 ToolCallStatus::Failed
             } else {
                 ToolCallStatus::Completed
             };
+            let mut fields = ToolCallUpdateFields::new().status(status);
+            let output = result.output();
+            if !output.is_empty() {
+                fields = fields.content(output.into_iter().map(Into::into).collect::<Vec<_>>());
+            }
             Some(SessionUpdate::ToolCallUpdate(ToolCallUpdate::new(
                 ToolCallId::new(str_at("/tool_use_id")?),
-                ToolCallUpdateFields::new().status(status),
+                fields,
             )))
         }
         // OpenAI: one finished item per run.
@@ -931,7 +935,8 @@ fn hosted_tool_update(item: &serde_json::Value) -> Option<SessionUpdate> {
             Some(SessionUpdate::ToolCall(
                 AcpToolCall::new(ToolCallId::new(str_at("/id")?), "Run Python")
                     .kind(ToolKind::Execute)
-                    .status(status),
+                    .status(status)
+                    .raw_input(item.get("code").cloned()),
             ))
         }
         // Anthropic: the call, answered by a later `…_tool_result` with the same id.
@@ -966,7 +971,8 @@ fn hosted_tool_update(item: &serde_json::Value) -> Option<SessionUpdate> {
             Some(SessionUpdate::ToolCall(
                 AcpToolCall::new(ToolCallId::new(str_at("/id")?), title)
                     .kind(kind)
-                    .status(ToolCallStatus::InProgress),
+                    .status(ToolCallStatus::InProgress)
+                    .raw_input(item.get("input").cloned()),
             ))
         }
         // OpenAI: one finished item per search or page visit.
@@ -1002,6 +1008,76 @@ fn hosted_tool_update(item: &serde_json::Value) -> Option<SessionUpdate> {
         }
         _ => None,
     }
+}
+
+/// The `content` of an Anthropic hosted tool result, limited to what the transcript shows.
+///
+/// Other results, e.g. search results, have none of these fields: their raw form is too large
+/// and partly encrypted to be worth showing.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default)]
+struct HostedToolResult {
+    error_code: Option<String>,
+    error_message: Option<String>,
+    return_code: Option<i64>,
+    stdout: Option<String>,
+    stderr: Option<String>,
+}
+
+impl HostedToolResult {
+    /// Empty if `content` is not an object, e.g. a list of search results.
+    fn from_content(content: &serde_json::Value) -> Self {
+        serde::Deserialize::deserialize(content).unwrap_or_default()
+    }
+
+    /// A failed step has an `error_code` or a nonzero `return_code`.
+    fn failed(&self) -> bool {
+        self.error_code.is_some() || self.return_code.is_some_and(|code| code != 0)
+    }
+
+    /// What the step printed or failed with, as the transcript shows it.
+    fn output(&self) -> Vec<ContentBlock> {
+        let Self {
+            error_code,
+            error_message,
+            return_code,
+            stdout,
+            stderr,
+        } = self;
+
+        fn non_empty(text: Option<&str>) -> Option<&str> {
+            text.filter(|text| !text.trim().is_empty())
+        }
+
+        let mut texts = Vec::new();
+        if let Some(error_code) = non_empty(error_code.as_deref()) {
+            texts.push(match non_empty(error_message.as_deref()) {
+                Some(message) => format!("Failed with `{error_code}`: {message}"),
+                None => format!("Failed with `{error_code}`"),
+            });
+        }
+        if let Some(code) = return_code.filter(|&code| code != 0) {
+            texts.push(format!("Exited with code {code}"));
+        }
+        for stream in [stdout, stderr] {
+            if let Some(text) = non_empty(stream.as_deref()) {
+                texts.push(code_block(text));
+            }
+        }
+        texts
+            .into_iter()
+            .map(|text| ContentBlock::Text(TextContent::new(text)))
+            .collect()
+    }
+}
+
+/// `text` as a fenced Markdown code block whose fence no backtick run in `text` can close.
+fn code_block(text: &str) -> String {
+    let longest_backtick_run = text.split(|c| c != '`').map(str::len).max().unwrap_or(0);
+    // Markdown fences code blocks with three or more backticks.
+    // The outer fence must be longer than any backtick run inside, so nothing inside can close it.
+    let fence = "`".repeat(3.max(longest_backtick_run + 1));
+    format!("{fence}\n{}\n{fence}", text.trim_end())
 }
 
 /// The toolbox's tools, as the model is told about them.
@@ -1189,7 +1265,7 @@ mod tests {
     use rig_core::test_utils::{MockCompletionModel, MockStreamEvent};
 
     use agent_client_protocol_schema::v1::{
-        RequestPermissionResponse, SelectedPermissionOutcome, SessionConfigKind,
+        RequestPermissionResponse, SelectedPermissionOutcome, SessionConfigKind, ToolCallContent,
     };
 
     use super::*;
@@ -1739,17 +1815,58 @@ mod tests {
         };
         assert_eq!(call.title, "Fetch https://rerun.io");
         assert_eq!(call.status, ToolCallStatus::InProgress);
+        assert_eq!(
+            call.raw_input,
+            Some(serde_json::json!({ "url": "https://rerun.io" }))
+        );
+
+        let update_text = |item: &serde_json::Value| {
+            let Some(SessionUpdate::ToolCallUpdate(update)) = hosted_tool_update(item) else {
+                panic!("a result updates its call");
+            };
+            let texts = update
+                .fields
+                .content
+                .iter()
+                .flatten()
+                .map(|content| match content {
+                    ToolCallContent::Content(content) => match &content.content {
+                        ContentBlock::Text(text) => text.text.clone(),
+                        _ => String::new(),
+                    },
+                    _ => String::new(),
+                })
+                .collect::<Vec<_>>();
+            (update, texts)
+        };
 
         let failed_command = serde_json::json!({
             "type": "bash_code_execution_tool_result", "tool_use_id": "srvtoolu_1",
-            "content": { "type": "bash_code_execution_result", "return_code": 1 },
+            "content": {
+                "type": "bash_code_execution_result", "return_code": 1,
+                "stdout": "", "stderr": "has ``` inside",
+            },
         });
-        let Some(SessionUpdate::ToolCallUpdate(update)) = hosted_tool_update(&failed_command)
-        else {
-            panic!("a command result updates its call");
-        };
+        let (update, texts) = update_text(&failed_command);
         assert_eq!(update.tool_call_id.to_string(), "srvtoolu_1");
         assert_eq!(update.fields.status, Some(ToolCallStatus::Failed));
+        assert_eq!(texts, ["Exited with code 1", "````\nhas ``` inside\n````"]);
+
+        let unavailable = serde_json::json!({
+            "type": "code_execution_tool_result", "tool_use_id": "srvtoolu_2",
+            "content": { "type": "code_execution_tool_result_error", "error_code": "unavailable" },
+        });
+        let (update, texts) = update_text(&unavailable);
+        assert_eq!(update.fields.status, Some(ToolCallStatus::Failed));
+        assert_eq!(texts, ["Failed with `unavailable`"]);
+
+        let search_results = serde_json::json!({
+            "type": "web_search_tool_result", "tool_use_id": "srvtoolu_3",
+            "content": [{ "type": "web_search_result", "url": "https://rerun.io" }],
+        });
+        let (update, _) = update_text(&search_results);
+        assert_eq!(update.fields.status, Some(ToolCallStatus::Completed));
+        assert_eq!(update.fields.content, None);
 
         let openai_page = serde_json::json!({
             "type": "web_search_call", "id": "ws_1", "status": "completed",

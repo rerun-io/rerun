@@ -7,11 +7,19 @@ use re_agent::{AgentSession, ToolCallState};
 use super::conversation_list::status_dot_ui;
 use super::tool_call_title::short_tool_title;
 
-/// A collapsible row for one tool call: status, kind, title, and the details underneath.
+/// A collapsible row for one tool call: status, kind, title, and the details underneath (if present).
 ///
 /// Only running and failed calls show a status indicator, so the transcript stays quiet.
 /// `id` keeps the open state, so it must not change when the row moves into a group.
 pub fn tool_call_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, id: egui::Id) {
+    if !has_details(call) {
+        ui.horizontal(|ui| {
+            ui.add_space(ui.spacing().indent);
+            header_ui(ui, session, call, true);
+        });
+        return;
+    }
+
     let default_open = call.status == ToolCallStatus::Failed;
 
     let state = egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -102,6 +110,14 @@ fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is
     if short_title != title {
         response.on_hover_text(title);
     }
+}
+
+/// Whether [`body_ui`] has anything to show.
+fn has_details(call: &ToolCallState) -> bool {
+    !call.locations.is_empty()
+        || !call.content.is_empty()
+        || call.raw_input.is_some()
+        || call.raw_output.is_some()
 }
 
 fn body_ui(ui: &mut egui::Ui, call: &ToolCallState) {
