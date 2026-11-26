@@ -720,7 +720,7 @@ tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 ty = "==0.0.84" # Keep in sync with `dataplatform/pixi.toml`.
 typing_extensions = ">4.5"
 typos = ">=1.45.1"
-wasm-bindgen-cli = "==0.2.129"
+wasm-bindgen-cli = "==0.2.130"
 wasm-pack = "0.15.*"
 urllib3 = ">=2.8" # Pinned only to hold a security floor.
 gh = ">=2.79.0,<3"
