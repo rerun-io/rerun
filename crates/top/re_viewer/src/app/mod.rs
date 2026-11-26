@@ -1401,8 +1401,10 @@ impl AppCore {
         let mut force_store_info = false;
 
         for file in dropped_files {
-            // TODO(rust-windowing/winit#1550): pick the target from where the file is dropped
-            // instead of from its type, once winit tells us the cursor position during a drag.
+            // Dropped files carry no position, so routing uses the file type.
+            // On native platforms, position-based routing needs egui to expose winit 0.31's drag-position API.
+            // See https://github.com/rust-windowing/winit/issues/1550 and
+            // https://github.com/rust-windowing/winit/pull/4571.
             if let Some(agent_drop_target) = agent_drop_target
                 && ui::is_agent_image_path(file.path())
             {

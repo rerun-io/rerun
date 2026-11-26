@@ -68,9 +68,10 @@ function(download_and_build_arrow)
     endif()
 
     if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0")
-        # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
-        # See arrow issue linked from our internal issue above for more details.
-        # See here for what this does https://cmake.org/cmake/help/latest/variable/CMAKE_POLICY_VERSION_MINIMUM.html
+        # Arrow 18's bundled dependencies require this policy override to build with CMake 4.
+        # Upstream policy handling was added in Arrow 20: https://github.com/apache/arrow/issues/45987.
+        # See https://github.com/apache/arrow/issues/45985 and
+        # https://cmake.org/cmake/help/latest/variable/CMAKE_POLICY_VERSION_MINIMUM.html.
         set(VERSION_PATCH -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
     else()
         set(VERSION_PATCH "")
@@ -81,7 +82,9 @@ function(download_and_build_arrow)
         set(VERSION_PATCH "-DCMAKE_POLICY_VERSION_MINIMUM=${CMAKE_POLICY_VERSION_MINIMUM}")
     endif()
 
-    # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
+    # Forward the policy override to Arrow 18's bundled mimalloc build for CMake 4 compatibility.
+    # Arrow 21 updates bundled mimalloc: https://github.com/apache/arrow/issues/45978.
+    # See https://github.com/apache/arrow/issues/45985.
     set(MIMALLOC_PATCH ${CMAKE_CURRENT_LIST_DIR}/patches/mimalloc_cmake4.patch)
 
     # Arrow 18 only recognizes Apple's older `cctools-<version>` libtool version string.

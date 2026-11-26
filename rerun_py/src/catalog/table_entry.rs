@@ -91,9 +91,6 @@ impl PyTableEntryInternal {
     }
 
     /// The default blueprint of this table, if any.
-    ///
-    /// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    /// TODO(#12746): Stabilize table blueprint APIs.
     fn default_blueprint(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
@@ -114,9 +111,6 @@ impl PyTableEntryInternal {
 
     /// Set the default blueprint of this table to the blueprint with this segment ID, or clear it
     /// with `None`.
-    ///
-    /// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    /// TODO(#12746): Stabilize table blueprint APIs.
     #[pyo3(signature = (segment_id))]
     fn set_default_blueprint(
         mut self_: PyRefMut<'_, Self>,

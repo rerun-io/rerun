@@ -28,7 +28,6 @@ pub enum AggregationPolicy {
     ///
     /// This will yield two aggregated points instead of one, effectively creating a vertical line.
     /// In practice this often leads to a rather ugly zig-zag look.
-    // TODO(#4969): output a thicker line instead of zig-zagging.
     MinMax = 5,
 
     /// Find both the minimum and maximum values in the range, then use the average of those.

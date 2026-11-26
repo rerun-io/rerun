@@ -14,7 +14,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
-    // TODO(#8744): this is infallible, so we should not return a `Result` here.
+    // Conversion propagates the validation errors from `to_chunk_batch`.
     pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
         re_tracing::profile_function!();
         Ok(self.to_chunk_batch()?.into())
@@ -23,7 +23,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
-    // TODO(#8744): this is infallible, so we should not return a `Result` here.
+    // Conversion validates chunk invariants and Arrow batch compatibility.
     pub fn to_chunk_batch(&self) -> ChunkResult<re_sorbet::ChunkBatch> {
         re_tracing::profile_function!();
         self.sanity_check()?;
@@ -105,9 +105,8 @@ impl Chunk {
                         component,
                         component_type,
 
-                        // These are a consequence of using `ComponentColumnDescriptor` both for chunk batches and dataframe batches.
-                        // Setting them all to `false` at least ensures they aren't written to the arrow metadata:
-                        // TODO(#8744): figure out what to do here
+                        // These flags describe dataframe columns, not individual chunks.
+                        // Keep them false to omit them from chunk transport metadata (see #8744).
                         is_static: false,
                         is_tombstone: false,
                         is_semantically_empty: false,

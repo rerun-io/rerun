@@ -22,14 +22,6 @@ The rest of the doc describes how the IO loop, CPU worker, and pipeline
 budget cooperate around that horizon-driven emit so that a partition's
 working set stays bounded.
 
-> **Status:** target end-state. The streaming refactor lands incrementally;
-> not every section below reflects code currently on `main`. The
-> "Pre-streaming deadlock classes" appendix is the diagnostic trail back to
-> `#1736` and the failure modes this design neutralises.
->
-> TODO(RR-1538): drop this status note once the final PR in the streaming
-> stack lands and the doc matches `main`.
->
 > **Scope:** this describes the v1 IO-loop / CPU-worker pipeline, which is now opt-in via `RERUN_DATAFRAME_PIPELINE=v1`.
 > The default is the streaming pipeline documented in [`PIPELINE_V2.md`](PIPELINE_V2.md).
 > Where v2 departs from a decision recorded here, the relevant section says so — see non-goal 3.

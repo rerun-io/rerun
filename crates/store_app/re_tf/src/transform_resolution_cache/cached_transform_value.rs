@@ -6,7 +6,8 @@ use re_sdk_types::{ChunkId, RowId};
 pub enum CachedTransformValue<T> {
     /// Cache is invalidated, we don't know what state we're in.
     Invalidated {
-        chunk_id: ChunkId, // TODO(RR-4439): rows are allowed to be distributed across several chunks.
+        // The cache supports only rows whose transform components reside in a single chunk.
+        chunk_id: ChunkId,
         row_id: RowId,
     },
 
@@ -45,8 +46,7 @@ pub fn add_invalidated_entry_if_not_already_cleared<T: PartialEq + SizeBytes>(
                     //
                     // There are two reasons why the row id may be equal:
                     // * there has been a compaction/split event and we have to update the chunk id now
-                    // * the row is distributed across many chunks
-                    //   TODO(RR-4439): this is not yet supported
+                    // * the row is distributed across many chunks, which this cache does not support
                     //   TODO(RR-4441): we should at least warn if we hit that case. Surprisingly hard since we have to distinguish whether this is a new chunk or just a replacement.
                     if new_row_id >= *row_id {
                         *row_id = new_row_id;
@@ -56,7 +56,7 @@ pub fn add_invalidated_entry_if_not_already_cleared<T: PartialEq + SizeBytes>(
                 CachedTransformValue::Resident { row_id, .. } => {
                     // If this is the same row id as before, we don't have to invalidate the cached value.
                     // However, if there's a new, higher row id, new (uncalculated) value wins over the previous one.
-                    // TODO(RR-4439): to support rows distributed across several chunks, we need to invalidate.
+                    // This assumes an equal row id cannot add transform components from another chunk.
                     //   TODO(RR-4441): we should at least warn if we hit that case. Surprisingly hard since we have to distinguish whether this is a new chunk or just a replacement.
                     if new_row_id > *row_id {
                         *value = CachedTransformValue::Invalidated {

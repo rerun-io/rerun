@@ -14,8 +14,6 @@ pub type AuthErrorHandler =
 
 /// Somewhere we can get Rerun logging data from.
 // TODO(emilk): there is a lot of overlap between this and `ViewerUrl`
-// TODO(RR-5034): Once all loading goes to the internal catalog unconditionally,
-// we can get rid of some of the variants here.
 #[derive(Clone, Debug)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(PartialEq, Eq))]
 pub enum LogDataSource {

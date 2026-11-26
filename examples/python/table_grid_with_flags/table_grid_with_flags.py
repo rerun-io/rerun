@@ -1,9 +1,7 @@
 """
-Experimental table card layout with flag toggles.
+Table card layout with flag toggles.
 
 Demonstrates the card layout and per-row flag annotations on a remote table.
-
-**TODO(#12745): This feature is experimental.**
 
 A registered table blueprint enables the card view and configures the boolean
 `flagged` column as an editable flag field. Each value drives the flag icon on
@@ -32,7 +30,7 @@ from rerun.server import Server
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Create an experimental table card layout with flag toggles.")
+    parser = argparse.ArgumentParser(description="Create a table card layout with flag toggles.")
     parser.add_argument("--port", type=int, default=None, help="Port for the local Rerun server.")
     args = parser.parse_args()
 

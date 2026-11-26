@@ -1,8 +1,9 @@
 pub trait ResponseExt {
     /// Like [`egui::Response::on_hover_ui`], but the tooltip stays open while the user scrolls
     /// inside it, so `add_contents` can contain an [`egui::ScrollArea`].
-    // TODO(emilk/egui#4781): egui closes every tooltip on scroll. Replace with `on_hover_ui` once
-    // egui keeps a hovered interactive tooltip open.
+    // Egui 0.37 suppresses tooltips after scrolling, including scrolls inside the tooltip.
+    // This helper keeps a hovered tooltip open so its ScrollArea remains usable.
+    // See https://github.com/emilk/egui/issues/4781.
     fn on_scrollable_hover_ui(self, add_contents: impl FnOnce(&mut egui::Ui)) -> Self;
 }
 

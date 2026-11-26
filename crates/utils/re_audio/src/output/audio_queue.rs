@@ -1,11 +1,12 @@
 //! macOS playback through an `AudioQueue` from `AudioToolbox`.
 //!
-//! We do this ourselves instead of using `tinyaudio` (as on the other platforms) because
-//! `tinyaudio` depends on `coreaudio-sys`, which runs bindgen on the macOS SDK headers at
+//! We do this ourselves instead of using `tinyaudio` because
+//! `tinyaudio` 2.0.0 depends on `coreaudio-sys`, which runs bindgen on the macOS SDK headers at
 //! build time. That needs libclang and fails in our cross-compiled macOS CI builds.
 //! `objc2-audio-toolbox` ships pregenerated bindings instead.
 //!
-//! TODO(mrDIMAS/tinyaudio#26): remove this module once `tinyaudio` uses `objc2-audio-toolbox`.
+//! The upstream switch to pregenerated bindings is not included in 2.0.0:
+//! <https://github.com/mrDIMAS/tinyaudio/pull/26>.
 
 #![expect(unsafe_code, reason = "FFI into AudioToolbox")]
 

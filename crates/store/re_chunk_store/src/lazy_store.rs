@@ -24,7 +24,6 @@ use crate::{
 /// the provider and returns the `Vec<Arc<Chunk>>` to the caller, who is responsible for the
 /// resulting memory. This is deliberately cache-free to keep the OSS server from `OOMing` on
 /// large RRDs.
-//TODO(RR-4503): caching support.
 pub struct LazyStore {
     store: ChunkStoreHandle,
     provider: Arc<dyn ChunkProvider>,

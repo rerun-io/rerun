@@ -551,7 +551,6 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.info_label("This is an example of a long info label.");
 
             ComboBox::from_id_salt("combo_item_example")
-                // TODO(RR-3863): Allow globally customizing combobox icon
                 .icon(|ui, rect, visuals, _open| {
                     let rect = Rect::from_center_size(rect.center(), ui.tokens().small_icon_size);
                     icons::COMBO_ARROW

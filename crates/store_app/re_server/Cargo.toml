@@ -29,7 +29,9 @@ ignored = [
 [features]
 default = []
 
-# TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
+# Lance 10 requires protoc at build time, so support is opt-in.
+# Default Rust builds no longer require protoc as of Lance 15.0.0-beta.10.
+# See https://github.com/lance-format/lance/issues/3073.
 ## Enable reading in LanceDB files. Required for tables.
 lance = ["dep:lance"]
 

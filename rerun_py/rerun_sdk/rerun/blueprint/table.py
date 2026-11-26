@@ -181,8 +181,6 @@ class TableLayout:
     def __post_init__(self) -> None:
         object.__setattr__(self, "columns", _validate_unique_sources(self.columns, "TableLayout.columns"))
 
-    # TODO(RR-4810): Add `auto_visible_columns` after the type definitions model it.
-
 
 @dataclass(frozen=True, kw_only=True)
 class CardLayout:

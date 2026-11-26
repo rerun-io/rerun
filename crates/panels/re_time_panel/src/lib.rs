@@ -23,5 +23,8 @@ pub mod __bench {
 }
 
 /// Indicate creating a new time loop selection.
+// Winit 0.30.13 still uses the deprecated macOS resize cursor mapping.
+// ResizeHorizontal requires the new mapping and visual verification on macOS.
+// See https://github.com/rust-windowing/winit/issues/4390;
+// upstream fix: https://github.com/rust-windowing/winit/pull/4422.
 const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::Default;
-// const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeHorizontal;   // TODO(rust-windowing/winit#4390)
