@@ -66,23 +66,36 @@ function reViewerJs() {
   }
   code = code.replace(start, "").replace(end, "");
 
+  // The state that keeps a Wasm instance and its memory alive starts out as `undefined` or `null`,
+  // and `wasm-bindgen` fills it in later. `deinit` puts each of those variables back.
+  const lazyState = Array.from(code.matchAll(/^ {4}let ([\w, ]+?)( = null)?;$/gm)).flatMap(
+    ([, names, isNull]) =>
+      names.split(", ").map((name) => ({ name, initial: isNull ? "null" : "undefined" })),
+  );
+
+  // `__wbg_finalize_init` assigns the instance and the cached views of its memory,
+  // so the build fails if the search above misses one of them.
+  const finalizeInit = code.match(
+    /function __wbg_finalize_init\([^)]*\) \{([\s\S]*?)return wasm;/,
+  )?.[1];
+  const instanceState = Array.from(
+    finalizeInit?.matchAll(/^\s*(\w+) = /gm) ?? [],
+    (match) => match[1],
+  );
+  const missing = instanceState.filter((name) => !lazyState.some((state) => state.name === name));
+  if (!instanceState.includes("wasm") || 0 < missing.length) {
+    throw new Error(
+      `failed to run js build script: failed to patch re_viewer.js, could not find the instance state (${missing.join(", ")})`,
+    );
+  }
+
   code = `
 export default function() {
 const exports = { __proto__: null };
 ${code}
 
 function deinit() {
-  __wbg_init.__wbindgen_wasm_module = null;
-  wasmModule = null;
-  wasm = null;
-  cachedDataViewMemory0 = null;
-  cachedFloat32ArrayMemory0 = null;
-  cachedInt16ArrayMemory0 = null;
-  cachedInt32ArrayMemory0 = null;
-  cachedInt8ArrayMemory0 = null;
-  cachedUint16ArrayMemory0 = null;
-  cachedUint32ArrayMemory0 = null;
-  cachedUint8ArrayMemory0 = null;
+${lazyState.map(({ name, initial }) => `  ${name} = ${initial};`).join("\n")}
 }
 
 return Object.assign(__wbg_init, { initSync, deinit }, exports);
@@ -178,6 +191,20 @@ return Object.assign(__wbg_init, { initSync, deinit }, exports);
   }
 
   code = code.replace(makeMutClosureOriginal, makeMutClosurePatch);
+
+  // The finalizer of an exported class can also run after `deinit`,
+  // and then there is no instance left to free the object from.
+  code = code.replaceAll(
+    /new FinalizationRegistry\(ptr => wasm\.(\w+)\(ptr, 1\)\)/g,
+    "new FinalizationRegistry(ptr => { if (wasm) wasm.$1(ptr, 1); })",
+  );
+  const registries = code.match(/new FinalizationRegistry\(/g) ?? [];
+  const guardedRegistries = code.match(/new FinalizationRegistry\(\w+ => \{\s*if \(wasm\)/g) ?? [];
+  if (registries.length !== guardedRegistries.length) {
+    throw new Error(
+      "failed to run js build script: failed to patch re_viewer.js, found a finalizer that calls `wasm` after deinit",
+    );
+  }
 
   fs.writeFileSync(path.join(dirname, "re_viewer.js"), code);
 }

@@ -558,16 +558,10 @@ uuid = { version = "1.24", features = ["serde", "v4", "js"] }
 vec1 = { version = "1.12", features = ["serde", "smallvec-v1"] }
 walkdir = "2.5"
 wildmatch = "2.6"
-# TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
-#     Whenever updating `wasm-bindgen`, update the exact version constraints in
-#     `crates/panels/re_redap_browser/Cargo.toml` and `crates/top/re_viewer/Cargo.toml`, then make
-#     sure that notebooks still work:
-#         See `rerun_notebook/README.md` for how to run notebooks.
-#         Try running a cell which starts a viewer, and then running it again.
-#         There should be no errors in the browser console.
-#     Keep this workspace dependency non-exact so that published Rust libraries remain compatible
-#     with newer `wasm-bindgen` versions when they are not building the web viewer.
-#     For details see https://github.com/rerun-io/rerun/issues/8766
+# TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` patches the output of `wasm-bindgen`.
+#     When updating `wasm-bindgen`, also update `wasm-bindgen-cli` in `pixi.toml` to the same version.
+#     The build fails if the patch no longer applies, and
+#     `tests/js/viewer_control/tests/wasm_memory.spec.ts` tests what the patch is for.
 wasm-bindgen = "0.2.130" # ⚠️ read above notice before touching this!
 wasm-bindgen-futures = "0.4.80"
 wasm-bindgen-test = "0.3.80"
