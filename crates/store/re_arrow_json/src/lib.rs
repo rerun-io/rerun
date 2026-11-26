@@ -1,5 +1,5 @@
-//! Rerun data as JSON, and back: [`json_from_store`] reads a store, and [`chunks_from_json`] writes
-//! one. Used to read and write blueprints.
+//! Rerun data as JSON, and back: [`json_from_components`] reads component values, and
+//! [`chunks_from_json`] writes a store. Used to read and write blueprints.
 //!
 //! A blueprint's JSON mirrors the blueprint store row for row:
 //!
@@ -25,6 +25,9 @@
 //! A cleared (empty) component is left out, as is an entity with nothing but cleared components,
 //! since the viewer treats both as absent. So are `Null`-typed components, such as the indicators
 //! older blueprints carry, since they hold no value.
+//!
+//! A `Clear` component is left out too. Whoever queries the values applies it, so the values it
+//! shadows never reach the JSON.
 
 mod archetype_key;
 mod arrow_union;
@@ -38,4 +41,4 @@ mod test_util;
 pub use self::from_json::{
     ChunksFromJsonError, ValueFromJsonError, chunks_from_json, partial_chunks_from_json,
 };
-pub use self::to_json::json_from_store;
+pub use self::to_json::json_from_components;

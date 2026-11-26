@@ -24,8 +24,8 @@ pub(crate) use self::range::RangeCache;
 pub use self::range::RangeResults;
 pub use self::range_zip::*;
 pub use self::storage_engine::{
-    StorageEngine, StorageEngineArcReadGuard, StorageEngineLike, StorageEngineReadGuard,
-    StorageEngineWriteGuard,
+    LatestValueNotLoaded, StorageEngine, StorageEngineArcReadGuard, StorageEngineLike,
+    StorageEngineReadGuard, StorageEngineWriteGuard,
 };
 
 pub mod external {

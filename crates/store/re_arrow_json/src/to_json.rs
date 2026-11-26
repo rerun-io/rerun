@@ -6,9 +6,9 @@ use arrow::datatypes::{DataType, Field, Schema};
 use arrow::json::writer::{JsonArray, WriterBuilder};
 use serde_json::{Map, Value};
 
-use re_chunk_store::{ChunkStore, ChunkTrackingMode, LatestAtQuery};
 use re_log_types::EntityPath;
-use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::archetypes::Clear;
 use re_sdk_types::reflection::{ComponentDescriptorExt as _, ComponentReflectionMap, Reflection};
 
 use crate::archetype_key::json_key_of_archetype;
@@ -28,47 +28,47 @@ enum ComponentToJsonError {
     Json(#[from] serde_json::Error),
 }
 
-/// Every entity of `store` at `query`, as a JSON object keyed by entity path.
+/// Component values as a JSON object keyed by entity path.
 ///
-/// Entities are in path order, then archetypes and fields in name order, so the same store always
-/// reads the same.
+/// Entities are in path order, then archetypes and fields in name order, so the same values always
+/// read the same, whatever order they come in.
 ///
 /// A component whose datatype `arrow-json` cannot encode is written as `{ "$error": "…" }` in place
-/// of its value, so one exotic component does not hide the rest. So is one whose latest value is in
-/// a chunk that is not loaded yet.
-pub fn json_from_store(
-    store: &ChunkStore,
-    query: &LatestAtQuery,
+/// of its value, so one exotic component does not hide the rest. So is one whose value is an `Err`.
+///
+/// `Clear` components are left out. The caller applies them when it queries the values, as
+/// `StorageEngineReadGuard::latest_at_all` does.
+pub fn json_from_components<E: std::fmt::Display>(
     reflection: &Reflection,
+    components: impl IntoIterator<Item = (EntityPath, ComponentDescriptor, Result<ArrayRef, E>)>,
 ) -> Value {
     re_tracing::profile_function!();
 
-    let mut descriptors_per_entity: BTreeMap<&EntityPath, Vec<_>> = BTreeMap::new();
-    for (entity_path, entry) in store.schema().all_column_metadata() {
-        descriptors_per_entity
-            .entry(entity_path)
-            .or_default()
-            .push(&entry.descriptor);
-    }
-    for descriptors in descriptors_per_entity.values_mut() {
-        descriptors.sort_by_key(|descriptor| descriptor.component.as_str());
+    let clear_component = Clear::descriptor_is_recursive().component;
+
+    let mut components_per_entity: BTreeMap<EntityPath, Vec<_>> = BTreeMap::new();
+    for (entity_path, descriptor, value) in components {
+        if descriptor.component != clear_component {
+            components_per_entity
+                .entry(entity_path)
+                .or_default()
+                .push((descriptor, value));
+        }
     }
 
     let mut entities = Map::new();
-    for (entity_path, descriptors) in descriptors_per_entity {
+    for (entity_path, mut components) in components_per_entity {
+        components.sort_by_key(|(descriptor, _)| descriptor.component.as_str());
         let mut archetypes = BTreeMap::<&str, Map<String, Value>>::new();
         let mut loose_components = BTreeMap::<&str, Value>::new();
-        for descriptor in descriptors {
-            let value = match latest_at(store, query, entity_path, descriptor.component) {
-                LatestAt::Missing => continue,
-                LatestAt::NotLoaded => {
-                    serde_json::json!({ "$error": "its latest value is not loaded yet" })
-                }
-                LatestAt::Batch(batch) => {
+        for (descriptor, value) in &components {
+            let value = match value {
+                Err(err) => serde_json::json!({ "$error": err.to_string() }),
+                Ok(batch) => {
                     if batch.is_empty() || batch.data_type() == &DataType::Null {
                         continue;
                     }
-                    json_from_component_batch(descriptor, batch, &reflection.components)
+                    json_from_component_batch(descriptor, batch.clone(), &reflection.components)
                         .unwrap_or_else(|err| serde_json::json!({ "$error": err.to_string() }))
                 }
             };
@@ -103,42 +103,6 @@ pub fn json_from_store(
     }
 
     Value::Object(entities)
-}
-
-/// What [`latest_at`] found.
-enum LatestAt {
-    /// Nothing was logged for the component at or before the query time.
-    Missing,
-
-    /// The latest value is in a chunk the store only knows of, and has not loaded.
-    NotLoaded,
-
-    Batch(ArrayRef),
-}
-
-/// The latest batch of `component` on `entity_path` at `query`.
-fn latest_at(
-    store: &ChunkStore,
-    query: &LatestAtQuery,
-    entity_path: &EntityPath,
-    component: ComponentIdentifier,
-) -> LatestAt {
-    let results =
-        store.latest_at_relevant_chunks(ChunkTrackingMode::Report, query, entity_path, component);
-    if results.is_partial() {
-        return LatestAt::NotLoaded;
-    }
-    results
-        .chunks
-        .iter()
-        .filter_map(|chunk| {
-            let unit = chunk.latest_at(query, component)?;
-            let index = unit.index(query.timeline().as_ref())?;
-            Some((index, unit))
-        })
-        .max_by_key(|(index, _)| *index)
-        .and_then(|(_, unit)| unit.component_batch_raw(component))
-        .map_or(LatestAt::Missing, LatestAt::Batch)
 }
 
 /// One component batch as JSON: the instance itself for a batch of one, else an array.
@@ -185,7 +149,55 @@ fn json_from_arrow(batch: ArrayRef) -> Result<Vec<Value>, ComponentToJsonError> 
 
 #[cfg(test)]
 mod tests {
-    use crate::test_util::{example_blueprint, read};
+    use std::sync::Arc;
+
+    use serde_json::json;
+
+    use re_log_types::{TimeCell, TimePoint, TimelineName};
+
+    use crate::partial_chunks_from_json;
+    use crate::test_util::{empty_blueprint, example_blueprint, read};
+
+    /// A `Clear` hides its own entity, its descendants only if recursive, and nothing newer.
+    #[test]
+    fn clears_shadow_older_values() {
+        let parent = "/view/aaaaaaaa-0000-4000-8000-000000000001";
+        let child = format!("{parent}/child");
+        let named = |name: &str| json!({"ViewBlueprint": {"display_name": name}});
+
+        let mut blueprint = empty_blueprint();
+        let mut time = 0;
+        let mut read_after = |edit: serde_json::Value| {
+            time += 1;
+            let timeline = TimelineName::from_static_str("blueprint");
+            for chunk in partial_chunks_from_json(
+                &edit,
+                &TimePoint::from([(timeline, TimeCell::from_sequence(time))]),
+                re_sdk_types::reflection::reflection(),
+            )
+            .unwrap()
+            {
+                blueprint.add_chunk(&Arc::new(chunk)).unwrap();
+            }
+            read(&blueprint)
+        };
+
+        let both = json!({parent: named("parent"), &child: named("child")});
+        assert_eq!(read_after(both.clone()), both);
+        assert_eq!(
+            read_after(json!({parent: {"Clear": {"is_recursive": false}}})),
+            json!({&child: named("child")})
+        );
+        assert_eq!(read_after(both.clone()), both);
+        assert_eq!(
+            read_after(json!({parent: {"Clear": {"is_recursive": true}}})),
+            json!({})
+        );
+        assert_eq!(
+            read_after(json!({&child: named("restored")})),
+            json!({&child: named("restored")})
+        );
+    }
 
     /// The ids, and the entity paths built from them, the way the viewer and the SDKs lay them out.
     #[test]
