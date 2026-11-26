@@ -2,6 +2,7 @@ use re_data_source::{LogDataSource, LogDataSourceAnalytics};
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
 use re_log_encoding::RrdMetadata;
+use re_log_msg::FileSource;
 use re_log_types::{EntryId, StoreId};
 use re_uri::DatasetUri;
 use re_viewer_context::{Route, StoreHub, SystemCommand, SystemCommandSender as _};
@@ -110,14 +111,14 @@ impl AppCore {
             }
 
             LogDataSource::File {
+                file_source,
                 path,
                 #[cfg(not(target_arch = "wasm32"))]
                 assets,
                 #[cfg(target_arch = "wasm32")]
                 file,
-                ..
             } => {
-                if self.should_register_via_internal_catalog(path) {
+                if self.should_register_via_internal_catalog(file_source, path) {
                     self.register_via_internal_catalog(
                         path,
                         data_source.analytics(),
@@ -597,10 +598,22 @@ impl AppCore {
         }
     }
 
-    fn should_register_via_internal_catalog(&self, path: &Path) -> bool {
-        path.extension()
-            .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd") || ext.eq_ignore_ascii_case("rbl"))
+    /// Whether to register `path` with the internal catalog instead of importing it directly.
+    ///
+    /// An `.rbl` imported into an open recording is imported directly. A recommended store
+    /// without forced store info means a recording is open.
+    fn should_register_via_internal_catalog(&self, file_source: &FileSource, path: &Path) -> bool {
+        let has_extension = |extension: &str| {
+            path.extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(extension))
+        };
+        let is_import_into_open_recording =
+            file_source.recommended_store_id().is_some() && !file_source.force_store_info();
+        let should_register =
+            has_extension("rrd") || (has_extension("rbl") && !is_import_into_open_recording);
+
+        should_register
             && self.app_options().use_viewer_catalog
             && self.connections.registry.internal_origin().is_some()
     }
