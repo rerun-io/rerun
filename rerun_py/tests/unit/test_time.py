@@ -84,6 +84,10 @@ VALID_TO_NANOS_SINCE_EPOCH_CASES = [
     (np.datetime64("2000-01-01T00:00:00.123456789"), 946684800123456789),
     (MockPandasTimestamp(2000, 1, 1, 0, 0, 0, 123456, nanoseconds=123456789), 946684800123456789),
     (pa.scalar(np.datetime64("2000-01-01T00:00:00.123456789"), type=pa.timestamp("ns")), 946684800123456789),
+    (pa.scalar(946684800, type=pa.timestamp("s")), 946684800_000_000_000),
+    (pa.scalar(946684800123, type=pa.timestamp("ms")), 946684800_123_000_000),
+    (pa.scalar(946684800123456, type=pa.timestamp("us")), 946684800_123_456_000),
+    (pa.scalar(946684800123456, type=pa.timestamp("us", tz="Europe/Berlin")), 946684800_123_456_000),
 ]
 
 

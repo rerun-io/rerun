@@ -127,6 +127,9 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
         )
 
 
+_NANOS_PER_ARROW_TIME_UNIT = {"s": 1_000_000_000, "ms": 1_000_000, "us": 1_000, "ns": 1}
+
+
 def to_nanos_since_epoch(
     timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64 | pa.TimestampScalar,
 ) -> int:
@@ -154,7 +157,8 @@ def to_nanos_since_epoch(
     elif isinstance(timestamp, np.datetime64):
         return int(timestamp.astype("datetime64[ns]").astype("int64"))
     elif isinstance(timestamp, pa.TimestampScalar):
-        return int(timestamp.value)
+        # `.value` is the raw integer in the scalar's own unit (s, ms, us or ns), so scale it to nanoseconds.
+        return int(timestamp.value) * _NANOS_PER_ARROW_TIME_UNIT[timestamp.type.unit]
     else:
         raise TypeError(
             f"set_time: timestamp must be an int, float, datetime, numpy.datetime64, or pyarrow.TimestampScalar object, got {type(timestamp)}",
