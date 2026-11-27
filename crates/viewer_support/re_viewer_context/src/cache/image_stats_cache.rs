@@ -1,10 +1,10 @@
-use ahash::{HashMap, HashSet};
+use ahash::HashMap;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_sdk_types::image::ImageKind;
-use re_sdk_types::{Component as _, components};
 
+use crate::cache::filter_blob_removed_events;
 use crate::image_info::StoredBlobCacheKey;
 use crate::{AppCache, Cache, CacheEntryAccess, ImageInfo, ImageStats};
 
@@ -45,24 +45,10 @@ impl Cache for ImageStatsCache {
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
-        let cache_key_removed: HashSet<(StoredBlobCacheKey, ImageKind)> = events
-            .iter()
-            .filter_map(|e| e.to_deletion())
-            .flat_map(|del| {
-                del.chunk
-                    .component_descriptors()
-                    .filter(|descr| descr.component_type == Some(components::Blob::name()))
-                    .flat_map(|descr| {
-                        let kind = ImageKind::from_archetype_name(descr.archetype);
-                        del.chunk.row_ids().map(move |row_id| {
-                            (StoredBlobCacheKey::new(row_id, descr.component), kind)
-                        })
-                    })
-            })
-            .collect();
-
-        self.0
-            .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
+        let removed = filter_blob_removed_events(events);
+        if !removed.is_empty() {
+            self.0.retain(|(key, _kind), _| !removed.contains(key));
+        }
     }
 }
 
