@@ -1,14 +1,14 @@
 ---
 title: Train
-order: 6
+order: 8
 description: Feed catalog recordings into training pipelines via export or PyTorch
 ---
 
-A Rerun [catalog](query-and-transform/catalog/catalog-object-model.md) can feed training pipelines two ways: export recordings to a standard format, or stream them directly into a PyTorch `DataLoader`.
+A Rerun [catalog](catalog/catalog-object-model.md) can feed training pipelines two ways: export recordings to a standard format, or stream them directly into a PyTorch `DataLoader`.
 
 The examples in this section use the local open-source server.
-They also run against [Rerun Hub](hub.md), our commercial managed offering for production deployments, which offers a higher-performance backend for large-scale training. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
-See [Run the examples on Hub](hub.md#run-the-examples-on-hub).
+They also run against [Rerun Hub](catalog/hub.md), our commercial managed offering for production deployments, which offers a higher-performance backend for large-scale training. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+See [Run the examples on Hub](catalog/hub.md#run-the-examples-on-hub).
 
 ## Export to a training format
 

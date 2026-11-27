@@ -91,7 +91,7 @@ impl CodeGenerator for DocsCodeGenerator {
             r"An archetype is a named set of semantically related components.
 `Points3D`, for example, groups positions, colors, and radii into a point cloud.
 The name is stored with the data, and the Viewer uses it to choose how to show that data by default.
-See [Archetypes](../../logging-and-ingestion/data-model/archetypes.md) for how they work and how to pick one.
+See [Archetypes](../../log/data-model/archetypes.md) for how they work and how to pick one.
 
 This page lists all built-in archetypes.
 Most of them have a visualizer of their own.
@@ -114,7 +114,7 @@ An entity can only ever contain a single array of any given component type.
 If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../../logging-and-ingestion/data-model/entity-component.md).",
+on [Entities and Components](../../log/data-model/entity-component.md).",
                 &components,
             ),
             (

@@ -8,7 +8,7 @@ Span tables attach properties to time spans of a dataset's segments.
 This page shows how to create, edit, and query span annotations, and how to use them to curate training data.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 We consider that time spans are a different higher level concept with these properties:
 

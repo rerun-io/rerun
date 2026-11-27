@@ -38,7 +38,7 @@ This serves a Rerun server at `rerun+http://127.0.0.1:51234` (the default used b
 ### 3. Prepare and register the dataset
 
 Downloads a LeRobot dataset from HuggingFace, splits it into per-episode RRDs, and registers them as a dataset in the catalog.
-The dataset-wide LeRobot metadata (feature shapes and normalization statistics) is written to a separate static RRD and registered once as an [asset](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets) of the dataset, rather than being copied into every episode:
+The dataset-wide LeRobot metadata (feature shapes and normalization statistics) is written to a separate static RRD and registered once as an [asset](https://rerun.io/docs/catalog/catalog-object-model#assets) of the dataset, rather than being copied into every episode:
 
 ```bash
 uv run python prepare_dataset.py

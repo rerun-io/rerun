@@ -25,6 +25,6 @@ A community-maintained example is available at [kyle-figure/bazel-minimal-rerun]
 
 ## Next steps
 
-[Set up a C++ project](../../getting-started/project-setup/cpp.md), then walk through the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.
+[Set up a C++ project](../../getting-started/project-setup/cpp.md), then walk through the [Log](../../log/tutorial.md) tutorial.
 
 -   [C++ API docs](https://ref.rerun.io/docs/cpp)

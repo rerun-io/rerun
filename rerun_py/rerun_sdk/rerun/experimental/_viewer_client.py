@@ -1421,7 +1421,7 @@ class ViewerClient:
         """
         A recording's transform graph at its time cursor: its frames, and the edges between them.
 
-        See [Transforms & Coordinate Frames](https://rerun.io/docs/logging-and-ingestion/data-model/transforms).
+        See [Transforms & Coordinate Frames](https://rerun.io/docs/log/data-model/transforms).
 
         Parameters
         ----------

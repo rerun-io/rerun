@@ -16,7 +16,7 @@ use crate::{ApiError, ApiErrorKind, ApiResponseStream, ApiResult, TraceId};
 
 #[cfg(any(target_arch = "wasm32", test))]
 const BUCKET_CORS_FIX: &str = "Fix: add the Web Viewer's origin to the bucket's allowed CORS origins \
-    (see https://rerun.io/docs/hub/bucket-configuration#cors). \
+    (see https://rerun.io/docs/catalog/hub/bucket-configuration#cors). \
     If you opened the dataset from another site, opening it in the Web Viewer of your Rerun Hub \
     may also work.";
 
@@ -315,7 +315,7 @@ where
     /// The server may answer with manifest keys instead of inline manifests, in which case each
     /// part is fetched directly from the object store. In a browser that direct fetch only works
     /// when the bucket has a CORS configuration that allows it (see
-    /// <https://rerun.io/docs/hub/bucket-configuration#cors>), so wasm clients fall back to
+    /// <https://rerun.io/docs/catalog/hub/bucket-configuration#cors>), so wasm clients fall back to
     /// server-provided manifests when the first part fails.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest_stream(

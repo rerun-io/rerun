@@ -24,7 +24,7 @@ See the [Viewer overview](../viewer/ui/overview.md) for an introduction to the V
 
 ### Inspect transform graphs via MCP
 
-Rerun already provides a [transform debugging UI](../logging-and-ingestion/data-model/transforms.md#debugging-transform-trees) for inspecting frame connections and transform values at the current time cursor.
+Rerun already provides a [transform debugging UI](../log/data-model/transforms.md#debugging-transform-trees) for inspecting frame connections and transform values at the current time cursor.
 Agents can now inspect that same transform graph via MCP using `rerun_get_transform_graph`, which returns frame connections and their sources as JSON, with optional filters and numerical transform values to help debug spatial relationships.
 See [Inspecting transforms via MCP](../viewer/extend/mcp.md#inspecting-transforms) for details.
 
@@ -63,16 +63,16 @@ The `rerun.blueprint.table` API is experimental and may change in future release
 ### Catalog API improvements
 
 - `DatasetEntry.segment()` returns a `Segment` handle to inspect a segment's layers and schema, get its Viewer URL, and unregister a single layer.
-  See [managing segment layers](../query-and-transform/catalog/catalog-object-model.md#managing-segment-layers-with-the-python-catalog-api).
+  See [managing segment layers](../catalog/catalog-object-model.md#managing-segment-layers-with-the-python-catalog-api).
 - `DatasetEntry.layer(name)` returns a live `Layer` handle whose `.segment_ids()` lists the segments currently containing that layer.
 - `DatasetEntry.schema()` and `DatasetSelection.schema()` return catalog schema snapshots, which convert to Arrow with `.to_arrow()`.
   `DatasetEntry.arrow_schema()` is deprecated in favor of `DatasetEntry.schema().to_arrow()`.
 - `DatasetEntry.info()` summarizes a dataset (segment count, size, layers, timeline ranges, contents and property columns) without reading any recording data.
-  See [getting an overview](../query-and-transform/catalog/get-data-out.md#getting-an-overview).
+  See [getting an overview](../catalog/get-data-out.md#getting-an-overview).
 
 ### The selection panel shows which layers a component comes from
 
-Selecting a component of a dataset segment now lists the [layers](../query-and-transform/catalog/layers.md) its data comes from.
+Selecting a component of a dataset segment now lists the [layers](../catalog/layers.md) its data comes from.
 
 <picture>
   <img src="https://static.rerun.io/component-layer/9b4d33a5cc99f35fe5ac93cafe95bd6dcbc0f15d/full.png" alt="Selection panel for the Scalars:scalars component of action/gripper_position, with a 1 layer row naming the signals layer">
@@ -94,7 +94,7 @@ The assets tab of a dataset now shows which segments each asset applies to, and 
     <source src="https://static.rerun.io/ffb69f38b2c182b51bb250ac8d17ee406cec920d_asset_coverage_ui.mp4" type="video/mp4" />
 </video>
 
-See [assets](../query-and-transform/catalog/catalog-object-model.md#assets) for more information on the concept of assets.
+See [assets](../catalog/catalog-object-model.md#assets) for more information on the concept of assets.
 
 ### Assets without normals are shaded
 
@@ -128,7 +128,7 @@ The dataloader example now reads feature shapes and normalization statistics fro
 - **Viewer-control operations answer once they are done**: `open_url`, `close_recordings`, `set_time_cursor`, `set_blueprint`, and `run_command` now answer once the Viewer has carried them out, so the next `viewer_state()` sees the result. `open_url` waits a few seconds at most for what it loads, and `ViewerClient.open_url` returns `False` if it was still loading by then. See the [MCP reference](../viewer/extend/mcp.md).
 - **Undo and redo table blueprint edits**: Edits to a table's blueprint, such as filters and column visibility, can now be undone and redone.
 - **Custom table filters show their SQL with syntax highlighting**: Hovering a custom table filter pill now shows its SQL with syntax highlighting, and the text can be selected and copied.
-- **LeRobot v2.1 videos load as `VideoStream`**: [LeRobot](../logging-and-ingestion/import/lerobot.md) v2.1 datasets now load video as `VideoStream` instead of `AssetVideo`, like v3.0. Video with B-frames, such as most H.264, now needs `ffmpeg` on the `PATH`, and the re-encode can make ingesting these datasets slower.
+- **LeRobot v2.1 videos load as `VideoStream`**: [LeRobot](../ingest/lerobot.md) v2.1 datasets now load video as `VideoStream` instead of `AssetVideo`, like v3.0. Video with B-frames, such as most H.264, now needs `ffmpeg` on the `PATH`, and the re-encode can make ingesting these datasets slower.
 
 ## Breaking changes
 

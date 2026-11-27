@@ -1434,7 +1434,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
-        See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the full syntax.
+        See [entity path filters](https://rerun.io/docs/log/data-model/entity-path#entity-path-filters) for the full syntax.
 
         Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
         call's expressions select it. To combine includes and excludes, pass them in a single call.
@@ -2023,7 +2023,7 @@ class DatasetSelection:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
-        See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the full syntax.
+        See [entity path filters](https://rerun.io/docs/log/data-model/entity-path#entity-path-filters) for the full syntax.
 
         Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
         call's expressions select it. To combine includes and excludes, pass them in a single call.

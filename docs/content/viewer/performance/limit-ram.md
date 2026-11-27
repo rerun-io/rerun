@@ -41,7 +41,7 @@ From Python, pass a different `port` to `rr.spawn`.
 Data logged with `static=True` is never garbage-collected.
 Logging static data to the same entity again replaces the old value, but static data on many different entity paths (for example a new entity path for every frame) adds up without bound.
 Log data that changes over time on a timeline instead.
-See [static data](../../logging-and-ingestion/data-model/static.md).
+See [static data](../../log/data-model/static.md).
 
 ### The latest value of each component is kept
 
@@ -64,7 +64,7 @@ This works when you:
 
 * Open a local `.rrd` file in the native or web Viewer.
   Local `.rrd` files are loaded through the Viewer catalog by default (**Settings** → **Viewer catalog** → **Load files via Viewer catalog**).
-* Open a recording from a Rerun server, for example one started with `rerun server`, or from [Rerun Hub](../../hub.md).
+* Open a recording from a Rerun server, for example one started with `rerun server`, or from [Rerun Hub](../../catalog/hub.md).
 
 It does **not** work for data that streams in live from the SDK, or for `.rrd` files when you have turned off **Load files via Viewer catalog**.
 The Viewer loads that data fully into memory, and drops the oldest data when it reaches its memory limit.
@@ -84,7 +84,7 @@ rerun rrd optimize my_recording.rrd -o my_recording_optimized.rrd
 ```
 
 `rerun rrd optimize` also compacts the chunks, which makes on-demand loading faster.
-See [Optimize chunk count](../../logging-and-ingestion/chunks-and-rrd/optimize-chunks.md).
+See [Optimize chunk count](../../ingest/optimize-chunks.md).
 
 ### Serve many large files
 

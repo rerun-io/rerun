@@ -7,7 +7,7 @@ description: The components of Rerun, how they connect, and how you use them
 Rerun covers the whole journey from raw recordings to training, on a single unified data layer for multi-rate, multimodal robotics data. <!-- TODO(RR-6462): update this Rerun description to the new branding -->
 
 It consists of **Rerun SDK**: an open source library and tools for logging, storing, querying, visualizing, and training on multi-rate, multimodal data; and
-**[Rerun Hub](../hub.md)**: our commercial managed offering for production deployments, a data catalog and backend for large scale storage, access, and streaming of robotics data from object storage. <!-- TODO(RR-6462): update this Rerun and Rerun Hub description to the new branding -->
+**[Rerun Hub](../catalog/hub.md)**: our commercial managed offering for production deployments, a data catalog and backend for large scale storage, access, and streaming of robotics data from object storage. <!-- TODO(RR-6462): update this Rerun and Rerun Hub description to the new branding -->
 
 This page explains the components, how they connect, and how you use them at each stage, from logging to training.
 
@@ -15,7 +15,7 @@ This page explains the components, how they connect, and how you use them at eac
 
 ### Logging SDK
 
-The Logging SDK is how you get data into Rerun. Available for Python, Rust, and C++, it runs inside your application and logs data using [archetypes](../logging-and-ingestion/data-model/entity-component.md) — structured types like `Points3D`, `Image`, or `Transform3D`.
+The Logging SDK is how you get data into Rerun. Available for Python, Rust, and C++, it runs inside your application and logs data using [archetypes](../log/data-model/entity-component.md) — structured types like `Points3D`, `Image`, or `Transform3D`.
 
 Data can be streamed directly to the Viewer, saved to `.rrd` files, or both.
 
@@ -26,7 +26,7 @@ The Viewer visualizes your data. It comes in two forms:
 - **Native Viewer**: A desktop application for Linux, macOS, and Windows
 - **Web Viewer**: A browser based application
 
-The viewer includes a [**Chunk Store**](../logging-and-ingestion/chunks-and-rrd/chunks.md) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
+The viewer includes a [**Chunk Store**](../log/chunks-and-rrd/chunks.md) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
 The Web Viewer has performance limitations compared to the native viewer.
 It runs as 32-bit Wasm, which caps memory at 4 GiB, and browsers often allow less, limiting the amount of data that can be visualized simultaneously.
@@ -45,7 +45,7 @@ It organizes data into:
 
 The catalog server is available as:
 - Open-source server for local development (`rerun server`)
-- **[Rerun Hub](../hub.md)**, our commercial managed offering for production deployments <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+- **[Rerun Hub](../catalog/hub.md)**, our commercial managed offering for production deployments <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ### Catalog SDK
 
@@ -59,7 +59,7 @@ The Catalog SDK (`rerun.catalog`) is a Python library for querying and manipulat
 </div>
 
 ## Log and ingest
-Use the [logging API](../logging-and-ingestion/tutorial.md) to log multimodal data from your code, or [the chunk processing API](../logging-and-ingestion/import/chunk-processing-api.md) to convert your existing data to the [.rrd](../logging-and-ingestion/chunks-and-rrd/rrd-format.md) file format to later visualize or query.
+Use the [logging API](../log/tutorial.md) to log multimodal data from your code, or [the chunk processing API](../ingest/chunk-processing-api.md) to convert your existing data to the [.rrd](../log/chunks-and-rrd/rrd-format.md) file format to later visualize or query.
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/d1e6392a75f1a24b19d3f8776e573466141d25e6_diagram-log-and-ingest-dark.svg" alt="Diagram of two paths into an .rrd file: a data generator writing directly, and existing data (MCAP, LeRobot, etc.) going through a converter">
   <img class="d2-light" src="https://static.rerun.io/ca2f2ff0e4db51d400c92f64b46cf794025ce1d4_diagram-log-and-ingest-light.svg" alt="Diagram of two paths into an .rrd file: a data generator writing directly, and existing data (MCAP, LeRobot, etc.) going through a converter">
@@ -103,7 +103,7 @@ Best for: sharing recordings, offline analysis, archiving.
 
 ## Visualize
 Rerun provides an open source pre-built [viewer](../viewer/organization.md) that is [adjustable](../viewer/inspect-recordings/configure-layout.md#panels) and [extensible](../viewer/integrations/extend.md).
-You can log directly to the viewer, [open](../logging-and-ingestion/import/open-any-file.md) a range of file formats to get data into the viewer, or even connect the viewer to a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md).
+You can log directly to the viewer, [open](../ingest/open-any-file.md) a range of file formats to get data into the viewer, or even connect the viewer to a Rerun [catalog](../catalog/catalog-object-model.md).
 
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/271a2a55bab0db15312b80f68f4b5900442b1d0e_diagram-viewer-sources-dark.svg" alt="Diagram of data sources feeding the Rerun Viewer: a data generator, .rrd files, automated importers for other formats, and the Rerun Catalog">
@@ -120,14 +120,14 @@ Ask questions across all your recordings at once, down to individual sensor read
 
 Results can link straight to the moment in the viewer.
 
-You can use the open source [catalog](../query-and-transform/catalog/catalog-object-model.md) server for running local [laptop scale examples](../query-and-transform/tutorial.md).
-We also offer **[Rerun Hub](../hub.md)** for teams that need collaborative dataset management, version control, and cloud storage ([reach out](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=docs) to learn more). <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
-The two are API compatible, so to run our examples on **Rerun Hub** you connect to your Hub instead of launching a server, and register recordings from object storage instead of local paths (see [Run the examples on Hub](../hub.md#run-the-examples-on-hub)).
+You can use the open source [catalog](../catalog/catalog-object-model.md) server for running local [laptop scale examples](../query-and-transform/tutorial.md).
+We also offer **[Rerun Hub](../catalog/hub.md)** for teams that need collaborative dataset management, version control, and cloud storage ([reach out](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=docs) to learn more). <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+The two are API compatible, so to run our examples on **Rerun Hub** you connect to your Hub instead of launching a server, and register recordings from object storage instead of local paths (see [Run the examples on Hub](../catalog/hub.md#run-the-examples-on-hub)).
 
 ### Prepare catalog
 Before querying or viewing recordings on a catalog server, register them.
 The Viewer can also open an `.rrd` in its built-in catalog without a separate server.
-We group recordings as [datasets](../query-and-transform/catalog/catalog-object-model.md#datasets).
+We group recordings as [datasets](../catalog/catalog-object-model.md#datasets).
 Since Rerun indexes existing data in place, registration needs paths to RRDs to index: in object store for **Rerun Hub** or on disk for local catalog server.
 
 <div class="d2-diagram">
@@ -194,19 +194,19 @@ The Python SDK includes:
 - **Catalog SDK**
 - **CLI**, including the Viewer (the `rerun` CLI is made available by installing the `rerun-sdk` Python package)
 
-See: Python SDK [installation instructions](install-rerun/python.md) and [quick start guide](../logging-and-ingestion/tutorial.md)
+See: Python SDK [installation instructions](install-rerun/python.md) and [quick start guide](../log/tutorial.md)
 
 ### Rust SDK
 
 The Logging SDK as a Rust crate.
 
-See: Rust SDK [installation instructions](install-rerun/rust.md) and [quick start guide](../logging-and-ingestion/tutorial.md)
+See: Rust SDK [installation instructions](install-rerun/rust.md) and [quick start guide](../log/tutorial.md)
 
 ### C++ SDK
 
 The Logging SDK for C++ projects.
 
-See: C++ SDK [installation instructions](install-rerun/cpp.md) and [quick start guide](../logging-and-ingestion/tutorial.md)
+See: C++ SDK [installation instructions](install-rerun/cpp.md) and [quick start guide](../log/tutorial.md)
 
 ### The `web-viewer` and `web-viewer-react` NPM packages
 

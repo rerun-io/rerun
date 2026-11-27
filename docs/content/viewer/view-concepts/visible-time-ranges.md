@@ -54,7 +54,7 @@ You can also set time ranges in the Viewer: select a view or an entity, and edit
 
 ## Missing or persistent data
 
-See [Why does my data disappear?](../performance/missing-data.md) and [Latest-at semantics](../../logging-and-ingestion/data-model/latest-at.md) for data that is missing or stays visible.
+See [Why does my data disappear?](../performance/missing-data.md) and [Latest-at semantics](../../log/data-model/latest-at.md) for data that is missing or stays visible.
 
 ## Query range and axis window
 

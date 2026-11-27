@@ -6,10 +6,10 @@ description: Query video streams from a catalog server and decode individual fra
 
 Video streams use inter-frame encoding: most frames store only the changes from earlier frames.
 Decoding a single frame therefore needs the preceding frames back to the last keyframe, which takes special handling when querying data back from a catalog server.
-For more details about the different video types we support see our [video reference](../../logging-and-ingestion/media/video.md).
+For more details about the different video types we support see our [video reference](../../log/media/video.md).
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 This guide focuses on querying [`VideoStream`](../../reference/types/archetypes/video_stream.md) data from a catalog server,
 including how to decode individual frames and how to export entire streams to MP4 files.
@@ -55,7 +55,7 @@ The simplest way is to run [`rerun rrd optimize`](../../reference/cli.md#rerun-r
 
 ### Adding keyframe information as a layer
 
-If you cannot rewrite the recordings, analyze the video once to identify keyframes and register them as a separate [layer](../catalog/layers.md):
+If you cannot rewrite the recordings, analyze the video once to identify keyframes and register them as a separate [layer](../../catalog/layers.md):
 
 snippet: howto/query_video_keyframes[add_keyframe_column]
 
@@ -66,7 +66,7 @@ This preprocessing approach:
 - Writes the keyframe data to a separate RRD file
 - Registers it as a layer on the dataset
 
-Once registered, the layer data appears as additional columns when querying the dataset (see [catalog object model](../catalog/catalog-object-model.md#datasets) for details on datasets and layers).
+Once registered, the layer data appears as additional columns when querying the dataset (see [catalog object model](../../catalog/catalog-object-model.md#datasets) for details on datasets and layers).
 
 ### Querying with keyframe information
 

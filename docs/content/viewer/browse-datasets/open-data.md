@@ -12,12 +12,12 @@ Each recording in a dataset appears as a **segment**.
 ## Open a collection
 
 For local `.rrd` files, open several files or a folder in the Viewer using the file dialog, drag and drop, or the command line.
-The built-in Viewer catalog groups files with the same [application ID](../../logging-and-ingestion/data-model/recordings.md#application-ids) into a dataset.
+The built-in Viewer catalog groups files with the same [application ID](../../log/data-model/recordings.md#application-ids) into a dataset.
 Select it under **Viewer catalog** in the Sources panel.
-See [Opening files](../../logging-and-ingestion/import/open-any-file.md) for the available options and formats.
+See [Importing files](../../ingest/open-any-file.md) for the available options and formats.
 
 For recordings on a catalog server, connect the Viewer to the server and select a dataset in Sources.
-The dataset contains recordings registered as segments; see [Connect to a catalog](../../query-and-transform/catalog/get-data-out.md#viewing-datasets) and [register recordings](../../query-and-transform/catalog/catalog-object-model.md#datasets).
+The dataset contains recordings registered as segments; see [Connect to a catalog](../../catalog/get-data-out.md#viewing-datasets) and [register recordings](../../catalog/catalog-object-model.md#datasets).
 
 ## Find and compare segments
 
@@ -26,7 +26,7 @@ Each row represents a segment, and recording-level properties appear as columns.
 Choose which columns to show in the Columns menu, sort by a column, or use the filter bar to narrow the rows.
 Switch between table and cards to compare segments in the layout that suits your data, then open a segment to inspect its recording.
 
-See [Properties and segment tables](../../query-and-transform/catalog/properties-and-segments.md) for how properties become columns, and [Configure table layouts and segment previews](table-layout.md) for configuring cards and previews.
+See [Properties and segment tables](../../catalog/properties-and-segments.md) for how properties become columns, and [Configure table layouts and segment previews](table-layout.md) for configuring cards and previews.
 
 ## Explore the schema
 
@@ -37,7 +37,7 @@ Use it to find, for example, the camera, joint, or sensor data you can inspect o
 Search or browse the entity tree, then select an entity to see its components.
 You can also show the archetype and data type for each component as additional columns.
 The schema describes the data available across the dataset; an individual segment may contain only some of it.
-See [Dataset schema](../../query-and-transform/catalog/catalog-object-model.md#schema) for how the schema is built.
+See [Dataset schema](../../catalog/catalog-object-model.md#schema) for how the schema is built.
 
 <picture>
   <img src="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/full.png" alt="Dataset schema explorer showing an entity tree and the components of the selected entity">
@@ -65,7 +65,7 @@ You can change the selection later from an asset's menu using **Edit coverage**.
 </video>
 
 The Python SDK supports the same choices with `DatasetEntry.register_asset()`.
-See [Assets](../../query-and-transform/catalog/catalog-object-model.md#assets) for registration, storage, and limits.
+See [Assets](../../catalog/catalog-object-model.md#assets) for registration, storage, and limits.
 
 ## Collect recordings while streaming
 
@@ -74,4 +74,4 @@ Streaming alone does not create a dataset page for comparing recordings.
 
 To inspect data live and keep it for later analysis, stream to the Viewer and save to an `.rrd` file at the same time with multiple sinks.
 You can then open the saved files in the Viewer catalog or register them in a catalog dataset for querying and comparison.
-See [Multiple sinks](../../logging-and-ingestion/sinks-and-modes/sinks.md#multiple-sinks-tee-pattern) for an example.
+See [Multiple sinks](../../log/sinks-and-modes/sinks.md#multiple-sinks-tee-pattern) for an example.

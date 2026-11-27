@@ -115,15 +115,15 @@ exclude = [
   'file:///path/to/?$', # Placeholder in re_redap_browser's source field.
   'file:///path/to/file',
   'file:///tmp/.*', # Example paths in re_data_source's `file://` URL docs and tests.
-  'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/hub/bucket-configuration.md, not a real link.
+  'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/catalog/hub/bucket-configuration.md, not a real link.
   'file://foo',
-  'file://lifecycle.json', # AWS CLI `--lifecycle-configuration file://…` syntax in docs/content/hub/bucket-configuration.md, not a real link.
+  'file://lifecycle.json', # AWS CLI `--lifecycle-configuration file://…` syntax in docs/content/catalog/hub/bucket-configuration.md, not a real link.
   'file://localhost/.*', # Example paths in re_data_source's `file://` URL docs and tests.
   'file://path/to/file.rrd',
   'file://server/share.*', # Example UNC path in re_data_source's `file://` URL docs and tests.
   'file://somehost/file/path.rrd',
   'http://foo.*',
-  'http://remote-host:9090.*', # Placeholder host in docs/content/logging-and-ingestion/sinks-and-modes/remote-viewing.md.
+  'http://remote-host:9090.*', # Placeholder host in docs/content/log/sinks-and-modes/remote-viewing.md.
   'http://x/',
   'https://foo.*',
   'https://github\.com/rerun-io/rerun/n',

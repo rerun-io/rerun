@@ -9,10 +9,10 @@ You can browse rows, filter and sort columns, and open linked recordings for a c
 
 ## Bring a table into the Viewer
 
-Use [`send_table`](../../logging-and-ingestion/send-data/send-table.md) to send a table from code directly to a running Viewer.
+Use [`send_table`](../../log/send-data/send-table.md) to send a table from code directly to a running Viewer.
 It appears in Sources alongside recordings and is useful for exploring data in that session.
 
-To store query results or review data for later use, create or register a [catalog table](../../query-and-transform/catalog/catalog-tables.md).
+To store query results or review data for later use, create or register a [catalog table](../../catalog/catalog-tables.md).
 Connect the Viewer to its catalog server and select the table in Sources.
 
 ## Link rows to recordings

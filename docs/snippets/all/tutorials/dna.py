@@ -1,4 +1,4 @@
-"""The DNA-abacus example from the Log and Ingest tutorial."""
+"""The DNA-abacus example from the Log tutorial."""
 
 # region: imports
 from math import tau

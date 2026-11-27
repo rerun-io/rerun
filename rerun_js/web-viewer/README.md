@@ -57,7 +57,7 @@ Empty strings are valid if you size the canvas with your own CSS.
 
 `rrd` is a URL that points to one of:
 - A hosted `.rrd` file, such as <https://app.rerun.io/version/0.38.1/examples/dna.rrd>
-- A gRPC server started with the SDK's [`serve_grpc`](https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes#serve_grpc) API, such as `rerun+http://127.0.0.1:9876/proxy`
+- A gRPC server started with the SDK's [`serve_grpc`](https://rerun.io/docs/log/sinks-and-modes/operating-modes#serve_grpc) API, such as `rerun+http://127.0.0.1:9876/proxy`
 
 Without an `rrd`, the Viewer shows the same welcome screen as <https://app.rerun.io>.
 To hide it, set `hideWelcomeScreen: true` in the options of `viewer.start`.
@@ -100,7 +100,7 @@ See the [Rerun privacy policy](https://rerun.io/privacy) for what is collected.
 The package version matches the Rerun SDK version.
 The Viewer reads `.rrd` files written by the same SDK version, and by any older version from `0.23` on.
 A Viewer is not guaranteed to read data from a newer SDK, so keep the package at least as new as the SDK that writes your data.
-See [RRD file backwards compatibility](https://rerun.io/docs/logging-and-ingestion/tutorial#rrd-file-backwards-compatibility) for details.
+See [RRD file backwards compatibility](https://rerun.io/docs/log/tutorial#rrd-file-backwards-compatibility) for details.
 
 The package targets recent browsers.
 If your target browser does not support Wasm imports or top-level await, your bundler may need extra plugins.

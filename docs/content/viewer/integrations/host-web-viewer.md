@@ -34,7 +34,7 @@ Experiment trackers such as MLflow or Weights & Biases need nothing special: sto
 ## Give each user a link to a catalog server
 
 If you have many recordings, or want users to browse and query them, put them on a catalog server and link to each recording (segment) there.
-The open-source [`rerun server`](../../query-and-transform/catalog/oss-server.md) serves a directory of `.rrd` files; [Rerun Hub](../../hub.md) is the managed version.
+The open-source [`rerun server`](../../catalog/oss-server.md) serves a directory of `.rrd` files; [Rerun Hub](../../catalog/hub.md) is the managed version.
 
 [Generate segment URLs in dataframes](../../query-and-transform/dataframes/segment_url.md) shows how to create a link per segment.
 Put the segment URL, URL-encoded, in the `url` parameter of the web Viewer page.
@@ -50,4 +50,4 @@ If you serve the Viewer from your own domain, allow it with `rerun server --cors
 - Serve it yourself with `rerun --serve-web`, which hosts the web Viewer on port `9090` (`--web-viewer-port`).
 
 Use a Viewer version that can read your files.
-See [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility).
+See [RRD file backwards compatibility](../../log/tutorial.md#rrd-file-backwards-compatibility).

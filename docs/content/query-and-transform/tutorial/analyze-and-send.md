@@ -7,7 +7,7 @@ description: Compute a signal from exported dataframe data and send it back to t
 In the previous sections, we explored our data and exported it to a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and send it back to the viewer.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 ## Analyze the data
 
@@ -40,7 +40,7 @@ Here is how to send the data as a scalar:
 
 snippet: tutorials/data_out[send_columns]
 
-We use the [`rr.send_columns()`](../../logging-and-ingestion/send-data/send-columns.md) API to efficiently send the entire column of data in a single batch.
+We use the [`rr.send_columns()`](../../log/send-data/send-columns.md) API to efficiently send the entire column of data in a single batch.
 
 Next, let's send the same data as `Text` component:
 

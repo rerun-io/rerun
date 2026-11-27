@@ -11,7 +11,7 @@ A lens transforms data, while a [component mapping](../viewer/view-concepts/comp
 
 ## Motivation
 
-Rerun can load data with user-defined types into the viewer and into `.rrd` files, for example arbitrary Protobuf-based MCAP messages via [schema reflection](../logging-and-ingestion/import/mcap/message-formats.md#schema-reflection).
+Rerun can load data with user-defined types into the viewer and into `.rrd` files, for example arbitrary Protobuf-based MCAP messages via [schema reflection](../ingest/mcap/message-formats.md#schema-reflection).
 Lenses let you:
 
 1. Reroute components to different entities
@@ -19,7 +19,7 @@ Lenses let you:
 3. Wrangle the values stored in individual components
 
 Lenses are available in the Rust SDK using `LensesSink` or directly on a `Chunk` via the `ChunkExt` trait.
-In Python, Lenses can be applied to chunks directly or as a pipeline step via `LazyChunkStream.lenses()` in the [Chunk Processing API](../logging-and-ingestion/import/chunk-processing-api.md).
+In Python, Lenses can be applied to chunks directly or as a pipeline step via `LazyChunkStream.lenses()` in the [Chunk Processing API](../ingest/chunk-processing-api.md).
 
 Internally, Rerun uses lenses to implement large parts of our data importers, the MCAP importer is one example of this.
 

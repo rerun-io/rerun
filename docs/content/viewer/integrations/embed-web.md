@@ -20,7 +20,7 @@ To implement this, fill in the placeholders:
 - `RRD_URL` - The URL of the recording to display in the viewer, URL-encoded.
 - `RERUN_VERSION` - A Rerun release, such as `0.38.1`, or `latest` for the newest release.
 
-The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/latest/examples/dna.rrd`), or a connection to an SDK using our [`serve_grpc`](../../logging-and-ingestion/sinks-and-modes/operating-modes.md#serve_grpc) API (e.g. `rerun+http://localhost:9876/proxy`).
+The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/latest/examples/dna.rrd`), or a connection to an SDK using our [`serve_grpc`](../../log/sinks-and-modes/operating-modes.md#serve_grpc) API (e.g. `rerun+http://localhost:9876/proxy`).
 See [Open a file by URL](../extend/urls.md#open-a-file-by-url) for URL-encoding and the CORS headers that the file host must send.
 For gRPC connections, see [Connecting to a gRPC server from another origin](#connecting-to-a-grpc-server-from-another-origin-cors).
 
@@ -31,7 +31,7 @@ For instance:
 ```
 
 Choose a Viewer version that can read your recordings.
-RRD files written by Rerun 0.23 or later can be opened by any newer Viewer (see [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility)).
+RRD files written by Rerun 0.23 or later can be opened by any newer Viewer (see [RRD file backwards compatibility](../../log/tutorial.md#rrd-file-backwards-compatibility)).
 `latest` changes with every release, so pin a version if the files you show will not be regenerated.
 
 ### Matching the host page's theme
@@ -53,7 +53,7 @@ Various packages are available:
 
 > [!NOTE]
 > The package version matches the Rerun SDK version.
-> The Viewer in the package reads `.rrd` files written by the same SDK version, or by any older version from 0.23 on, as described in [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility).
+> The Viewer in the package reads `.rrd` files written by the same SDK version, or by any older version from 0.23 on, as described in [RRD file backwards compatibility](../../log/tutorial.md#rrd-file-backwards-compatibility).
 
 ### Basic example
 
@@ -85,7 +85,7 @@ The first argument for `start` determines the recordings to open in the viewer. 
 - a URL string to open a single recording
 - an array of strings to open multiple recordings
 
-Each URL can be either a file served over `http` or a connection to an SDK using our [`serve_grpc`](../../logging-and-ingestion/sinks-and-modes/operating-modes.md#serve_grpc) API. See [web-viewer-serve-example](https://github.com/rerun-io/web-viewer-serve-example) for a full example of how to log data from our Python SDK to an embedded Rerun Viewer.
+Each URL can be either a file served over `http` or a connection to an SDK using our [`serve_grpc`](../../log/sinks-and-modes/operating-modes.md#serve_grpc) API. See [web-viewer-serve-example](https://github.com/rerun-io/web-viewer-serve-example) for a full example of how to log data from our Python SDK to an embedded Rerun Viewer.
 
 ### Controlling the canvas
 

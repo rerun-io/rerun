@@ -70,7 +70,7 @@ rr.set_sinks(
 )
 ```
 
-See [Multiple sinks](../logging-and-ingestion/sinks-and-modes/sinks.md#multiple-sinks-tee-pattern) for more information.
+See [Multiple sinks](../log/sinks-and-modes/sinks.md#multiple-sinks-tee-pattern) for more information.
 
 ### Better MCAP file introspection via CLI and Python
 
@@ -122,13 +122,13 @@ They used to take the version of whichever store came first in a hash map, and f
 They now take the newest version across all the input stores.
 
 Available from 0.36.3.
-See [Optimize chunk count](../logging-and-ingestion/chunks-and-rrd/optimize-chunks.md) for what the optimization profiles do and when to reach for them.
+See [Optimize chunk count](../ingest/optimize-chunks.md) for what the optimization profiles do and when to reach for them.
 
 ## Breaking changes
 
 ### Entry-name restrictions now apply to application IDs
 
-To unify application IDs and [catalog entry names](../query-and-transform/catalog/catalog-object-model.md#catalog), the `EntryName` restrictions now also apply to [`ApplicationId`](../logging-and-ingestion/data-model/recordings.md#application-ids).
+To unify application IDs and [catalog entry names](../catalog/catalog-object-model.md#catalog), the `EntryName` restrictions now also apply to [`ApplicationId`](../log/data-model/recordings.md#application-ids).
 Rerun tries to migrate existing application IDs by replacing unsupported characters and dots with hyphens and adding a short hash suffix.
 Long application IDs are truncated and receive the same suffix.
 

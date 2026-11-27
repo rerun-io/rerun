@@ -7,7 +7,7 @@ description: Stream Rerun recordings into a PyTorch DataLoader without an export
 Train PyTorch models directly from a Rerun server.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../hub.md) ([how to switch](../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../catalog/hub.md) ([how to switch](../catalog/hub.md#run-the-examples-on-hub)).
 
 The experimental [`dataloader`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/) module exposes Rerun recordings as iterable or map-style PyTorch datasets, decoding compressed video (`h264`/`h265`/`av1`), images, and scalars on the fly. Random access, multi-worker prefetching, and [DDP](https://docs.pytorch.org/tutorials/beginner/ddp_series_theory.html) partitioning all work out of the box.
 
@@ -32,7 +32,7 @@ A [vision-language-action policy](https://en.wikipedia.org/wiki/Vision-language-
   <img src="https://rerun.io/blog/data-layer-tax/vla.jpg" alt="A single training sample for a VLA model with camera, task, state, and action columns aligned at the current row">
 </picture>
 
-The dataloader assembles those samples on demand from the per-recording [chunks](../logging-and-ingestion/chunks-and-rrd/chunks.md) in a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
+The dataloader assembles those samples on demand from the per-recording [chunks](../log/chunks-and-rrd/chunks.md) in a Rerun [catalog](../catalog/catalog-object-model.md#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
 
 ## How to use it
 
@@ -40,7 +40,7 @@ Install `rerun-sdk[dataloader]` to include the dataloader's dependencies, includ
 
 ### Register data with a catalog
 
-The dataloader reads from a Rerun catalog, so you must first register [RRDs](../logging-and-ingestion/data-model/recordings.md#storage-formats). Start the open-source server in a separate terminal:
+The dataloader reads from a Rerun catalog, so you must first register [RRDs](../log/data-model/recordings.md#storage-formats). Start the open-source server in a separate terminal:
 
 ```bash
 rerun server
@@ -340,7 +340,7 @@ The full [LeRobot ACT example](https://github.com/rerun-io/rerun/tree/main/examp
 
 ## Limitations
 
-For large-scale training (hundreds of recordings, multi-node), consider [Rerun Hub](../hub.md), which offers a higher-performance backend than the OSS catalog. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+For large-scale training (hundreds of recordings, multi-node), consider [Rerun Hub](../catalog/hub.md), which offers a higher-performance backend than the OSS catalog. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ## References
 

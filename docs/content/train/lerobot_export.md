@@ -8,7 +8,7 @@ Convert Rerun data into the training dataset version of your choice.
 This guide demonstrates how to use the OSS Rerun server to query recordings, align multi-rate sensor data to a common timeline, and export the result as a [LeRobot](https://github.com/huggingface/lerobot) dataset.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../hub.md) ([how to switch](../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../catalog/hub.md) ([how to switch](../catalog/hub.md#run-the-examples-on-hub)).
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ Each recording becomes a segment in the dataset, and each unique segment id beco
 
 snippet: howto/lerobot_export[setup]
 
-See [Catalog object model](../query-and-transform/catalog/catalog-object-model.md) for how recordings are represented on a catalog server.
+See [Catalog object model](../catalog/catalog-object-model.md) for how recordings are represented on a catalog server.
 
 ### Filter data for training
 
@@ -84,7 +84,7 @@ Convert the filtered data into a LeRobot episode.
 snippet: howto/lerobot_export[export_episode]
 
 The `convert_dataframe_to_episode` function performs time alignment and resamples the dataframe to the target frame rate. It generates a sequence of evenly spaced timestamps at the target frame rate and treats these as the canonical timesteps for the episode.
-For each timestep, it queries the most recent available value of every selected component using Rerun's [`latest-at`](../logging-and-ingestion/data-model/latest-at.md) semantics. If a stream has no sample exactly at that time, its last observed value is forward-filled.
+For each timestep, it queries the most recent available value of every selected component using Rerun's [`latest-at`](../log/data-model/latest-at.md) semantics. If a stream has no sample exactly at that time, its last observed value is forward-filled.
 
 The `finalize()` call completes the dataset by writing metadata and closing all files.
 
@@ -128,4 +128,4 @@ See the [`rerun-lerobot` repository](https://github.com/rerun-io/rerun-lerobot) 
 
 ## Related
 
-To go the other way — ingesting a LeRobot dataset — see [Loading a LeRobot dataset](../logging-and-ingestion/import/lerobot.md).
+To go the other way — ingesting a LeRobot dataset — see [Loading a LeRobot dataset](../ingest/lerobot.md).

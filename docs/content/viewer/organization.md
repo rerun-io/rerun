@@ -26,12 +26,12 @@ A table preview can use the same view classes as a recording, but the table and 
 
 ## From logged data to the Viewer
 
-The Sources panel brings together [live streams](../logging-and-ingestion/sinks-and-modes/operating-modes.md), [opened files](../logging-and-ingestion/import/open-any-file.md), catalog datasets, and [tables sent from code](../logging-and-ingestion/send-data/send-table.md).
+The Sources panel brings together [live streams](../log/sinks-and-modes/operating-modes.md), [opened files](../ingest/open-any-file.md), catalog datasets, and [tables sent from code](../log/send-data/send-table.md).
 As the diagram shows, a live stream or an imported file opens as a recording.
 A catalog holds datasets and tables; you can open a dataset segment or a linked table row as a recording, along with the dataset's assets.
-The built-in Viewer catalog groups local `.rrd` files by [application ID](../logging-and-ingestion/data-model/recordings.md#application-ids), so you can browse their segments together without starting a separate server.
+The built-in Viewer catalog groups local `.rrd` files by [application ID](../log/data-model/recordings.md#application-ids), so you can browse their segments together without starting a separate server.
 See [Browse recordings in a dataset](browse-datasets/open-data.md) to open and compare a collection, or [Browse and annotate tables](browse-datasets/tables.md) for arbitrary tabular data.
 
-A [recording](../logging-and-ingestion/data-model/recordings.md) contains data organized into [entities and components](../logging-and-ingestion/data-model/entity-component.md), with changes indexed by [timelines](../logging-and-ingestion/data-model/timelines.md).
+A [recording](../log/data-model/recordings.md) contains data organized into [entities and components](../log/data-model/entity-component.md), with changes indexed by [timelines](../log/data-model/timelines.md).
 Views display entities, visualizers read their components, and the timeline panel controls which point on a timeline you inspect.
 Learn more about [views and visualizers](view-concepts/customize-views.md).

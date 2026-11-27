@@ -9,7 +9,7 @@ To narrow down the content for further dataframe operations, you first create a 
 A view can filter on episode, time, and column name.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 The dependencies in this example are contained in `rerun-sdk[all]`.
 
