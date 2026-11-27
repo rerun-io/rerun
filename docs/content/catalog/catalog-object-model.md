@@ -51,13 +51,9 @@ Table entries model a single table of data.
 They use the [Arrow data model](https://arrow.apache.org/docs/format/Columnar.html), so a table is logically equivalent to an [Arrow table](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html).
 As a result, tables possess an [Arrow schema](https://arrow.apache.org/docs/python/generated/pyarrow.Schema.html).
 
-Tables support the following mutation operations through the Catalog SDK:
-- _append_: add new rows to the table
-- _overwrite_: replace the entire table with new data
-- _upsert_: replace existing rows (based on an index column) with new data
-
+Through the Catalog SDK, you can append rows to a table, overwrite it, or upsert rows based on an index column.
 Thanks to [DataFusion](https://datafusion.apache.org/), tables also support most database operations such as querying, filtering, joining, etc.
-See [Storing query results in catalog tables](catalog-tables.md) for a complete example using these operations.
+See [Catalog tables](catalog-tables.md) for how to create, read, and update them, and [Storing query results in a catalog table](store-query-results.md) for a complete example.
 
 ## Datasets
 

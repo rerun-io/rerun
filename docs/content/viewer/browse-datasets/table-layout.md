@@ -19,7 +19,7 @@ The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs
 
 You'll need the Rerun Python SDK and a running catalog server with an existing table or dataset.
 For an introduction to catalog tables, see [Table entries](../../catalog/catalog-object-model.md#table-entries).
-For creating and populating tables from query results, follow [Storing query results in catalog tables](../../catalog/catalog-tables.md).
+For creating and populating tables from query results, follow [Storing query results in a catalog table](../../catalog/store-query-results.md).
 
 The example used here creates `my_table` with a `recording_uri` for each segment and `uuid` and `current_task` columns copied from DROID's episode properties.
 It also adds an `id` row key and a boolean `reviewed` column, used for [editable flags](#editing-columns).

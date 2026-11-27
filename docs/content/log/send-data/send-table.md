@@ -9,7 +9,7 @@ description: Send tables as Arrow record batches and explore them in the Viewer
 
 This page shows how to send tabular data (dataframes encoded as Arrow record batches) to the Rerun Viewer, where you can view and interact with it.
 These tables are listed in the Sources panel, next to your recordings.
-To persist a table on a catalog server instead, see [Storing query results in catalog tables](../../catalog/catalog-tables.md).
+To persist a table on a catalog server instead, see [Catalog tables](../../catalog/catalog-tables.md).
 To log a table as part of a recording, use [`rr.send_dataframe`](send-dataframe.md).
 
 ## Overview
