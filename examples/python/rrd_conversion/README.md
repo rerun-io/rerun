@@ -13,7 +13,7 @@ These come in many different file formats, yet you can still use Rerun by conver
 In `.rrd`, all sensor streams of an episode share the same timelines, so you can view and query them in a single consistent context.
 You can also append new data, such as annotations, to an existing dataset and reuse the same recordings for downstream processing and training pipelines.
 
-We've converted several open-source datasets into Rerun's [`.rrd` format](https://rerun.io/docs/logging-and-ingestion/chunks-and-rrd) so you can explore them in Rerun.
+We've converted several open-source datasets into Rerun's [`.rrd` format](https://rerun.io/docs/log/chunks-and-rrd) so you can explore them in Rerun.
 
 In this example, we share:
 
@@ -85,7 +85,7 @@ Checks like these help you clean up a dataset before training: you can find `mis
 Most sensors on a humanoid robot record local information, such as a joint angle or a wrist camera view, and many parts of the robot's body move relative to one another.
 Robots can learn from these raw recordings, but humans understand humanoid motion much more easily when it's shown in 3D.
 
-Rerun's [`rr.urdf` module](https://rerun.io/docs/logging-and-ingestion/import/urdf) and the [robot model skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-robot-model/SKILL.md) help put the different pieces together into a coherent 3D view.
+Rerun's [`rr.urdf` module](https://rerun.io/docs/ingest/urdf) and the [robot model skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-robot-model/SKILL.md) help put the different pieces together into a coherent 3D view.
 Have a look at the G1 in action, and notice how much easier it is to follow the 3D motion than to track the state of every joint.
 
 <video width="100%" autoplay loop muted controls>

@@ -55,7 +55,7 @@ namespace rerun {
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
-    /// See [SDK Micro Batching](https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching) for
+    /// See [SDK Micro Batching](https://www.rerun.io/docs/log/sinks-and-modes/micro-batching) for
     /// more information.
     ///
     /// The data will be timestamped automatically based on the `RecordingStream`'s
@@ -399,7 +399,7 @@ namespace rerun {
         /// This is the main entry point for logging data to rerun. It can be used to log anything
         /// that implements the `AsComponents<T>` trait.
         ///
-        /// When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path)
+        /// When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/log/data-model/entity-path)
         /// for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
         /// itself and should not be used for logging user data. This is where Rerun will log additional information
         /// such as properties and warnings.
@@ -621,7 +621,7 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
+        /// See <https://www.rerun.io/docs/ingest/importers/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -646,7 +646,7 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
+        /// See <https://www.rerun.io/docs/ingest/importers/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -669,7 +669,7 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
+        /// See <https://www.rerun.io/docs/ingest/importers/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
@@ -703,7 +703,7 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
+        /// See <https://www.rerun.io/docs/ingest/importers/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.

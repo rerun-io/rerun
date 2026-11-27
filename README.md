@@ -17,7 +17,7 @@
 
 Log, query, visualize, and stream to training on shared columnar storage built for multimodal data.
 
-**What it does:** Rerun ingests multi-rate, multimodal data (images, point clouds, transforms, time series, joint states, video) from many sources and formats (robot logs, human-data rigs, sim, web video; MCAP, rrd, LeRobot). The built-in viewer renders everything in sync, in realtime: scrub episodes, compare sensors side-by-side, watch CV pipelines run live. The same data is queryable with [dataframes](https://rerun.io/docs/query-and-transform/catalog/get-data-out) or SQL, and streams directly into training. Built in Rust on column-chunk storage purpose-built for multi-rate physical data. SDKs in Python, Rust, and C++.
+**What it does:** Rerun ingests multi-rate, multimodal data (images, point clouds, transforms, time series, joint states, video) from many sources and formats (robot logs, human-data rigs, sim, web video; MCAP, rrd, LeRobot). The built-in viewer renders everything in sync, in realtime: scrub episodes, compare sensors side-by-side, watch CV pipelines run live. The same data is queryable with [dataframes](https://rerun.io/docs/catalog/get-data-out) or SQL, and streams directly into training. Built in Rust on column-chunk storage purpose-built for multi-rate physical data. SDKs in Python, Rust, and C++.
 
 **Quickstart:** `pip install rerun-sdk` — log your first multimodal data and see it in the viewer in under 2 minutes.
 
@@ -61,9 +61,9 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </picture>
 
 ## Getting started
-* [**C++**](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
-* [**Python**](https://www.rerun.io/docs/logging-and-ingestion/tutorial): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
-* [**Rust**](https://www.rerun.io/docs/logging-and-ingestion/tutorial): `cargo add rerun`
+* [**C++**](https://www.rerun.io/docs/log/tutorial)
+* [**Python**](https://www.rerun.io/docs/log/tutorial): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
+* [**Rust**](https://www.rerun.io/docs/log/tutorial): `cargo add rerun`
 
 ### Installing the Rerun Viewer binary
 To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
@@ -146,7 +146,7 @@ Of course, Rerun is useful for much more than just robots. Any time you have any
 
 When coming from pure visualization tools like [RViz](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/RViz/RViz-Main.html), you might be used to seeing the latest data only.
 Rerun is more than a pure visualization solution, it provides a platform for multimodal data with a powerful visualizer, storage model and query engine (see also the [architecture overview](https://rerun.io/docs/getting-started/how-does-rerun-work)).
-In robotics, you can use Rerun e.g. to record test runs, manage and query training data, visually debug live streams or recordings (also from third-party formats like [MCAP](https://rerun.io/docs/logging-and-ingestion/import/mcap/working-with-mcap)) and much more.
+In robotics, you can use Rerun e.g. to record test runs, manage and query training data, visually debug live streams or recordings (also from third-party formats like [MCAP](https://rerun.io/docs/ingest/mcap/working-with-mcap)) and much more.
 
 So while Rerun makes your data streams visualizable in the viewer, integrating Rerun logging into your robotics applications also opens up the door for leveraging Rerun's broader capabilities.
 

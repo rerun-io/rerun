@@ -6,7 +6,7 @@ description: Install the standalone Rerun Viewer and match its version to your S
 
 The [Viewer](../../viewer/organization.md) can be installed independent of the library language you're using.
 Make sure that your library version matches the version of the Viewer you're using.
-An older Viewer may not be able to read data from a newer SDK, see [RRD format stability](../../logging-and-ingestion/chunks-and-rrd/rrd-format.md#stability).
+An older Viewer may not be able to read data from a newer SDK, see [RRD format stability](../../log/chunks-and-rrd/rrd-format.md#stability).
 
 There are many ways to install the viewer. Please pick whatever works best for your setup:
 
@@ -26,4 +26,4 @@ You'll be welcomed by an overview page that allows you to jump into some example
 
 If you're facing any difficulties, don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose) or [join the Discord server](https://discord.gg/Gcm8BbTaAj).
 
-The Rerun Viewer has built-in support for opening many kinds of files, and can be [extended to open any other file type](../../logging-and-ingestion/import/open-any-file.md) without needing to modify the Rerun codebase itself.
+The Rerun Viewer has built-in support for opening many kinds of files, and can be [extended to open any other file type](../../ingest/open-any-file.md) without needing to modify the Rerun codebase itself.

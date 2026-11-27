@@ -89,6 +89,12 @@ pub enum ViewSystemExecutionError {
     #[error("Error accessing map view tiles.")]
     MapTilesError,
 
+    #[error("Invalid URL: {err}\nURL: {url:?}")]
+    InvalidUrl {
+        err: Arc<dyn std::error::Error + Send + Sync>,
+        url: String,
+    },
+
     #[error(transparent)]
     GpuTransferError(#[from] re_renderer::CpuWriteGpuReadError),
 

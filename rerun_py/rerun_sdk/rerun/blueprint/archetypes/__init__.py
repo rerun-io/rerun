@@ -49,6 +49,7 @@ from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
 from .visual_bounds2d import VisualBounds2D
 from .visualizer_instruction import VisualizerInstruction
+from .web_view_content import WebViewContent
 
 __all__ = [
     "ActiveVisualizers",
@@ -98,4 +99,5 @@ __all__ = [
     "VisibleTimeRanges",
     "VisualBounds2D",
     "VisualizerInstruction",
+    "WebViewContent",
 ]

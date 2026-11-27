@@ -1,4 +1,4 @@
-//! The DNA-abacus example from the Log and Ingest tutorial.
+//! The DNA-abacus example from the Log tutorial.
 
 // region: imports
 use std::f32::consts::TAU;

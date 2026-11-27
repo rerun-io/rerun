@@ -316,10 +316,11 @@ mod tests {
             db.add_chunk(&Arc::new(chunk)).unwrap();
         }
 
-        let read = re_arrow_json::json_from_store(
-            db.storage_engine().store(),
-            &LatestAtQuery::latest(re_viewer_context::blueprint_timeline()),
+        let read = re_arrow_json::json_from_components(
             reflection,
+            db.storage_engine().latest_at_all(&LatestAtQuery::latest(
+                re_viewer_context::blueprint_timeline(),
+            )),
         );
         write(&mut db, read).unwrap();
     }
@@ -385,10 +386,11 @@ mod tests {
                     }
                 }
                 // Read the stored state to distinguish preservation from cleared omissions.
-                let actual = re_arrow_json::json_from_store(
-                    db.storage_engine().store(),
-                    &LatestAtQuery::latest(re_viewer_context::blueprint_timeline()),
+                let actual = re_arrow_json::json_from_components(
                     reflection,
+                    db.storage_engine().latest_at_all(&LatestAtQuery::latest(
+                        re_viewer_context::blueprint_timeline(),
+                    )),
                 );
                 if mode == BlueprintUpdateMode::Partial {
                     assert_eq!(actual, initial);
@@ -476,10 +478,11 @@ mod tests {
                 db.add_chunk(&Arc::new(chunk)).unwrap();
             }
             // Query the stored result to account for cleared fields and row ordering.
-            let output = re_arrow_json::json_from_store(
-                db.storage_engine().store(),
-                &LatestAtQuery::latest(TimelineName::from_static_str("blueprint")),
+            let output = re_arrow_json::json_from_components(
                 reflection,
+                db.storage_engine().latest_at_all(&LatestAtQuery::latest(
+                    TimelineName::from_static_str("blueprint"),
+                )),
             );
             let actual = &output["/viewport"]["ViewportBlueprint"];
             assert_eq!(actual["root_container"], viewport["root_container"]);

@@ -88,6 +88,8 @@ mod visible_time_ranges;
 mod visual_bounds2d;
 #[path = "visualizer_instruction.def.rs"]
 mod visualizer_instruction;
+#[path = "web_view_content.def.rs"]
+mod web_view_content;
 
 pub use self::active_visualizers::*;
 pub use self::audio_playback::*;
@@ -133,3 +135,4 @@ pub use self::viewport_blueprint::*;
 pub use self::visible_time_ranges::*;
 pub use self::visual_bounds2d::*;
 pub use self::visualizer_instruction::*;
+pub use self::web_view_content::*;

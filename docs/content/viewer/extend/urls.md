@@ -44,7 +44,7 @@ https://rerun.io/viewer?url=https%3A%2F%2Fexample.com%2Frecording.rrd
 ```
 
 `.rrd` recordings and `.rbl` blueprints are streamed in as they download.
-Other file types that the Viewer can [import](../../logging-and-ingestion/import/importers/overview.md) are downloaded first, then loaded.
+Other file types that the Viewer can [import](../../ingest/importers/overview.md) are downloaded first, then loaded.
 Repeat the `url` parameter to open several files at once, for example a recording and its blueprint.
 
 The native Viewer takes the same URLs as arguments: `rerun https://example.com/recording.rrd`.

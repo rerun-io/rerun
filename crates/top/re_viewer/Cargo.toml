@@ -61,6 +61,12 @@ audio = ["re_audio/output", "dep:re_view_audio"]
 ## Enable the map view
 map_view = ["dep:re_view_map"]
 
+## Enable the web view, which shows web pages.
+##
+## Only the web can show pages so far.
+## The app must create a `re_viewer::WebViewRuntime` early in `main`.
+webview = ["dep:re_view_web"]
+
 ## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).
 ##
 ## This only works on native.
@@ -148,6 +154,7 @@ re_viewport.workspace = true
 # Internal (optional):
 re_view_audio = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
+re_view_web = { workspace = true, optional = true }
 
 # Test dependencies (optional):
 tokio = { workspace = true, optional = true }

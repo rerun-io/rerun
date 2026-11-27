@@ -155,7 +155,7 @@ The supported data types are:
 
 For background on how visualizers resolve component values, see [Customize views](../view-concepts/customize-views.md).
 For styling and axes, see [Customize plots](time-series.md#customize-plots).
-For how to log the data, see [Logging custom data](../../logging-and-ingestion/send-data/custom-data.md#logging-custom-data).
+For how to log the data, see [Logging custom data](../../log/send-data/custom-data.md#logging-custom-data).
 [Component mappings](../view-concepts/component-mappings.md) has scalar examples of [selectors for nested data](../view-concepts/component-mappings.md#select-nested-fields) and [default values](../view-concepts/customize-views.md#set-a-default-for-a-view).
 
 For the mapping and drag-and-drop steps, see [Remap your data](../view-concepts/component-mappings.md).

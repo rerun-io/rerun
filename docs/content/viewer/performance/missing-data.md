@@ -14,7 +14,7 @@ If you log with `rr.set_time("frame", sequence=…)` but the Viewer shows anothe
 By default, the SDK also logs all data on the automatic `log_time` timeline, so `log_time` shows it unless you turned that timeline off.
 Pick the right timeline in the timeline panel.
 Static data is shown on every timeline.
-See [timelines](../../logging-and-ingestion/data-model/timelines.md).
+See [timelines](../../log/data-model/timelines.md).
 
 ## The time cursor is before the first data point
 
@@ -40,7 +40,7 @@ Check that it is visible.
 
 In 2D and 3D views, an entity whose transform frame isn't connected to the view's origin can't be drawn.
 The view shows an error for it in the selection panel.
-See [Debugging transform trees](../../logging-and-ingestion/data-model/transforms.md#debugging-transform-trees).
+See [Debugging transform trees](../../log/data-model/transforms.md#debugging-transform-trees).
 
 Points that are too small to see, or 2D elements hidden behind others, are covered in [Rendering issues](../../getting-started/install-rerun/troubleshooting.md#rendering-issues).
 
@@ -68,11 +68,11 @@ See [Limit the Viewer's memory usage](limit-ram.md).
 
 Data with a different application ID or recording ID goes to a separate recording.
 Check the recording panel on the left and select the right recording.
-If several processes log to the same recording, they need the same application ID and recording ID, see [Share recordings across multiple processes](../../logging-and-ingestion/sinks-and-modes/shared-recordings.md).
+If several processes log to the same recording, they need the same application ID and recording ID, see [Share recordings across multiple processes](../../log/sinks-and-modes/shared-recordings.md).
 
 ## Old data stays visible
 
-Views use [latest-at semantics](../../logging-and-ingestion/data-model/latest-at.md): a value remains visible until another value is logged for that entity.
+Views use [latest-at semantics](../../log/data-model/latest-at.md): a value remains visible until another value is logged for that entity.
 Log [`Clear`](../../reference/types/archetypes/clear.md) to remove it at a given time.
 Static data is not on a timeline and is unaffected by visible time ranges.
 

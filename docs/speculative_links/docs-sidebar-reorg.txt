@@ -1,0 +1,2 @@
+# The sidebar reorganization moves pages into `log/`, `ingest/` and `catalog/`; their new URLs go live with the next docs release.
+^https://(www\.)?rerun\.io/docs/(log|ingest|catalog)(/|#|$)

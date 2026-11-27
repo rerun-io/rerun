@@ -46,7 +46,7 @@ Keypoints are currently only applicable to 2D and 3D points.
 
 ### Logging an annotation context
 
-Annotation Context is typically logged as [static](../../logging-and-ingestion/data-model/timelines.md#static-data) data, but can change over time if needed.
+Annotation Context is typically logged as [static](../../log/data-model/timelines.md#static-data) data, but can change over time if needed.
 
 The Annotation Context is defined as a list of Class Descriptions that define how classes are styled
 (as well as optional keypoint style and connection).
@@ -63,7 +63,7 @@ snippet: tutorials/annotation_context
 ## Affected entities
 
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
-the nearest ancestor in the [entity path hierarchy](../../logging-and-ingestion/data-model/entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
+the nearest ancestor in the [entity path hierarchy](../../log/data-model/entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
 
 For fields that support annotation context, the Viewer automatically uses recorded values when available, otherwise annotation context when Class IDs or Keypoint IDs are present.
 You can also select annotation context explicitly with a [visualizer component mapping](component-mappings.md).

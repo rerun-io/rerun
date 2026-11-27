@@ -3717,6 +3717,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_webview"
+version = "0.1.0"
+source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#ccf2d419662450feac383195554703e061b0e18e"
+dependencies = [
+ "cfg_aliases",
+ "eframe",
+ "egui",
+ "js-sys",
+ "log",
+ "url",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "ehttp"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11728,6 +11743,7 @@ dependencies = [
  "nohash-hasher",
  "rayon",
  "re_arrow_util",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_entity_db",
@@ -12106,6 +12122,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_view_web"
+version = "0.45.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_webview",
+ "re_sdk_types",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "re_workspace_hack",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "re_viewer"
 version = "0.45.0-alpha.1+dev"
 dependencies = [
@@ -12209,6 +12240,7 @@ dependencies = [
  "re_view_text_document",
  "re_view_text_log",
  "re_view_time_series",
+ "re_view_web",
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",

@@ -103,8 +103,8 @@ All values are a rolling average over the last second of incoming data.
 
 | Dominant step                      | What to try                                                                                                              |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `batch creation`                   | Lower the [micro-batching](../../logging-and-ingestion/sinks-and-modes/micro-batching.md) flush thresholds, in particular `RERUN_FLUSH_TICK_SECS` |
-| `gRPC sink`, `encode and transmit` | Increase the [batch sizes](../../logging-and-ingestion/sinks-and-modes/micro-batching.md) for larger chunks and less overhead                     |
+| `batch creation`                   | Lower the [micro-batching](../../log/sinks-and-modes/micro-batching.md) flush thresholds, in particular `RERUN_FLUSH_TICK_SECS` |
+| `gRPC sink`, `encode and transmit` | Increase the [batch sizes](../../log/sinks-and-modes/micro-batching.md) for larger chunks and less overhead                     |
 | `receive and decode`               | Send less data, for instance by compressing images                                                                       |
 | `ingest into viewer`               | The Viewer is the bottleneck: hide all views to check whether it is the rendering that is slowing down ingestion          |
 
@@ -123,10 +123,10 @@ Things to try on the data side:
 
 * Log fewer, larger batches.
   One `Points3D` with 10 000 points is much cheaper than 10 000 entities with one point each.
-* Use [`send_columns`](../../logging-and-ingestion/send-data/send-columns.md) to send many time points of the same data in one call.
+* Use [`send_columns`](../../log/send-data/send-columns.md) to send many time points of the same data in one call.
 * Send compressed images with `EncodedImage`, or video with `VideoStream`, instead of raw `Image` data.
 * Log at a lower rate, for example only every *n*-th frame of a high-rate sensor.
-* Tune the [micro-batching](../../logging-and-ingestion/sinks-and-modes/micro-batching.md) settings.
+* Tune the [micro-batching](../../log/sinks-and-modes/micro-batching.md) settings.
   Larger batches mean less overhead per log call.
 
 Things to try on the Viewer side:

@@ -32,13 +32,13 @@ The example covers the four parts of collecting an episode:
 1. [Record](#recording-on-the-robot) on the robot, to a file and to the bridge.
 2. [Stream](#streaming-to-the-operator) to the operator's Viewer, optimizing for low latency over fidelity.
 3. [Drive](#driving-the-robot) with commands that go back through the same LiveKit room.
-4. [Register](#both-ends-in-one-segment) both ends as two [layers](https://rerun.io/docs/query-and-transform/catalog/layers) of one segment in a [catalog](https://rerun.io/docs/query-and-transform/catalog/oss-server).
+4. [Register](#both-ends-in-one-segment) both ends as two [layers](https://rerun.io/docs/catalog/layers) of one segment in a [catalog](https://rerun.io/docs/catalog/oss-server).
 
 ## Recording on the robot
 
-The robot logs one stream to [two sinks](https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/sinks#multiple-sinks-tee-pattern): an `.rrd` file with every message as it was logged, and a Rerun proxy (`rerun --serve-grpc`) that the bridge reads from.
+The robot logs one stream to [two sinks](https://rerun.io/docs/log/sinks-and-modes/sinks#multiple-sinks-tee-pattern): an `.rrd` file with every message as it was logged, and a Rerun proxy (`rerun --serve-grpc`) that the bridge reads from.
 
-Rerun's [MJCF importer](https://rerun.io/docs/logging-and-ingestion/import/mjcf) reads the same model file that MuJoCo simulates, so the robot in the Viewer is the robot in the simulation.
+Rerun's [MJCF importer](https://rerun.io/docs/ingest/mjcf) reads the same model file that MuJoCo simulates, so the robot in the Viewer is the robot in the simulation.
 
 ## Streaming to the operator
 

@@ -302,5 +302,5 @@ Rerun catalog or Hub, unless explicitly asked otherwise.
 
 - End-to-end example (MCAP + URDF + JSON sidecar, lenses, merge, optimize):
   `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing`
-- Docs: `https://rerun.io/docs/logging-and-ingestion/import/chunk-processing-api`,
+- Docs: `https://rerun.io/docs/ingest/chunk-processing-api`,
   `https://rerun.io/docs/query-and-transform/lenses`

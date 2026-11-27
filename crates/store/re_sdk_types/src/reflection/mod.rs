@@ -2479,7 +2479,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoCodec as Component>::name(),
             ComponentTypeReflection {
-                docstring_md: "The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/log/media/video).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: VideoCodec::arrow_data_type(),
@@ -6484,6 +6484,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 ],
             },
         ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.WebViewContent"),
+            ArchetypeReflection {
+                display_name: "Web view content",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "url",
+                        display_name: "Url",
+                        component_type: "rerun.components.Text".into(),
+                        docstring_md: "The URL of the page to load.\n\nTakes precedence over `html`.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "html",
+                        display_name: "Html",
+                        component_type: "rerun.components.Text".into(),
+                        docstring_md: "The page, as raw HTML.\n\nOn the web, the page runs in a sandboxed `<iframe>` with an opaque origin,\nand so does every page it navigates to.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
     ];
     ArchetypeReflectionMap::from_iter(array)
 }
@@ -6509,6 +6533,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 property_archetypes: vec![
                     ArchetypeName::from("rerun.blueprint.archetypes.AudioPlayback")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6529,6 +6554,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.PlotLegend"),
                     ArchetypeName::from("rerun.blueprint.archetypes.PlotBackground")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6543,6 +6569,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 property_archetypes: vec![
                     ArchetypeName::from("rerun.blueprint.archetypes.DataframeQuery")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6569,6 +6596,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.ForceCollisionRadius"),
                     ArchetypeName::from("rerun.blueprint.archetypes.ForceCenter")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6590,6 +6618,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.MapZoom"),
                     ArchetypeName::from("rerun.blueprint.archetypes.MapBackground")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6606,6 +6635,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.RawDataRows"),
                     ArchetypeName::from("rerun.blueprint.archetypes.RawDataViewFormat")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6656,6 +6686,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.Rulers"),
                     ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6711,6 +6742,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.EyeControls3D"),
                     ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6732,6 +6764,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.TimeAxis"),
                     ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6751,6 +6784,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.TensorViewFit"),
                     ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6767,6 +6801,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 property_archetypes: vec![
                     ArchetypeName::from("rerun.blueprint.archetypes.TextDocumentFormat")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6786,6 +6821,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.TextLogRows"),
                     ArchetypeName::from("rerun.blueprint.archetypes.TextLogFormat")
                 ],
+                experimental: false,
             },
         ),
         (
@@ -6814,6 +6850,22 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.PlotInteraction"),
                     ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges")
                 ],
+                experimental: false,
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("Web"),
+            ViewReflection {
+                description: "A view that shows a web page.".to_owned(),
+                keywords: vec![
+                    "web".to_owned(), "browser".to_owned(), "page".to_owned(), "url"
+                    .to_owned(), "html".to_owned(), "iframe".to_owned()
+                ],
+                applicability: ViewApplicability::Archetypes(vec![]),
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.WebViewContent")
+                ],
+                experimental: true,
             },
         ),
     ];

@@ -66,7 +66,7 @@ impl IntroItem {
             Self::DocItem {
                 icon: &SEND_DATA_ICON,
                 title: "Send data in",
-                url: "https://rerun.io/docs/logging-and-ingestion/tutorial",
+                url: "https://rerun.io/docs/log/tutorial",
                 body: "Ingest multi-rate, multimodal data from robot logs, sensors, simulation, or video.",
             },
             Self::DocItem {

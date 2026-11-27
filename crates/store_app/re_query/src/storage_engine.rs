@@ -1,9 +1,17 @@
+use arrow::array::ArrayRef;
 use parking_lot::{ArcRwLockReadGuard, RwLockReadGuard};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery};
+use re_log_types::EntityPath;
+use re_types_core::ComponentDescriptor;
 
 use crate::{QueryCache, QueryCacheHandle};
 
 // ---
+
+/// A component's latest value may be in a chunk that is not loaded.
+#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[error("its latest value may be in a chunk that is not loaded yet")]
+pub struct LatestValueNotLoaded;
 
 // TODO(cmc): This whole business should really be defined elsewhere, but for now this the best we
 // have, and it's really not worth adding yet another crate just for this.
@@ -165,6 +173,41 @@ impl StorageEngineReadGuard<'_> {
     #[inline]
     pub fn cache(&self) -> &QueryCache {
         &self.cache
+    }
+
+    /// The latest value of every component of every entity at `query`, in no particular order.
+    ///
+    /// `Clear`s are applied, as in [`QueryCache::latest_at`]: a value they shadow is left out.
+    /// So is a component with no value at `query`, unless a chunk that may hold its value,
+    /// or a `Clear` that may shadow it, is not loaded.
+    pub fn latest_at_all(
+        &self,
+        query: &LatestAtQuery,
+    ) -> Vec<(
+        EntityPath,
+        ComponentDescriptor,
+        Result<ArrayRef, LatestValueNotLoaded>,
+    )> {
+        re_tracing::profile_function!();
+
+        let mut values = Vec::new();
+        for (entity_path, entry) in self.schema().all_column_metadata() {
+            let component = entry.descriptor.component;
+            // One query per component, so that `is_partial` is about this component alone.
+            let results =
+                self.cache
+                    .latest_at(ChunkTrackingMode::Report, query, entity_path, [component]);
+            let value = if let Some(batch) = results.component_batch_raw(component) {
+                Ok(batch)
+            } else if results.is_partial() {
+                Err(LatestValueNotLoaded)
+            } else {
+                // Cleared, or not yet logged at the query time
+                continue;
+            };
+            values.push((entity_path.clone(), entry.descriptor.clone(), value));
+        }
+        values
     }
 }
 

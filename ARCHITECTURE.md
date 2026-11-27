@@ -172,6 +172,7 @@ A sibling of `crates/panels`: neither depends on the other.
 | re_view_text_document  | A simple view that shows a single text box.                                 |
 | re_view_text_log       | A view that shows text entries in a table and scrolls with the active time. |
 | re_view_time_series    | A view that shows plots over Rerun timelines.                               |
+| re_view_web            | A view that shows a web page.                                               |
 
 ### Panels
 

@@ -7,7 +7,7 @@ description: Order, rename, or hide columns and show previews in catalog tables
 Use table blueprints to order, rename, or hide columns, embed segment previews, and display rows as cards in catalog tables and dataset segment tables.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 >
 > The `rerun.blueprint.table` API is experimental and may change in future releases.
 
@@ -18,8 +18,8 @@ The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs
 ## Prerequisites
 
 You'll need the Rerun Python SDK and a running catalog server with an existing table or dataset.
-For an introduction to catalog tables, see [Table entries](../../query-and-transform/catalog/catalog-object-model.md#table-entries).
-For creating and populating tables from query results, follow [Storing query results in catalog tables](../../query-and-transform/catalog/catalog-tables.md).
+For an introduction to catalog tables, see [Table entries](../../catalog/catalog-object-model.md#table-entries).
+For creating and populating tables from query results, follow [Storing query results in catalog tables](../../catalog/catalog-tables.md).
 
 The example used here creates `my_table` with a `recording_uri` for each segment and `uuid` and `current_task` columns copied from DROID's episode properties.
 It also adds an `id` row key and a boolean `reviewed` column, used for [editable flags](#editing-columns).
@@ -108,7 +108,7 @@ Registering under a name another blueprint already has raises `AlreadyExistsErro
 To make a column editable, configure it with `editable=True` and add it to the layout's `columns` or `fields` list.
 A cell can be edited when its component type has an editor in the Viewer.
 A column is also editable without a blueprint when its field in the table schema is created with `editable=True`, e.g. `rr.components.Flag.table_field("reviewed", editable=True)`.
-See [Give columns semantic meaning](../../query-and-transform/catalog/catalog-tables.md#give-columns-semantic-meaning).
+See [Give columns semantic meaning](../../catalog/catalog-tables.md#give-columns-semantic-meaning).
 
 To edit the boolean `reviewed` column as flag buttons, use `column_type=rr.components.Flag`.
 Card layouts show the first flag field in the card header:
@@ -128,7 +128,7 @@ To edit a string `notes` column as text, use `column_type=rr.components.Text`:
 snippet: howto/visualization/configure_table_blueprints[text]
 
 Editing requires write access to a catalog table with a row-key column marked with `rr.SORBET_IS_TABLE_INDEX` metadata.
-The Viewer uses this key to persist edits. See [Update a table](../../query-and-transform/catalog/catalog-tables.md#update-a-table) for details.
+The Viewer uses this key to persist edits. See [Update a table](../../catalog/catalog-tables.md#update-a-table) for details.
 Editing is currently not supported on dataset segment tables.
 
 ### Filtering rows
@@ -158,7 +158,7 @@ It filters the table like any other filter, and the Viewer shows it as SQL text.
 ## Configuring a dataset's segment table
 
 Dataset segment tables use the same blueprint API.
-The Viewer provides a `"recording link"` column for previews and card links; metadata columns use [property names](../../query-and-transform/catalog/properties-and-segments.md), such as DROID's `"property:episode:uuid"`.
+The Viewer provides a `"recording link"` column for previews and card links; metadata columns use [property names](../../catalog/properties-and-segments.md), such as DROID's `"property:episode:uuid"`.
 Register the saved blueprint with `register_table_blueprint`:
 
 snippet: howto/visualization/configure_table_blueprints[register_segments]
@@ -206,5 +206,5 @@ For more complete examples, including setup and usage instructions, see:
 - [Table blueprints](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints/README.md): multiple preview views (3D, 2D, and plots), editable flags, and registration on local or remote catalogs.
 - [Table grid with flags](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_grid_with_flags/README.md): a standalone editable table demonstrating row keys and persisted flag updates, without segment previews.
 
-For more about catalog entries and their blueprints, see the [Catalog object model](../../query-and-transform/catalog/catalog-object-model.md).
+For more about catalog entries and their blueprints, see the [Catalog object model](../../catalog/catalog-object-model.md).
 For the available configuration options, see the [Python table blueprint API reference](https://ref.rerun.io/docs/python/stable/blueprint_table/).

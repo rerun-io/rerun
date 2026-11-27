@@ -50,6 +50,13 @@ pub enum DocsAttr {
     #[strum(serialize = "attr.docs.archetype_agnostic")]
     ArchetypeAgnostic,
 
+    /// The view shows no logged data, only what its blueprint holds.
+    ///
+    /// Such a view needs no archetype to list it in `attr.docs.view_types`, and its docs page has
+    /// no "Visualized archetypes" section. It is mutually exclusive with `archetype_agnostic`.
+    #[strum(serialize = "attr.docs.no_data")]
+    NoData,
+
     /// The heading the type is listed under, e.g. `Spatial 3D`.
     #[strum(serialize = "attr.docs.category")]
     Category,
@@ -85,6 +92,10 @@ pub enum RerunAttr {
     /// The version it was deprecated in; required when [`State`](Self::State) is `deprecated`.
     #[strum(serialize = "attr.rerun.deprecated_since")]
     DeprecatedSince,
+
+    /// The view is experimental, so the viewer marks it as such where users pick a view.
+    #[strum(serialize = "attr.rerun.experimental")]
+    Experimental,
 
     /// The field is not editable in the viewer's UI.
     #[strum(serialize = "attr.rerun.no_ui_edit")]

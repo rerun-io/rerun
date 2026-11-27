@@ -33,7 +33,7 @@ For other MCP clients, set the command to `rerun` and the argument to `mcp` (std
 
 The MCP server gives your agent access to two things:
 
-- A data catalog on [Rerun Hub](../../hub.md) or on an [open-source server](../../query-and-transform/catalog/oss-server.md).
+- A data catalog on [Rerun Hub](../../catalog/hub.md) or on an [open-source server](../../catalog/oss-server.md).
 - An open Rerun Viewer, which the agent can inspect and control.
 
 To choose a catalog or Viewer at startup, see the [CLI options](../../reference/cli.md#rerun-mcp). You can also use the [agent panel](../../agents.md#agent-panel) inside the Viewer.

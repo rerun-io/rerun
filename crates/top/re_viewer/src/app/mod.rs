@@ -239,6 +239,10 @@ pub struct AppCore {
     /// [`re_viewport::ViewportUi`] and [`re_selection_panel::SelectionPanel`].
     pub(crate) view_states: re_viewer_context::ViewStates,
 
+    /// The pages of the web views.
+    #[cfg(feature = "webview")]
+    webviews: re_view_web::WebViews,
+
     /// Where the user is, and where they have been.
     pub(crate) navigation: crate::navigation::NavigationState,
 
@@ -691,6 +695,11 @@ impl App {
             state,
             stores: Default::default(),
             view_states: Default::default(),
+            #[cfg(feature = "webview")]
+            webviews: re_view_web::WebViews::new(
+                &creation_context.egui_ctx,
+                creation_context.embedded_views(),
+            ),
             navigation: Default::default(),
             selection_state: Default::default(),
             focused_item: None,
@@ -1563,6 +1572,17 @@ impl eframe::App for App {
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         let Self { store_hub, core } = self;
         core.logic_impl(ctx, frame, store_hub);
+    }
+
+    fn output_hook(&mut self, ctx: &egui::Context, output: &mut egui::FullOutput) {
+        cfg_select! {
+            feature = "webview" => {
+                self.core.webviews.update(ctx, output);
+            }
+            _ => {
+                _ = (ctx, output);
+            }
+        }
     }
 
     /// Called when application need to be repainted

@@ -94,6 +94,15 @@ fn populate_view_class_registry_with_builtin(
         app_options,
         fallback_registry,
     )?;
+    // Only offer the web view where it can show pages.
+    #[cfg(feature = "webview")]
+    if re_view_web::is_supported() {
+        view_class_registry.add_class::<re_view_web::WebView>(
+            reflection,
+            app_options,
+            fallback_registry,
+        )?;
+    }
 
     Ok(())
 }
