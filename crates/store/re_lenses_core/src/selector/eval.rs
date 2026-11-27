@@ -10,7 +10,7 @@ use arrow::buffer::{NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{DataType, Field};
 use arrow::error::ArrowError;
 
-use crate::combinators::{GetField, GetIndexList, Transform as _};
+use crate::combinators::{GetField, GetIndexList, GetIndexFixedSizeList, Transform as _};
 
 use super::DynExpr;
 use super::parser::{Expr, Literal, PathExpr};
@@ -446,10 +446,12 @@ impl Eval for Expr {
                         None => Ok(None),
                     }
                 }
-                // TODO(RR-3435): Add indexing into `FixedSizeListArray`.
-                dt @ DataType::FixedSizeList(..) => Err(ArrowError::NotYetImplemented(format!(
-                    "index access `[{index}]` is not yet implemented for {dt}"
-                )))?,
+                DataType::FixedSizeList(..) => {
+                    let res = GetIndexFixedSizeList::new(*index)
+                        .transform(source.as_fixed_size_list())?
+                        .map(EvalResult::flat);
+                    Ok(res)
+                }
                 dt => Err(ArrowError::InvalidArgumentError(format!(
                     "cannot access `[{index}]` on unexpected type {dt}"
                 )))?,
