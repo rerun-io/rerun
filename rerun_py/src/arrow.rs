@@ -18,6 +18,10 @@ use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::{
     ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath, Timeline,
 };
+use re_span::Span;
+
+/// Arrays up to this size are copied into Rust-owned memory when logged, see [`own_if_small`].
+const MAX_COPIED_ARRAY_BYTES: usize = 4096;
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
@@ -58,6 +62,18 @@ pub fn array_to_rust(arrow_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> 
     Ok(make_array(py_array.0))
 }
 
+/// Copy small arrays out of Python-owned memory.
+///
+/// Imported pyarrow arrays need the GIL to be freed, and that happens on the batcher thread,
+/// which then fights the logging thread for the GIL on every row.
+/// Large arrays stay zero-copy, since the copy would cost more than it saves.
+fn own_if_small(array: ArrowArrayRef) -> ArrowArrayRef {
+    if array.get_buffer_memory_size() > MAX_COPIED_ARRAY_BYTES {
+        return array;
+    }
+    re_arrow_util::deep_slice_array_erased(&array, Span::from_start_len(0, array.len()))
+}
+
 /// Build a [`PendingRow`] given a '**kwargs'-style dictionary of component arrays.
 pub fn build_row_from_components(
     components_per_descr: &Bound<'_, PyDict>,
@@ -70,7 +86,7 @@ pub fn build_row_from_components(
     let mut components = IntMap::default();
     for (component_descr, array) in components_per_descr {
         let component_descr = descriptor_to_rust(&component_descr)?;
-        let list_array = array_to_rust(&array)?;
+        let list_array = own_if_small(array_to_rust(&array)?);
         let batch = re_sdk::SerializedComponentBatch::new(list_array, component_descr);
         components.insert(batch.descriptor.component, batch);
     }
