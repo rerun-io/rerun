@@ -37,6 +37,8 @@ impl ChunkStore {
     /// Yields one split per range, in the same order, each as an iterator over its chunks.
     ///
     /// Splits are computed one at a time, as the outer iterator advances.
+    /// The chunks of a split are ordered by the first row they keep, to roughly preserve the order
+    /// in which they were logged (see <https://github.com/rerun-io/rerun/issues/7175>).
     pub fn split_by_time_ranges<'a>(
         &'a self,
         tracking: ChunkTrackingMode,
@@ -104,10 +106,17 @@ impl ChunkStore {
             .collect_vec();
 
         let mut keyframes_per_entity: IntMap<EntityPath, Vec<TimeInt>> = IntMap::default();
-        if let Some(is_start_of_gop) = is_start_of_gop {
+        // Only the keyframes before the start of a range are of any use.
+        let latest_start = ranges.iter().map(|range| range.min()).max();
+        if let (Some(is_start_of_gop), Some(latest_start)) = (is_start_of_gop, latest_start) {
             for (entity, _, _) in &all_entities_and_their_components {
-                let keyframes =
-                    self.extract_keyframes(tracking, entity, timeline, is_start_of_gop.as_ref());
+                let keyframes = self.extract_keyframes(
+                    tracking,
+                    entity,
+                    timeline,
+                    latest_start,
+                    is_start_of_gop.as_ref(),
+                );
                 if !keyframes.is_empty() {
                     keyframes_per_entity.insert(entity.clone(), keyframes);
                 }
@@ -120,7 +129,7 @@ impl ChunkStore {
         let static_chunks = self
             .iter_physical_chunks()
             .filter(|chunk| chunk.is_static())
-            .map(|chunk| (chunk.id(), Chunk::clone(chunk)))
+            .map(|chunk| (first_row_id(chunk), Chunk::clone(chunk)))
             .collect_vec();
 
         ranges.iter().map(move |range| {
@@ -221,7 +230,7 @@ impl ChunkStore {
                         %entity,
                         %timeline,
                         ?start_inclusive,
-                        "gathering all transforms/pinholes up to cutoff point due to multiplexed coordinate frames…"
+                        "gathering all transforms/pinholes before the range (multiplexed frames)…"
                     );
 
                     // Data logged next to the transforms is already covered by the base case.
@@ -238,14 +247,15 @@ impl ChunkStore {
                 }
             }
 
-            // We must make sure that the new recordings have their chunks in the same order as the original
-            // one (as dictated by their chunk IDs), otherwise the loading experience would be absolutely awful,
-            // given that we've just queried the data per-entity per-component.
-            all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
+            // We must make sure that the new recordings have their chunks in roughly the same order as
+            // the original one, otherwise the loading experience would be absolutely awful, given that
+            // we've just queried the data per-entity per-component.
+            // Chunk IDs don't work for this: the store gives new IDs to chunks it splits or compacts.
+            all_chunks_in_split.sort_by_key(|(row_id, _)| *row_id);
 
             all_chunks_in_split
                 .into_iter()
-                .map(|(_original_chunk_id, chunk)| chunk)
+                .map(|(_row_id, chunk)| chunk)
         })
     }
 
@@ -255,6 +265,7 @@ impl ChunkStore {
         tracking: ChunkTrackingMode,
         entity_path: &EntityPath,
         timeline: TimelineName,
+        until: TimeInt,
         is_start_of_gop: &dyn Fn(&[u8], VideoCodec) -> anyhow::Result<bool>,
     ) -> Vec<TimeInt> {
         let Some(codec) = extract_codec(self, tracking, entity_path, timeline) else {
@@ -264,12 +275,14 @@ impl ChunkStore {
         let sample_identifier = VideoStream::descriptor_sample().component;
         let results = self.range_relevant_chunks(
             tracking,
-            &RangeQuery::everything(timeline),
+            &RangeQuery::new(timeline, AbsoluteTimeRange::new(TimeInt::MIN, until)),
             entity_path,
             sample_identifier,
         );
 
         let mut keyframes = Vec::new();
+        let mut num_failures = 0;
+        let mut last_error = None;
         for chunk in &results.chunks {
             let it = itertools::izip!(
                 chunk.iter_indices(&timeline),
@@ -296,10 +309,16 @@ impl ChunkStore {
                     Ok(false) => {}
 
                     Err(err) => {
-                        re_log::warn!(entity = %entity_path, chunk = %chunk.id(), %err, "keyframe detection failed");
+                        num_failures += 1;
+                        last_error = Some(err);
                     }
                 }
             }
+        }
+
+        // Once per entity: this also runs in the viewer, where every warning reaches the user.
+        if let Some(err) = last_error {
+            re_log::warn!(entity = %entity_path, num_failures, %err, "keyframe detection failed");
         }
 
         keyframes.sort(); // we'll be binary searching later on
@@ -318,13 +337,15 @@ impl ChunkStore {
         timeline: TimelineName,
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
-    ) -> impl Iterator<Item = (ChunkId, Chunk)> + 'a {
+    ) -> impl Iterator<Item = (Option<RowId>, Chunk)> + 'a {
         let query_bootstrap = LatestAtQuery::new(timeline, start_inclusive);
 
         // TODO(cmc): There are certainly opportunities to do better on the bootstrap path, especially
         // when it comes to sharing chunks across components, using e.g. an approach somewhat similar
         // to what we do for ranges in `extract_chunks_for_single_split`.
-        components.iter().flat_map(move |component| {
+        // Sorted, so that saving the same range twice gives the chunks in the same order.
+        let sorted_components = components.iter().sorted().collect_vec();
+        sorted_components.into_iter().flat_map(move |component| {
             let chunks = self
                 .latest_at_relevant_chunks(tracking, &query_bootstrap, entity, *component)
                 .chunks
@@ -350,7 +371,7 @@ impl ChunkStore {
 
             re_log::debug_assert!(chunk.num_rows() == 1);
 
-            let (time, _row_id) = chunk
+            let (time, row_id) = chunk
                 .iter_indices(&timeline)
                 .next()
                 .expect("non-empty latest-at chunk must have a single row");
@@ -363,8 +384,9 @@ impl ChunkStore {
                 return vec![];
             }
 
+            // Sorted by the original row, while the copy below gets a fresh row ID.
             vec![(
-                chunk.id(),
+                Some(row_id),
                 chunk
                     // We're bootstrapping at the component batch level, so might as well discard everything else.
                     .component_sliced(*component)
@@ -388,7 +410,7 @@ impl ChunkStore {
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
         keep_components: KeepComponents,
-    ) -> impl Iterator<Item = (ChunkId, Chunk)> + use<> {
+    ) -> impl Iterator<Item = (Option<RowId>, Chunk)> + use<> {
         re_log::debug_assert!(
             start_inclusive < end_exclusive,
             "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
@@ -400,7 +422,7 @@ impl ChunkStore {
         );
         let components_to_keep = components.iter().copied().collect_vec();
 
-        let mut chunks: HashMap<ChunkId, Chunk> = Default::default();
+        let mut chunks: HashMap<ChunkId, (Option<RowId>, Chunk)> = Default::default();
         for component in components {
             let results = self.range_relevant_chunks(tracking, &query, entity, *component);
 
@@ -439,6 +461,10 @@ impl ChunkStore {
                 }
 
                 let end_idx = end_idx_excl.saturating_sub(1);
+                let first_kept_row_id = chunk.row_ids_slice()[start_idx..end_idx_excl]
+                    .iter()
+                    .min()
+                    .copied();
 
                 re_log::debug_assert!(
                     start_inclusive.as_i64() <= times[start_idx]
@@ -472,11 +498,17 @@ impl ChunkStore {
                 // `RowId` order: put them back, a recording with such a chunk doesn't load.
                 chunk.sort_by_row_ids_if_needed();
 
-                let already_exists = chunks.insert(original_chunk_id, chunk).is_some();
+                let already_exists = chunks
+                    .insert(original_chunk_id, (first_kept_row_id, chunk))
+                    .is_some();
                 re_log::debug_assert!(!already_exists);
             }
         }
 
-        chunks.into_iter()
+        chunks.into_values()
     }
+}
+
+fn first_row_id(chunk: &Chunk) -> Option<RowId> {
+    chunk.row_id_range().map(|(min, _)| min)
 }
