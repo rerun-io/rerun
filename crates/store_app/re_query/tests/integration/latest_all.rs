@@ -42,7 +42,7 @@ fn simple_query() {
         &entity_path.into(),
         [component_points],
     );
-    assert!(latest_all_results.missing_virtual.is_empty());
+    assert!(!latest_all_results.any_missing_chunks());
 
     // With exactly one row per component, try_as_latest_at should succeed
     let latest_at_results = latest_all_results.try_as_latest_at().unwrap();
@@ -131,7 +131,7 @@ fn multiple_rows_same_timestamp() {
         &entity_path.into(),
         [component_colors],
     );
-    assert!(latest_all_results.missing_virtual.is_empty());
+    assert!(!latest_all_results.any_missing_chunks());
 
     // With multiple rows, try_as_latest_at should return None
     assert!(latest_all_results.try_as_latest_at().is_none());
@@ -167,7 +167,7 @@ fn empty_query() {
         [component_points],
     );
 
-    assert!(results.missing_virtual.is_empty());
+    assert!(!results.any_missing_chunks());
     assert!(results.components.is_empty());
 }
 
@@ -203,7 +203,7 @@ fn query_before_data() {
         [component_points],
     );
 
-    assert!(results.missing_virtual.is_empty());
+    assert!(!results.any_missing_chunks());
     assert!(results.components.is_empty());
 }
 
@@ -266,7 +266,7 @@ fn into_latest_at() {
         &entity_path.into(),
         [component_colors],
     );
-    assert!(latest_all_results.missing_virtual.is_empty());
+    assert!(!latest_all_results.any_missing_chunks());
     assert!(latest_all_results.try_as_latest_at().is_none()); // Multiple rows
 
     // into_latest_at should give us only the row with the highest RowId (row_id3)

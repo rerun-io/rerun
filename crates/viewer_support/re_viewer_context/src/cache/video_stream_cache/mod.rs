@@ -16,6 +16,7 @@ use re_chunk_store::{
 use re_entity_db::EntityDb;
 use re_log::{debug_assert, debug_panic};
 use re_log_types::{EntityPathHash, TimeType};
+use re_query::ComponentState;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components;
 use re_span::Span;
@@ -212,19 +213,17 @@ impl VideoStreamCache {
             [codec_component],
         );
 
-        let codec_chunk = query_result.get(codec_component).ok_or_else(|| {
-            if store
-                .storage_engine()
-                .store()
-                .entity_has_component_on_timeline(Some(&timeline), entity_path, codec_component)
-            {
-                VideoStreamProcessingError::UnloadedCodec
-            } else {
-                VideoStreamProcessingError::MissingCodec {
+        let codec_chunk = match query_result.get(codec_component) {
+            ComponentState::Loaded(codec_chunk) => codec_chunk,
+            ComponentState::Absent => {
+                return Err(VideoStreamProcessingError::MissingCodec {
                     component: codec_component,
-                }
+                });
             }
-        })?;
+            ComponentState::NotLoaded => {
+                return Err(VideoStreamProcessingError::UnloadedCodec);
+            }
+        };
 
         // Translate codec by looking at the last codec.
         // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.

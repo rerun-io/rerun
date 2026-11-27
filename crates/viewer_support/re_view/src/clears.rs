@@ -35,7 +35,7 @@ pub fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .get(clear_descriptor.component)
+                .get_if_loaded(clear_descriptor.component)
                 .iter()
                 .flat_map(|chunk| {
                     itertools::izip!(

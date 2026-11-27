@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_chunk_store::ChunkTrackingMode;
 use re_data_ui::ComponentUiOptions;
 use re_entity_db::InstancePath;
-use re_query::LatestAllComponentResults;
+use re_query::{ComponentState, LatestAllComponentResults};
 use re_sdk_types::blueprint::components::ViewDensity;
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier};
 use re_ui::{UiExt as _, list_item};
@@ -49,7 +49,7 @@ pub fn component_list_ui(
         entity_path,
         available.iter().copied(),
     );
-    let loading = !query_results.missing_virtual.is_empty() && ctx.db.can_fetch_chunks_from_redap();
+    let can_fetch = ctx.db.can_fetch_chunks_from_redap();
     let sole_row = rows.len() == 1;
     let show_unnamed_heading = rows.iter().any(|row| row.archetype.is_some());
 
@@ -87,35 +87,43 @@ pub fn component_list_ui(
                     );
             }
 
-            let mut missing = false;
+            let mut any_without_value = false;
             for row in rows {
-                if let Some(hits) = query_results.components.get(&row.component) {
-                    let siblings = by_archetype.get(&archetype).map_or(&[][..], Vec::as_slice);
-                    re_data_ui::component_ui(
-                        ctx,
-                        ui,
-                        UiLayout::SelectionPanel,
-                        instance_path,
-                        siblings,
-                        row,
-                        hits,
-                        &query_results,
-                        ComponentUiOptions {
-                            expandable: has_inner_structure(row.component, hits),
-                            default_open: sole_row,
-                            show_archetype: !spacious,
-                            hide_type_icon: true,
-                            value_ui: Some(&|ui, layout| {
-                                component_value_ui(ctx, ui, layout, row.component, hits);
-                            }),
-                        },
-                    );
-                } else {
-                    missing = true;
-                }
+                let hits = match query_results.get(row.component) {
+                    ComponentState::Loaded(hits) => hits,
+                    ComponentState::Absent => {
+                        any_without_value = true;
+                        continue;
+                    }
+                    ComponentState::NotLoaded => {
+                        // If we can fetch it, the loading indicator at the end covers it.
+                        any_without_value |= !can_fetch;
+                        continue;
+                    }
+                };
+                let siblings = by_archetype.get(&archetype).map_or(&[][..], Vec::as_slice);
+                re_data_ui::component_ui(
+                    ctx,
+                    ui,
+                    UiLayout::SelectionPanel,
+                    instance_path,
+                    siblings,
+                    row,
+                    hits,
+                    &query_results,
+                    ComponentUiOptions {
+                        expandable: has_inner_structure(row.component, hits),
+                        default_open: sole_row,
+                        show_archetype: !spacious,
+                        hide_type_icon: true,
+                        value_ui: Some(&|ui, layout| {
+                            component_value_ui(ctx, ui, layout, row.component, hits);
+                        }),
+                    },
+                );
             }
 
-            if missing && !loading {
+            if any_without_value {
                 ui.list_item().interactive(false).show_flat(
                     ui,
                     list_item::PropertyContent::new("-").with_icon_fn(|_ui, _rect, _visuals| {}),
@@ -123,7 +131,7 @@ pub fn component_list_ui(
             }
         }
     });
-    if loading {
+    if query_results.any_missing_chunks() && can_fetch {
         ui.loading_indicator("Fetching chunks from redap");
     }
 }

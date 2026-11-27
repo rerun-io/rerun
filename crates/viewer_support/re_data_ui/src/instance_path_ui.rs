@@ -5,7 +5,7 @@ use re_chunk_store::{ChunkTrackingMode, UnitChunkShared};
 use re_entity_db::InstancePath;
 use re_format::format_plural_s;
 use re_log_types::ComponentPath;
-use re_query::{LatestAllComponentResults, LatestAllResults};
+use re_query::{ComponentState, LatestAllComponentResults, LatestAllResults};
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ArchetypeName, Component as _, ComponentDescriptor, components};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
@@ -91,7 +91,7 @@ impl DataUi for InstancePath {
             unordered_components.iter().copied(),
         );
 
-        let any_missing_chunks = !query_results.missing_virtual.is_empty();
+        let any_missing_chunks = query_results.any_missing_chunks();
 
         instance_path_ui(
             ctx,
@@ -329,11 +329,12 @@ fn component_list_ui(
                 archetype_label_list_item_ui(ui, archetype.as_ref());
             }
 
-            let mut missing_units = false;
+            let mut any_absent = false;
+            let mut any_not_loaded = false;
 
             for component_descr in archetype_components {
-                if let Some(hits) = query_results.components.get(&component_descr.component) {
-                    component_ui(
+                match query_results.get(component_descr.component) {
+                    ComponentState::Loaded(hits) => component_ui(
                         ctx,
                         ui,
                         ui_layout,
@@ -343,23 +344,19 @@ fn component_list_ui(
                         hits,
                         query_results,
                         ComponentUiOptions::default(),
-                    );
-                } else {
-                    missing_units = true;
+                    ),
+                    // Maybe there is no data this early on the timeline.
+                    // Maybe there _were_ data, but it has been GCed.
+                    // Maybe it was cleared.
+                    ComponentState::Absent => any_absent = true,
+                    ComponentState::NotLoaded => any_not_loaded = true,
                 }
             }
 
-            if missing_units {
-                // No data found at the moment.
-                // Maybe there is no data this early on the timeline.
-                // Maybe there _were_ data, but it has been GCed.
-                // Maybe there _will be_ data, once we have loaded it.
-                let any_missing_chunks = !query_results.missing_virtual.is_empty();
-                if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
-                    ui.loading_indicator("Fetching chunks from redap");
-                } else {
-                    ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
-                }
+            if any_not_loaded && ctx.db.can_fetch_chunks_from_redap() {
+                ui.loading_indicator("Fetching chunks from redap");
+            } else if any_absent || any_not_loaded {
+                ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
             }
         }
     });

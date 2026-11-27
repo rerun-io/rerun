@@ -4,6 +4,7 @@ use egui::NumExt as _;
 use egui_extras::Column;
 use re_chunk_store::ChunkTrackingMode;
 use re_format::time::format_relative_timestamp_secs;
+use re_query::ComponentState;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::resource_managers::SourceImageDataFormat;
 use re_renderer::video::VideoFrameTexture;
@@ -865,11 +866,17 @@ impl VideoUi {
                     [codec_component],
                 );
 
-                let codec_chunk = query_result.get(codec_component).ok_or(
-                    VideoStreamProcessingError::MissingCodec {
-                        component: codec_component,
-                    },
-                )?;
+                let codec_chunk = match query_result.get(codec_component) {
+                    ComponentState::Loaded(codec_chunk) => codec_chunk,
+                    ComponentState::Absent => {
+                        return Err(VideoStreamProcessingError::MissingCodec {
+                            component: codec_component,
+                        });
+                    }
+                    ComponentState::NotLoaded => {
+                        return Err(VideoStreamProcessingError::UnloadedCodec);
+                    }
+                };
 
                 let last_codec = codec_chunk
                     .component_mono::<MediaType>(codec_component)
@@ -901,12 +908,14 @@ impl VideoUi {
                     [codec_component],
                 );
 
-                let last_codec = query_result.get(codec_component).and_then(|chunk| {
-                    chunk
-                        .component_mono::<MediaType>(codec_component)
-                        .transpose()
-                        .ok()?
-                });
+                let last_codec = query_result
+                    .get_if_loaded(codec_component)
+                    .and_then(|chunk| {
+                        chunk
+                            .component_mono::<MediaType>(codec_component)
+                            .transpose()
+                            .ok()?
+                    });
 
                 c.entry(
                     ctx.db,

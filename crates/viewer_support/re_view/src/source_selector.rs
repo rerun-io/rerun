@@ -208,7 +208,7 @@ pub fn raw_default_without_fallback(
 ) -> Option<Arc<dyn re_chunk::ArrowArray>> {
     let target_component = target_component_descr.component;
 
-    let result_default = query_result.view_defaults.get(target_component)?;
+    let result_default = query_result.view_defaults.get_if_loaded(target_component)?;
     result_default
         .non_empty_component_batch_raw(target_component)
         .map(|(_, arr)| arr)

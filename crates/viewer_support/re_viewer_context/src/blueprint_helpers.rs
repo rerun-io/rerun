@@ -282,7 +282,7 @@ pub trait BlueprintContext {
     ) -> Option<ArrayRef> {
         self.current_blueprint()
             .latest_at(self.blueprint_query(), entity_path, [component])
-            .get(component)?
+            .get_if_loaded(component)?
             .component_batch_raw(component)
             .filter(|a| !a.is_empty())
     }
@@ -298,7 +298,7 @@ pub trait BlueprintContext {
     ) -> Option<ArrayRef> {
         self.default_blueprint()?
             .latest_at(self.blueprint_query(), entity_path, [component])
-            .get(component)?
+            .get_if_loaded(component)?
             .component_batch_raw(component)
             .filter(|a| !a.is_empty())
     }
@@ -329,7 +329,7 @@ pub trait BlueprintContext {
 
         let Some(datatype) = blueprint
             .latest_at(self.blueprint_query(), &entity_path, [component])
-            .get(component)
+            .get_if_loaded(component)
             .and_then(|unit| {
                 unit.component_batch_raw(component)
                     .map(|array| array.data_type().clone())
@@ -374,7 +374,7 @@ pub trait BlueprintContext {
 
         let Some(datatype) = blueprint
             .latest_at(self.blueprint_query(), &entity_path, [component])
-            .get(component)
+            .get_if_loaded(component)
             .and_then(|unit| {
                 unit.component_batch_raw(component)
                     .map(|array| array.data_type().clone())

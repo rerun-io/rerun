@@ -371,7 +371,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
             checked_source.set_error(component_not_found_error(
                 source,
                 &data_result.entity_path,
-                &store_results.missing_virtual,
+                store_results.missing_chunks(),
                 ctx.recording(),
                 &engine,
                 Some(range_query.timeline),
@@ -562,7 +562,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
             checked_source.set_error(component_not_found_error(
                 source,
                 &data_result.entity_path,
-                &store_results.missing_virtual,
+                store_results.missing_chunks(),
                 ctx.viewer_ctx.recording(),
                 &engine,
                 latest_at_query.timeline(),
@@ -715,7 +715,7 @@ fn query_overrides_at_path(
         );
 
         // If we successfully find a non-empty override, add it to our results.
-        if let Some(value) = component_override_result.get(component) {
+        if let Some(value) = component_override_result.get_if_loaded(component) {
             let index = value.index(ctx.blueprint_query.timeline().as_ref());
 
             // NOTE: This can never happen, but I'd rather it happens than an unwrap.

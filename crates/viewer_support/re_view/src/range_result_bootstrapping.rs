@@ -31,7 +31,7 @@ impl<'a> BlueprintResolvedRangeResults<'a> {
                 std::collections::hash_map::Entry::Occupied(mut range_query_source) => {
                     let bootstrap_hash = bootstrapped
                         .store_results
-                        .get(component)
+                        .get_if_loaded(component)
                         .map(|chunk| (chunk.row_id(), bootstrap_source.recording_result_hash));
                     let range_hash = range_query_source.get().recording_result_hash;
                     let merged_hash = bootstrap_hash.map_or(range_hash, |(row_id, hash)| {

@@ -190,14 +190,14 @@ impl ViewProperty {
     }
 
     pub fn component_row_id(&self, component: ComponentIdentifier) -> Option<re_chunk::RowId> {
-        self.query_results.get(component)?.row_id()
+        self.query_results.get_if_loaded(component)?.row_id()
     }
 
     /// Returns `None` for empty arrays, which are written by
     /// [`BlueprintContext::clear_blueprint_component`] to represent an unset value.
     pub fn component_raw(&self, component: ComponentIdentifier) -> Option<arrow::array::ArrayRef> {
         self.query_results
-            .get(component)?
+            .get_if_loaded(component)?
             .component_batch_raw(component)
             .filter(|a| !a.is_empty())
     }

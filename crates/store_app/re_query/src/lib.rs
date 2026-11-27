@@ -19,7 +19,7 @@ pub use self::cache_stats::{QueryCacheStats, QueryCachesStats};
 pub use self::clamped_zip::*;
 pub use self::latest_all::{LatestAllComponentResults, LatestAllResults};
 pub(crate) use self::latest_at::LatestAtCache;
-pub use self::latest_at::LatestAtResults;
+pub use self::latest_at::{ComponentState, LatestAtResults};
 pub(crate) use self::range::RangeCache;
 pub use self::range::RangeResults;
 pub use self::range_zip::*;

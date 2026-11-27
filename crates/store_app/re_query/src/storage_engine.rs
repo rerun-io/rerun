@@ -1,10 +1,12 @@
+use std::collections::BTreeMap;
+
 use arrow::array::ArrayRef;
 use parking_lot::{ArcRwLockReadGuard, RwLockReadGuard};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery};
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 
-use crate::{QueryCache, QueryCacheHandle};
+use crate::{ComponentState, QueryCache, QueryCacheHandle};
 
 // ---
 
@@ -175,7 +177,7 @@ impl StorageEngineReadGuard<'_> {
         &self.cache
     }
 
-    /// The latest value of every component of every entity at `query`, in no particular order.
+    /// The latest value of every component of every entity at `query`, in entity path order.
     ///
     /// `Clear`s are applied, as in [`QueryCache::latest_at`]: a value they shadow is left out.
     /// So is a component with no value at `query`, unless a chunk that may hold its value,
@@ -190,22 +192,36 @@ impl StorageEngineReadGuard<'_> {
     )> {
         re_tracing::profile_function!();
 
-        let mut values = Vec::new();
+        let mut descriptors_per_entity: BTreeMap<&EntityPath, Vec<&ComponentDescriptor>> =
+            BTreeMap::new();
         for (entity_path, entry) in self.schema().all_column_metadata() {
-            let component = entry.descriptor.component;
-            // One query per component, so that `is_partial` is about this component alone.
-            let results =
-                self.cache
-                    .latest_at(ChunkTrackingMode::Report, query, entity_path, [component]);
-            let value = if let Some(batch) = results.component_batch_raw(component) {
-                Ok(batch)
-            } else if results.is_partial() {
-                Err(LatestValueNotLoaded)
-            } else {
-                // Cleared, or not yet logged at the query time
-                continue;
-            };
-            values.push((entity_path.clone(), entry.descriptor.clone(), value));
+            descriptors_per_entity
+                .entry(entity_path)
+                .or_default()
+                .push(&entry.descriptor);
+        }
+
+        let mut values = Vec::new();
+        for (entity_path, descriptors) in descriptors_per_entity {
+            let results = self.cache.latest_at(
+                ChunkTrackingMode::Report,
+                query,
+                entity_path,
+                descriptors.iter().map(|descriptor| descriptor.component),
+            );
+            for descriptor in descriptors {
+                let value = match results.get(descriptor.component) {
+                    ComponentState::Loaded(unit) => {
+                        let Some(batch) = unit.component_batch_raw(descriptor.component) else {
+                            continue;
+                        };
+                        Ok(batch)
+                    }
+                    ComponentState::Absent => continue,
+                    ComponentState::NotLoaded => Err(LatestValueNotLoaded),
+                };
+                values.push((entity_path.clone(), descriptor.clone(), value));
+            }
         }
         values
     }
