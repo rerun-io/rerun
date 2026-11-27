@@ -9,6 +9,22 @@ import pytest
 from rerun.encodings import TimeInt
 from rerun.time import to_nanos, to_nanos_since_epoch
 
+
+class MockPandasTimedelta(timedelta):
+    """Mimics `pandas.Timedelta`: a `timedelta` subclass with nanosecond resolution."""
+
+    nanoseconds_total: int = 0
+
+    def __new__(cls, nanoseconds_total: int) -> Self:
+        # `timedelta` itself can only hold whole microseconds, so floor like pandas' `.to_pytimedelta()` does.
+        instance = super().__new__(cls, microseconds=nanoseconds_total // 1_000)
+        object.__setattr__(instance, "nanoseconds_total", nanoseconds_total)
+        return instance
+
+    def to_timedelta64(self) -> np.timedelta64:
+        return np.timedelta64(self.nanoseconds_total, "ns")
+
+
 VALID_TO_NANOS_CASES = [
     (0, 0),
     (2, 2_000_000_000),
@@ -29,6 +45,10 @@ VALID_TO_NANOS_CASES = [
     (np.timedelta64(-7, "s"), -7_000_000_000),
     (timedelta(days=20_000, microseconds=123_457), 1_728_000_000_123_457_000),
     (timedelta(days=-20_000, microseconds=-123_457), -1_728_000_000_123_457_000),
+    # pandas.Timedelta keeps nanosecond precision, which must survive the conversion
+    (MockPandasTimedelta(1_500), 1_500),
+    (MockPandasTimedelta(86_400_000_000_123), 86_400_000_000_123),
+    (MockPandasTimedelta(-1), -1),
 ]
 
 

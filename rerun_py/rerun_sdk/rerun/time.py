@@ -113,6 +113,12 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
     if isinstance(duration, np.timedelta64):
         return duration.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     elif isinstance(duration, timedelta):
+        # Special case pandas to avoid loss of precision: `pandas.Timedelta` is a `timedelta` subclass
+        # with nanosecond resolution, which flooring to whole microseconds would throw away.
+        if (to_timedelta64 := getattr(duration, "to_timedelta64", None)) is not None:
+            timedelta64: np.timedelta64 = to_timedelta64()
+            return int(timedelta64.astype("timedelta64[ns]").astype("int64"))
+
         return duration // timedelta(microseconds=1) * 1_000
     elif isinstance(duration, (int, np.integer)):
         return 1_000_000_000 * int(duration)  # Interpret as seconds and convert to nanos
