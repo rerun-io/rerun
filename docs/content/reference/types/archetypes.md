@@ -22,6 +22,7 @@ Those marked _no visualizer of its own_ are drawn through another archetype, or 
 
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 * [`GeoPoints`](archetypes/geo_points.md): Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
+* [`GeoPolygons`](archetypes/geo_polygons.md): Filled geospatial polygons, including concave boundaries and holes.
 
 ## Graph
 

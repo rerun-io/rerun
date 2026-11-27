@@ -12,6 +12,7 @@ mod depth_image;
 mod dynamic_archetype;
 #[cfg(feature = "testing")]
 mod fixed_size_enum_array;
+mod geo_polygons;
 mod image;
 mod line_strips2d;
 mod line_strips3d;

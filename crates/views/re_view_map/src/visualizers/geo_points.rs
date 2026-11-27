@@ -183,6 +183,7 @@ impl GeoPointsOutput {
                     flags: re_renderer::renderer::PointCloudBatchFlags::empty(),
                     ..re_renderer::renderer::PointCloudBatchInfo::default()
                 })
+                .enable_alpha_blending(true)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()))
                 .outline_mask_ids(outline.overall);
 
@@ -203,7 +204,7 @@ impl GeoPointsOutput {
             point_batch.add_points_2d(&positions, &radii, &batch.colors, &batch.instance_id);
         }
 
-        view_builder.queue_draw(render_ctx, points.into_draw_data()?)?;
+        view_builder.queue_draw(render_ctx, points.into_draw_data()?.with_sort_key(-1.0))?;
 
         Ok(())
     }
