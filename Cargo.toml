@@ -211,7 +211,7 @@ re_dump_puffin = { path = "crates/utils/re_dump_puffin", version = "=0.45.0-alph
 
 # Rerun crates in other repos:
 quiver = { version = "0.6.2", default-features = false, features = ["derive"] }
-re_mp4 = "0.5.1"
+re_mp4 = "0.6.0"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # NOTE: we use `dav1d` as an alias for our own re_rav1d crate
@@ -1036,9 +1036,6 @@ egui_tiles = { git = "https://github.com/rerun-io/egui_crates.git", branch = "ma
 # datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
 
 # kittest = { git = "https://github.com/rerun-io/kittest.git", rev = 'ce7a2f3b12c36021889b50bdff671cec8016b0fb' }
-
-# Until the release after 0.5.1, for https://github.com/rerun-io/re_mp4/pull/40
-re_mp4 = { git = "https://github.com/rerun-io/re_mp4.git", branch = "main" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
