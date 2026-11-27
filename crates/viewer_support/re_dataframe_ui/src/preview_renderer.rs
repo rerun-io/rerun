@@ -1,12 +1,9 @@
 //! Standalone view renderer for embedding views in table rows.
 //!
 //! Renders a view defined by a blueprint independently of the main viewport,
-//! by constructing an ad-hoc [`ViewerContext`] with its own recording and blueprint stores.
-//! This gives the view the impression of running against a regular recording.
+//! with [`crate::prepared_views::PreparedViews`].
 
-use ahash::HashMap as AHashMap;
 use egui::NumExt as _;
-use nohash_hasher::IntMap;
 use std::cell::RefCell;
 
 use re_chunk_store::LatestAtQuery;
@@ -15,13 +12,10 @@ use re_log_types::{AbsoluteTimeRangeF, EntityPath, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::ColumnName;
 use re_ui::UiExt as _;
 
-use re_view::execute_systems_for_view;
 use re_viewer_context::{
-    ALL_PREVIEWS_MODIFIER, ActivePreview, ActiveStoreContext, ApplicationSelectionState, Contents,
-    MissingChunkReporter, NeedsRepaint, PreviewState, StoreCache, SystemCommand,
-    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass,
-    ViewContextSystemOncePerFrameResult, ViewId, ViewStates, ViewSystemIdentifier, ViewerContext,
-    blueprint_timeline,
+    ALL_PREVIEWS_MODIFIER, ActivePreview, ActiveStoreContext, Contents, NeedsRepaint, PreviewState,
+    StoreCache, SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewId,
+    ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -29,9 +23,7 @@ use crate::DisplayRecordBatch;
 use crate::blueprint::PreviewsConfig;
 use crate::datafusion_table_widget::find_row_batch;
 use crate::display_record_batch::DisplayColumn;
-
-/// Result of running all once-per-frame context systems for a given recording.
-type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult>;
+use crate::prepared_views::{OncePerFrameCache, PreparedViews, ViewInteraction};
 
 const VIEW_SPACING: f32 = 2.0;
 
@@ -156,9 +148,8 @@ pub(crate) struct SegmentPreviewRenderer<'a> {
     /// Where every preview starts, as a fraction of the recording's time range.
     start_point: f64,
 
-    /// Per-frame cache of once-per-frame context-system results, keyed by the recording's
-    /// [`StoreId`]. Populated lazily on the first preview of each recording.
-    once_per_frame_cache: RefCell<AHashMap<StoreId, OncePerFrameResults>>,
+    /// Populated lazily on the first preview of each recording.
+    once_per_frame_cache: RefCell<OncePerFrameCache>,
 }
 
 impl<'a> SegmentPreviewRenderer<'a> {
@@ -319,10 +310,7 @@ impl<'a> SegmentPreviewRenderer<'a> {
         Some(PreviewRecording::Unresolved(uri))
     }
 
-    /// Render the view(s) into the given UI area.
-    ///
-    /// Creates an ad-hoc [`ViewerContext`] with an isolated recording and store context,
-    /// borrowing shared infrastructure (render context, registries, etc.) from `app_ctx`.
+    /// Render the view(s) into the given UI area with [`PreparedViews`].
     ///
     /// If `recording` is `Some`, the view will render data from that recording.
     /// Otherwise an empty recording is used as a placeholder.
@@ -394,11 +382,6 @@ impl<'a> SegmentPreviewRenderer<'a> {
             }
         };
 
-        // Derive visualizable/indicated entities from the bootstrapped cache.
-        let visualizable_entities_per_visualizer =
-            caches.visualizable_entities_for_visualizer_systems();
-        let indicated_entities_per_visualizer = caches.indicated_entities_per_visualizer();
-
         let store_id = recording.store_id();
         let time_ctrl = if let Some(preview) = preview_state.active_preview_mut(store_id) {
             apply_configured_timeline(&mut preview.time_control, self.timeline, recording);
@@ -418,89 +401,27 @@ impl<'a> SegmentPreviewRenderer<'a> {
             time_ctrl: &time_ctrl,
             should_enable_heuristics: false,
         };
-
-        // Resolve each view's blueprint + class once. Views that fail to resolve are kept as
-        // `None` so they still occupy a column slot (rendered as a placeholder rectangle).
-        struct Resolved<'b> {
-            view_id: ViewId,
-            view_blueprint: ViewBlueprint,
-            view_class: &'b dyn ViewClass,
-        }
-        let resolved: Vec<Option<Resolved<'_>>> = self
-            .view_ids
-            .iter()
-            .map(|view_id| {
-                let view_blueprint =
-                    ViewBlueprint::try_from_db(*view_id, self.blueprint, &self.blueprint_query)?;
-                let view_class = view_blueprint.class(view_class_registry);
-                Some(Resolved {
-                    view_id: *view_id,
-                    view_blueprint,
-                    view_class,
-                })
-            })
-            .collect();
-
-        // Build the per-view data-result trees against the shared store context so that the
-        // `ViewerContext` can expose results for all views at once.
-        for r in resolved.iter().flatten() {
-            view_states.get_mut_or_create(store_id, r.view_id, r.view_class);
-        }
-        let query_results = re_viewport_blueprint::query_results_for_views(
-            &store_context,
-            app_ctx.app_caches,
-            resolved.iter().flatten().map(|r| &r.view_blueprint),
-            view_class_registry,
-            &self.blueprint_query,
-            view_states,
-            &visualizable_entities_per_visualizer,
-            &indicated_entities_per_visualizer,
-        );
-
-        // One shared `ViewerContext` for all views of this recording.
-        let blueprint_time_ctrl = TimeControl::default();
-        let empty_selection_state = ApplicationSelectionState::default(); // We don't support selecting/hovering in previews yet.
-        let ctx = ViewerContext {
-            app_ctx: re_viewer_context::AppContext {
-                active_store_context: Some(&store_context),
-                selection_state: &empty_selection_state,
-                ..app_ctx.clone()
-            },
-            store_context: &store_context,
-            visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
-            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
-            query_results: &query_results,
-            time_ctrl: &time_ctrl,
-            blueprint_time_ctrl: &blueprint_time_ctrl,
-            blueprint_query: &self.blueprint_query,
-        };
-
-        // Run once-per-frame context systems at most once per recording per frame. The cache
-        // is an instance field on `self`, and `self` is constructed freshly each frame, so it
-        // is naturally scoped to the current frame.
         let mut once_per_frame_cache = self.once_per_frame_cache.borrow_mut();
-        let context_system_once_per_frame_results = once_per_frame_cache
-            .entry(store_id.clone())
-            .or_insert_with(|| {
-                view_class_registry.run_once_per_frame_context_systems(
-                    &ctx,
-                    resolved
-                        .iter()
-                        .flatten()
-                        .map(|r| r.view_blueprint.class_identifier()),
-                )
-            });
+        let prepared = PreparedViews::new(
+            app_ctx,
+            store_context,
+            &self.blueprint_query,
+            &self.view_ids,
+            view_states,
+            &mut once_per_frame_cache,
+            ViewInteraction::Passive, // We don't support selecting/hovering in previews yet.
+        );
 
         let mut views_rect = egui::Rect::NOTHING;
 
-        let layout = PreviewLayout::new(resolved.iter().map(|resolved| {
-            let resolved = resolved.as_ref()?;
-            let state = view_states.get(store_id, resolved.view_id)?;
-            resolved.view_class.preferred_tile_aspect_ratio(state)
+        let layout = PreviewLayout::new(self.view_ids.iter().map(|&view_id| {
+            let view_class = prepared.view_class(view_id)?;
+            let state = view_states.get(store_id, view_id)?;
+            view_class.preferred_tile_aspect_ratio(state)
         }));
         let available_rect = ui.available_rect_before_wrap();
-        for ((index, resolved), rect) in std::iter::zip(
-            resolved.into_iter().enumerate(),
+        for ((index, &view_id), rect) in std::iter::zip(
+            self.view_ids.iter().enumerate(),
             layout.view_rects(available_rect),
         ) {
             let mut col_ui = ui.new_child(
@@ -509,12 +430,9 @@ impl<'a> SegmentPreviewRenderer<'a> {
                     .max_rect(rect)
                     .layout(egui::Layout::top_down(egui::Align::Min)),
             );
-            let Some(Resolved {
-                view_id,
-                view_blueprint,
-                view_class,
-            }) = resolved
-            else {
+            // A view missing from the blueprint keeps its column slot
+            // and is drawn as a placeholder rectangle.
+            let Some(view_class) = prepared.view_class(view_id) else {
                 let rect = col_ui.available_rect_before_wrap();
                 col_ui
                     .painter()
@@ -523,67 +441,18 @@ impl<'a> SegmentPreviewRenderer<'a> {
                 continue;
             };
 
-            let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
-            let (view_query, system_execution_output) = execute_systems_for_view(
-                &ctx,
-                &view_blueprint,
-                view_state,
-                context_system_once_per_frame_results,
-            );
+            views_rect = views_rect.union(col_ui.available_rect_before_wrap());
 
-            let missing_chunk_reporter =
-                MissingChunkReporter::new(system_execution_output.any_missing_chunks());
-
-            let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
-
-            let view_rect = col_ui.available_rect_before_wrap();
-
-            views_rect = views_rect.union(view_rect);
-
-            // Suppress all inputs while rendering previews: they are meant to be passive.
-            let input_before = col_ui.input_mut(|input| {
-                let input_before = input.clone();
-
-                // Suppress most input.
-                input.modifiers = egui::Modifiers::default();
-                input.raw.events.clear();
-                input.smooth_scroll_delta = egui::Vec2::ZERO;
-                input.focused = false;
-                input.keys_down.clear();
-                input.pointer = egui::PointerState::default();
-
-                input_before
-            });
             let preview_id = (&self.column_name, row_nr, view_id);
-            let _result = col_ui.push_id(preview_id, |ui| {
-                ui.disable();
-                view_class.ui(
-                    &ctx,
-                    &missing_chunk_reporter,
-                    ui,
-                    view_state,
-                    &view_query,
-                    system_execution_output,
-                )
-            });
-            col_ui.input_mut(|input| {
-                *input = input_before;
-            });
+            prepared.show_view(&mut col_ui, view_id, view_states, preview_id);
 
             // Rendering can learn a ratio from newly loaded data. Reflow on the next frame.
-            if valid_aspect_ratio(view_class.preferred_tile_aspect_ratio(view_state))
-                != layout.preferred_aspect_ratios[index]
+            if let Some(view_state) = view_states.get(store_id, view_id)
+                && valid_aspect_ratio(view_class.preferred_tile_aspect_ratio(view_state))
+                    != layout.preferred_aspect_ratios[index]
             {
                 col_ui.request_repaint();
             }
-
-            re_view::paint_view_loading_indicator(
-                &mut col_ui,
-                preview_id,
-                view_rect,
-                missing_chunk_reporter.any_missing(),
-                recording,
-            );
         }
         ui.allocate_rect(available_rect, egui::Sense::hover());
 
