@@ -23,7 +23,7 @@ use re_viewer_context::{
     VisualizerComponentSource, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{AnnotationMapCache, ComponentMappingError, latest_at_with_blueprint_resolved_data};
+use crate::{ComponentMappingError, latest_at_with_blueprint_resolved_data};
 
 /// Helper struct to render component source selector UI from `VisualizerSystem::selection_ui`.
 ///
@@ -49,13 +49,10 @@ impl<'a> SourceSelectorContext<'a> {
     ) -> Self {
         let query_info = visualizer.visualizer_query_info(ctx.viewer_ctx.app_options());
         let store_query = ctx.current_query();
-        let annotation_map = AnnotationMapCache::for_query(ctx.viewer_ctx, &store_query);
-        let annotations = annotation_map.find(&data_result.entity_path);
 
         // Query fully resolved data.
         let query_result = latest_at_with_blueprint_resolved_data(
             ctx,
-            annotations,
             &store_query,
             data_result,
             query_info.queried_components(),
@@ -139,11 +136,6 @@ impl<'a> SourceSelectorContext<'a> {
             .flat_map(|r| r.reports_for_component(&self.instruction.id, target_component))
             .collect();
 
-        let annotation_map = AnnotationMapCache::for_query(
-            self.ctx.viewer_ctx,
-            &self.query_result.query_context().query,
-        );
-        let annotations = annotation_map.find(&self.data_result.entity_path);
         let mapping_ctx = SourceMappingContext {
             data_result: self.data_result,
             query_ctx: self.query_result.query_context(),
@@ -152,7 +144,6 @@ impl<'a> SourceSelectorContext<'a> {
             instruction: self.instruction,
             source,
             raw_default: &raw_default,
-            annotations,
         };
 
         ui.push_id(target_component, |ui| {
@@ -285,7 +276,6 @@ pub struct SourceMappingContext<'a> {
     pub instruction: &'a VisualizerInstruction,
     pub source: &'a VisualizerComponentSource,
     pub raw_default: &'a ArrayRef,
-    pub annotations: Option<&'a re_viewer_context::Annotations>,
 }
 
 impl<'a> SourceMappingContext<'a> {
@@ -320,12 +310,8 @@ fn source_component_items_ui(
     let mut options =
         collect_source_component_options(mapping_ctx, entity_components_with_datatype, query_info);
 
-    if raw_value_for_mapping(
-        mapping_ctx,
-        mapping_ctx.annotations,
-        &VisualizerComponentSource::AnnotationContext,
-    )
-    .is_some_and(|(_, value)| !value.is_empty())
+    if raw_value_for_mapping(mapping_ctx, &VisualizerComponentSource::AnnotationContext)
+        .is_some_and(|(_, value)| !value.is_empty())
     {
         options.push(VisualizerComponentSource::AnnotationContext);
     }
@@ -576,7 +562,7 @@ fn source_component_item_ui(
 ) {
     let selected = source == current;
 
-    let raw_value = raw_value_for_mapping(mapping_ctx, mapping_ctx.annotations, source);
+    let raw_value = raw_value_for_mapping(mapping_ctx, source);
 
     let mut item = ComboItem::new(source.summary()).selected(selected);
 
@@ -654,7 +640,6 @@ pub fn visualizers_for_entity<'a>(
 
 pub fn raw_value_for_mapping(
     mapping_ctx: &SourceMappingContext<'_>,
-    annotations: Option<&re_viewer_context::Annotations>,
     new_source: &VisualizerComponentSource,
 ) -> Option<(Option<RowId>, Arc<dyn re_chunk::ArrowArray>)> {
     let target_component = mapping_ctx.target_component();
@@ -671,7 +656,6 @@ pub fn raw_value_for_mapping(
         };
         let query_result = latest_at_with_blueprint_resolved_data(
             mapping_ctx.view_ctx(),
-            annotations,
             &mapping_ctx.query_ctx.query,
             mapping_ctx.data_result,
             [target_component],

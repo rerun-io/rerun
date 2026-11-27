@@ -243,16 +243,14 @@ impl ResolvedAnnotationInfo {
 // ----------------------------------------------------------------------------
 
 #[derive(Default, Clone, Debug, re_byte_size::SizeBytes)]
-pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
+pub struct AnnotationMap(BTreeMap<EntityPath, Arc<Annotations>>);
 
 impl AnnotationMap {
-    /// For each passed [`EntityPath`], walk up the tree and find the nearest ancestor
-    ///
-    /// An entity is considered its own (nearest) ancestor.
-    pub fn load(&mut self, db: &re_entity_db::EntityDb, time_query: &LatestAtQuery) {
+    /// Loads the annotation contexts in effect at `time_query`.
+    pub fn load(db: &re_entity_db::EntityDb, time_query: &LatestAtQuery) -> Self {
         re_tracing::profile_function!();
 
-        // Load current annotations.
+        let mut contexts = BTreeMap::new();
         for entity in AnnotationContextStoreSubscriber::entities(db.store_id()) {
             if let Some(((_time, row_id), ann_ctx)) = db.latest_at_component::<AnnotationContext>(
                 &entity,
@@ -272,9 +270,10 @@ impl AnnotationMap {
                         })
                         .collect(),
                 };
-                self.0.insert(entity, Arc::new(annotations));
+                contexts.insert(entity, Arc::new(annotations));
             }
         }
+        Self(contexts)
     }
 
     /// Finds the nearest annotation context for an entity path.
@@ -303,7 +302,7 @@ pub struct AnnotationContextStoreSubscriber {
 
 impl AnnotationContextStoreSubscriber {
     /// The entities that have an annotation context at some point in time.
-    pub fn entities(store_id: &StoreId) -> Vec<EntityPath> {
+    fn entities(store_id: &StoreId) -> Vec<EntityPath> {
         ChunkStore::with_per_store_subscriber_once(
             Self::subscription_handle(),
             store_id,
@@ -378,7 +377,6 @@ impl PerStoreChunkSubscriber for AnnotationContextStoreSubscriber {
 
 #[cfg(test)]
 mod tests {
-    use re_entity_db::EntityDb;
     use re_log_types::{StoreKind, TimePoint, TimelineName};
     use re_sdk_types::encodings::Rgba32;
 
@@ -386,10 +384,8 @@ mod tests {
 
     #[test]
     fn overwritten_static_annotation_context_resolves_to_the_newest() {
-        // Per-store subscribers only see the chunks added after their registration.
-        AnnotationContextStoreSubscriber::subscription_handle();
-
-        let mut db = EntityDb::new(StoreId::random(StoreKind::Recording, "test_app"));
+        let mut hub = crate::StoreHub::test_hub();
+        let db = hub.entity_db_entry(&StoreId::random(StoreKind::Recording, "test_app"));
         let entity_path = EntityPath::from("segmentation");
         let newest_color = Rgba32::from_rgb(0, 0, 255);
         for color in [Rgba32::from_rgb(255, 0, 0), newest_color] {
@@ -404,8 +400,8 @@ mod tests {
             db.add_chunk(&Arc::new(chunk)).unwrap();
         }
 
-        let mut annotation_map = AnnotationMap::default();
-        annotation_map.load(&db, &LatestAtQuery::latest(TimelineName::log_tick()));
+        let annotation_map =
+            AnnotationMap::load(db, &LatestAtQuery::latest(TimelineName::log_tick()));
 
         let color = annotation_map.find(&entity_path).map(|annotations| {
             annotations

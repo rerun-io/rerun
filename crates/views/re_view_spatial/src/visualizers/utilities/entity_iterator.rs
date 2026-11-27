@@ -79,12 +79,8 @@ where
             view_class_identifier: context_systems.view_class_identifier(),
         };
 
-        let results = data_result.query_archetype_with_history::<A>(
-            ctx,
-            query,
-            visualizer_instruction,
-            instruction_context.annotations,
-        );
+        let results =
+            data_result.query_archetype_with_history::<A>(ctx, query, visualizer_instruction);
 
         let visualizer_instruction_result =
             VisualizerInstructionQueryResults::new(visualizer_instruction, &results, output);

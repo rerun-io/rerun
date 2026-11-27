@@ -138,7 +138,6 @@ pub(crate) fn load_line_series_with_styling(
     ));
     let mut results = range_with_blueprint_resolved_data_polymorphic(
         ctx,
-        None,
         &query,
         data_result,
         source.queried_components.iter().copied(),
@@ -166,7 +165,6 @@ pub(crate) fn load_line_series_with_styling(
 
     results.merge_bootstrapped_data(re_view::latest_at_with_blueprint_resolved_data(
         ctx,
-        None,
         &re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min()),
         data_result,
         bootstrap_components,

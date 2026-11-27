@@ -295,7 +295,6 @@ impl VisualizerSystem for CamerasVisualizer {
 
             let query_results = latest_at_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &time_query,
                 data_result,
                 Pinhole::all_component_identifiers(),

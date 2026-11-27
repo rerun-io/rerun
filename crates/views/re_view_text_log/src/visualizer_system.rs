@@ -85,7 +85,6 @@ impl<'a> TextLogSource<'a> {
         let query = RangeQuery::new(self.timeline, range).keep_extra_timelines(true);
         let mut results = re_view::range_with_blueprint_resolved_data(
             ctx,
-            None,
             &query,
             self.data_result,
             components.iter().copied(),
@@ -102,7 +101,6 @@ impl<'a> TextLogSource<'a> {
             };
             let bootstrap = re_view::latest_at_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &predecessor,
                 self.data_result,
                 carry_forward,

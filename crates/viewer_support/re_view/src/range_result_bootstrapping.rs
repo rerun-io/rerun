@@ -149,7 +149,6 @@ mod tests {
             run_with_test_view_context(&test, |ctx| {
                 let mut range = range_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::new(5, 20)),
                     &data_result,
                     [component],
@@ -162,7 +161,6 @@ mod tests {
 
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &LatestAtQuery::new("frame_nr".into(), 4),
                     &data_result,
                     [component],
@@ -206,7 +204,6 @@ mod tests {
             let current = run_with_test_view_context(&test_context, |ctx| {
                 let mut range = range_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::new(5, 20)),
                     &data_result,
                     [target],
@@ -219,7 +216,6 @@ mod tests {
                 );
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &LatestAtQuery::new("frame_nr".into(), 4),
                     &data_result,
                     [target],

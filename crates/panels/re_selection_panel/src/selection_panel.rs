@@ -740,7 +740,6 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     let component = component_descr.component;
     let query_result = latest_at_with_blueprint_resolved_data(
         ctx,
-        None,
         &ctx.current_query(),
         data_result,
         [component],

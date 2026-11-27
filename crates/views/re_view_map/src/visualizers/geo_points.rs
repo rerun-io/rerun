@@ -5,8 +5,8 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GeoPoints;
 use re_sdk_types::components::{LatLon, Radius};
 use re_view::{
-    AnnotationMapCache, DataResultQuery as _, MaxRadii, VisualizerInstructionQueryResults,
-    clamped_or, process_color_slice,
+    DataResultQuery as _, MaxRadii, VisualizerInstructionQueryResults, clamped_or,
+    process_color_slice,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
@@ -73,7 +73,6 @@ impl VisualizerSystem for GeoPointsVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
         let latest_at_query = view_query.latest_at_query();
-        let annotations = AnnotationMapCache::for_query(ctx.viewer_ctx, &latest_at_query);
         let mut batches = Vec::new();
 
         let mut max_radii = MaxRadii::new();
@@ -81,13 +80,8 @@ impl VisualizerSystem for GeoPointsVisualizer {
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
-            let entity_annotations = annotations.find(&data_result.entity_path);
-            let results = data_result.query_archetype_with_history::<GeoPoints>(
-                ctx,
-                view_query,
-                instruction,
-                entity_annotations,
-            );
+            let results =
+                data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
             let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let mut batch_data = GeoPointBatch::default();

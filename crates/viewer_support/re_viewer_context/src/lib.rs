@@ -71,8 +71,8 @@ pub const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColu
 
 pub use self::active_store_context::ActiveStoreContext;
 pub use self::annotations::{
-    AnnotationContextQuery, AnnotationContextStoreSubscriber, AnnotationContextTarget,
-    AnnotationContextTargetKind, AnnotationMap, Annotations, ResolvedAnnotationInfo,
+    AnnotationContextQuery, AnnotationContextTarget, AnnotationContextTargetKind, AnnotationMap,
+    Annotations, ResolvedAnnotationInfo,
 };
 pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};

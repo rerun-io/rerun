@@ -150,8 +150,6 @@ impl ViewClass for MapView {
         system_registry.register_visualizer::<GeoPointsVisualizer>()?;
         system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
 
-        re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle();
-
         Ok(())
     }
 

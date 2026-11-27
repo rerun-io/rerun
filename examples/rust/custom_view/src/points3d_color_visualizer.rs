@@ -60,7 +60,6 @@ impl VisualizerSystem for Points3DColorVisualizer {
                 query,
                 [rerun::Points3D::descriptor_colors().component],
                 instruction,
-                None,
             );
             let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 

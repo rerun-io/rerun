@@ -55,7 +55,6 @@ pub fn visualizer_ui_element(
 
     let query_result = re_view::latest_at_with_blueprint_resolved_data(
         ctx,
-        None,
         &ctx.current_query(),
         &node.data_result,
         [

@@ -220,7 +220,6 @@ fn temperature_mappings_resolve_range_values_and_timestamps() {
         };
         let range = re_view::range_with_blueprint_resolved_data(
             &ctx,
-            None,
             &RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::new(1, 2)),
             data_result,
             targets,

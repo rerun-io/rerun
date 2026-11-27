@@ -94,7 +94,6 @@ fn collect_draw_order_per_visualizer(
         let key = (visualizer_identifier, data_result.entity_path.hash());
         let results = latest_at_with_blueprint_resolved_data(
             ctx,
-            None,
             &latest_at_query,
             data_result,
             [draw_order_descriptor.component],

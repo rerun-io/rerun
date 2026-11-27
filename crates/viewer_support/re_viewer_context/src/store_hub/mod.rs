@@ -208,6 +208,8 @@ impl StoreHub {
         setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
     ) -> Self {
         re_tracing::profile_function!();
+        // Chunk subscribers do not receive events for chunks added before registration.
+        crate::annotations::AnnotationContextStoreSubscriber::subscription_handle();
         let mut blueprints = StoreHubBlueprints::new(persistence);
         let mut store_bundle = StoreBundle::default();
 

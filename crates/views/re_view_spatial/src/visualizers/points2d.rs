@@ -396,7 +396,7 @@ mod tests {
         // colors:     R/G/B         omitted           []         omitted            blue
         // class IDs:  omitted       3                 omitted    []                 3
         // Explicit annotation mappings must ignore the recorded colors and labels, including resets.
-        // Their output follows only the ID batches and the annotation context at the cursor.
+        // Their output follows only the ID batches and the selected annotation context.
         ctx.log_entity("points", |builder| {
             builder.with_archetype_auto_row(
                 [(timeline, 1)],
@@ -674,9 +674,8 @@ mod tests {
         );
     }
 
-    /// Explicit annotation mappings exclude recorded events across the range and use annotation metadata at the cursor.
     #[test]
-    fn color_resolution_uses_only_annotation_context_across_range() {
+    fn range_uses_annotation_colors_and_labels_from_its_start() {
         let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
         setup_entities(&mut test_context);
 
@@ -691,7 +690,7 @@ mod tests {
         test_context.set_time(5);
         assert_labels(
             &collect_labels(&test_context, view_id),
-            &[("three-updated", LATE_ANN); 3],
+            &[("three", ANN); 3],
         );
     }
 }
