@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::AsArray as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use re_entity_db::external::re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityTree};
 use re_log::ResultExt as _;
@@ -243,15 +243,13 @@ impl ViewContents {
         query_range: &QueryRange,
         visualizable_entities_per_visualizer: &PerVisualizerType<&VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
-        app_options: &re_viewer_context::AppOptions,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let view_class = view_class_registry.get_class_or_log_error(self.view_class_identifier);
-        let visualizer_collection =
-            view_class_registry.new_visualizer_collection(self.view_class_identifier);
+        let class_entry =
+            view_class_registry.get_class_entry_or_log_error(self.view_class_identifier);
 
         // TODO(andreas): Build this only once for every type of view.
         let visualizable_entities_per_visualizer_in_view: VisualizableEntitiesPerVisualizerInView<
@@ -263,7 +261,7 @@ impl ViewContents {
             #[expect(clippy::iter_over_hash_type)] // Filling another hash map.
             for (visualizer, visualizable_entities) in visualizable_entities_per_visualizer.iter() {
                 // Skip over visualizers that aren't used in this view.
-                if !visualizer_collection.contains_visualizer_type(*visualizer) {
+                if !class_entry.visualizer_system_ids.contains(visualizer) {
                     continue;
                 }
 
@@ -297,32 +295,19 @@ impl ViewContents {
             )
         };
 
-        // Query defaults for all the components that any visualizer in this view is interested in.
+        let defaults_path = ViewBlueprint::defaults_path(self.view_id);
         let component_defaults = {
-            re_tracing::profile_scope!("component_defaults");
-
-            // Figure out which components are relevant.
-            let mut components_for_defaults = IntSet::default();
-            #[expect(clippy::iter_over_hash_type)] // Set union is order-independent.
-            for (visualizer, entities) in visualizable_entities_per_visualizer.iter() {
-                if entities.is_empty() {
-                    continue;
-                }
-                let Ok(visualizer) = visualizer_collection.get_by_type_identifier(*visualizer)
-                else {
-                    continue;
-                };
-                components_for_defaults.extend(
-                    visualizer
-                        .visualizer_query_info(app_options)
-                        .queried_components(),
-                );
-            }
-
-            ctx.blueprint.latest_at(
+            let engine = ctx.blueprint.storage_engine();
+            engine.cache().latest_at(
+                re_chunk_store::ChunkTrackingMode::Report,
                 blueprint_query,
-                &ViewBlueprint::defaults_path(self.view_id),
-                components_for_defaults,
+                &defaults_path,
+                engine
+                    .schema()
+                    .all_components_for_entity(&defaults_path)
+                    .into_iter()
+                    .flatten()
+                    .copied(),
             )
         };
 
@@ -336,7 +321,7 @@ impl ViewContents {
         // TODO(andreas): integrate with `add_entity_tree_to_data_results_recursive` above.
         let resolver = DataQueryPropertyResolver {
             view_query_range: query_range,
-            view_class,
+            view_class: class_entry.class.as_ref(),
             visualizable_entities_per_visualizer_in_view:
                 &visualizable_entities_per_visualizer_in_view,
             indicated_entities_per_visualizer,
@@ -937,7 +922,6 @@ mod tests {
                 &query_range,
                 &visualizable_entities_for_visualizer_systems.as_ref(),
                 &PerVisualizerType::default(),
-                &re_viewer_context::AppOptions::test(),
             );
 
             let mut visited = vec![];

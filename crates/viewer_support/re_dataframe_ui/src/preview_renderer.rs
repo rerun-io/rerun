@@ -455,7 +455,6 @@ impl<'a> SegmentPreviewRenderer<'a> {
             view_states,
             &visualizable_entities_per_visualizer,
             &indicated_entities_per_visualizer,
-            app_ctx.app_options,
         );
 
         // One shared `ViewerContext` for all views of this recording.

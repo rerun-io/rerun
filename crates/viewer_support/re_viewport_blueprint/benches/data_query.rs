@@ -88,7 +88,6 @@ fn query_tree_many_entities(c: &mut Criterion) {
     let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
     let active_timeline = Timeline::new_sequence("frame");
     let query_range = QueryRange::LatestAt;
-    let app_options = re_viewer_context::AppOptions::test();
 
     // Benchmark with simple include-all filter
     {
@@ -108,7 +107,6 @@ fn query_tree_many_entities(c: &mut Criterion) {
                     &query_range,
                     &visualizable_entities.as_ref(),
                     &indicated_entities.as_ref(),
-                    &app_options,
                 )
             });
         });
@@ -141,7 +139,6 @@ fn query_tree_many_entities(c: &mut Criterion) {
                     &query_range,
                     &visualizable_entities.as_ref(),
                     &indicated_entities.as_ref(),
-                    &app_options,
                 )
             });
         });
