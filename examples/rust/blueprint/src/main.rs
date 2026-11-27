@@ -4,7 +4,7 @@ use rerun::{
     },
     external::{
         re_log_types::TimeInt,
-        re_sdk_types::blueprint::components::{LoopMode, PanelState, PlayState},
+        re_sdk_types::blueprint::components::{LoopMode, PanelState},
     },
 };
 
@@ -56,8 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .with_state(PanelState::Collapsed)
                     .with_timeline("custom")
                     .with_time_selection(TimeInt::new_temporal(10)..=TimeInt::new_temporal(25))
-                    .with_loop_mode(LoopMode::Selection)
-                    .with_play_state(PlayState::Playing),
+                    .with_loop_mode(LoopMode::Selection),
             ),
         )
     };

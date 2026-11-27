@@ -16,7 +16,7 @@ use re_sdk_types::blueprint::archetypes::{
     TimePanelBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint, VisualizerInstruction,
 };
 use re_sdk_types::blueprint::components::{
-    ActiveTab, ContainerKind, Eye3DKind, IncludedContent, PanelState, PlayState, QueryExpression,
+    ActiveTab, ContainerKind, Eye3DKind, IncludedContent, LoopMode, PanelState, QueryExpression,
     RootContainer, ViewMaximized, VisualizerInstructionId,
 };
 use re_sdk_types::components::Color;
@@ -156,7 +156,7 @@ pub fn example_blueprint() -> EntityDb {
             Box::new(
                 TimePanelBlueprint::update_fields()
                     .with_fps(30.0)
-                    .with_play_state(PlayState::Paused),
+                    .with_loop_mode(LoopMode::Selection),
             ),
         ),
         (

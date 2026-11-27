@@ -63,7 +63,9 @@ This section lists features that users often ask for, with the best workaround w
     - [#2497](https://github.com/rerun-io/rerun/issues/2497)
 - Linking or highlighting different entities across views. Only the same entity path and instance link today.
     - [#8866](https://github.com/rerun-io/rerun/issues/8866), [#4379](https://github.com/rerun-io/rerun/issues/4379)
-- Setting the initial time cursor in a blueprint (`TimePanel` sets timeline, play state, and time selection, but not the cursor). Workaround: the `#when=` fragment of a [Viewer URL](../viewer/extend/urls.md), or `set_time` on `rerun.experimental.ViewerClient`.
+- Setting the initial time cursor or play state in a blueprint.
+  `TimePanel` sets the timeline and time selection, but not the cursor or play state.
+  Workaround: use the `#when=` fragment of a [Viewer URL](../viewer/extend/urls.md), or `set_time` on `rerun.experimental.ViewerClient`.
 - A scrollable container for many views. Container kinds are only tabs, horizontal, vertical, and grid. Workaround: put views in tabs.
     - [#6627](https://github.com/rerun-io/rerun/issues/6627)
 - Hiding entities by default at log time: `EntityBehavior` only has an effect in the blueprint. Workaround: set `EntityBehavior(visible=False)` as an override in your blueprint.

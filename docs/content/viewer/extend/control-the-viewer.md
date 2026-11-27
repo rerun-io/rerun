@@ -15,13 +15,12 @@ snippet: howto/visualization/playback_blueprint[blueprint]
 | `timeline`       | The active timeline.                                                      |
 | `playback_speed` | Playback speed multiplier.                                                |
 | `fps`            | Frames per second, for sequence timelines.                                |
-| `play_state`     | `"paused"`, `"playing"`, or `"following"` (follow the newest data).       |
 | `loop_mode`      | `"off"`, `"selection"`, or `"all"`. `"selection"` needs `time_selection`. |
 | `time_selection` | A selected time range, as `rrb.components.AbsoluteTimeRange(min, max)`.   |
 | `state`          | `"expanded"`, `"collapsed"`, or `"hidden"`.                               |
 
-The time panel blueprint has no field for the position of the time cursor.
-To start at a specific time, use one of the methods below.
+The time panel blueprint has no field for the play state or the position of the time cursor.
+To pause, play or start at a specific time, use one of the methods below.
 
 ## Open a recording at a specific time
 

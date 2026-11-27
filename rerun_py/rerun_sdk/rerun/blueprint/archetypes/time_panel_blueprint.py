@@ -39,7 +39,6 @@ class TimePanelBlueprint(Archetype):
         timeline: encodings.Utf8Like | None = None,
         playback_speed: encodings.Float64Like | None = None,
         fps: encodings.Float64Like | None = None,
-        play_state: blueprint_components.PlayStateLike | None = None,
         loop_mode: blueprint_components.LoopModeLike | None = None,
         time_selection: encodings.AbsoluteTimeRangeLike | None = None,
     ) -> None:
@@ -56,10 +55,6 @@ class TimePanelBlueprint(Archetype):
             A time playback speed multiplier.
         fps:
             Frames per second. Only applicable for sequence timelines.
-        play_state:
-            If the time is currently paused, playing, or following.
-
-            Defaults to either playing or following, depending on the data source.
         loop_mode:
             How the time should loop. A selection loop only works if there is also a `time_selection` passed.
 
@@ -76,7 +71,6 @@ class TimePanelBlueprint(Archetype):
                 timeline=timeline,
                 playback_speed=playback_speed,
                 fps=fps,
-                play_state=play_state,
                 loop_mode=loop_mode,
                 time_selection=time_selection,
             )
@@ -90,7 +84,6 @@ class TimePanelBlueprint(Archetype):
             timeline=None,
             playback_speed=None,
             fps=None,
-            play_state=None,
             loop_mode=None,
             time_selection=None,
         )
@@ -111,7 +104,6 @@ class TimePanelBlueprint(Archetype):
         timeline: encodings.Utf8Like | None = None,
         playback_speed: encodings.Float64Like | None = None,
         fps: encodings.Float64Like | None = None,
-        play_state: blueprint_components.PlayStateLike | None = None,
         loop_mode: blueprint_components.LoopModeLike | None = None,
         time_selection: encodings.AbsoluteTimeRangeLike | None = None,
     ) -> TimePanelBlueprint:
@@ -130,10 +122,6 @@ class TimePanelBlueprint(Archetype):
             A time playback speed multiplier.
         fps:
             Frames per second. Only applicable for sequence timelines.
-        play_state:
-            If the time is currently paused, playing, or following.
-
-            Defaults to either playing or following, depending on the data source.
         loop_mode:
             How the time should loop. A selection loop only works if there is also a `time_selection` passed.
 
@@ -150,7 +138,6 @@ class TimePanelBlueprint(Archetype):
                 "timeline": timeline,
                 "playback_speed": playback_speed,
                 "fps": fps,
-                "play_state": play_state,
                 "loop_mode": loop_mode,
                 "time_selection": time_selection,
             }
@@ -202,14 +189,6 @@ class TimePanelBlueprint(Archetype):
         )
 
     @staticmethod
-    def descriptor_play_state() -> ComponentDescriptor:
-        return ComponentDescriptor(
-            "TimePanelBlueprint:play_state",
-            archetype=TimePanelBlueprint.NAME,
-            component_type=blueprint_components.PlayStateBatch._COMPONENT_TYPE,
-        )
-
-    @staticmethod
     def descriptor_loop_mode() -> ComponentDescriptor:
         return ComponentDescriptor(
             "TimePanelBlueprint:loop_mode",
@@ -258,17 +237,6 @@ class TimePanelBlueprint(Archetype):
         converter=blueprint_components.FpsBatch._converter,  # type: ignore[misc]
     )
     # Frames per second. Only applicable for sequence timelines.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    play_state: blueprint_components.PlayStateBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=blueprint_components.PlayStateBatch._converter,  # type: ignore[misc]
-    )
-    # If the time is currently paused, playing, or following.
-    #
-    # Defaults to either playing or following, depending on the data source.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

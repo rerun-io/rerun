@@ -26,6 +26,7 @@ mod v0_1_0__to__v0_1_1;
 mod v0_1_1__to__v0_1_2;
 mod v0_1_2__to__v0_1_3;
 mod v0_1_3__to__v0_1_4;
+mod v0_1_4__to__v0_1_5;
 
 /// This trait needs to be implemented by any new migrations. It ensures that
 /// all migrations adhere to the same contract.
@@ -149,6 +150,7 @@ fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {
                     batch = maybe_apply::<v0_1_1__to__v0_1_2::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_2__to__v0_1_3::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_3__to__v0_1_4::Migration>(&batch_version, batch);
+                    batch = maybe_apply::<v0_1_4__to__v0_1_5::Migration>(&batch_version, batch);
                 }
                 batch
             }
@@ -209,5 +211,6 @@ pub fn migrate_rrd_manifest_data(raw_sorbet_schema: &SchemaRef, data: RecordBatc
     data = maybe_apply_to_rrd_manifest::<v0_1_1__to__v0_1_2::Migration>(&version, data);
     data = maybe_apply_to_rrd_manifest::<v0_1_2__to__v0_1_3::Migration>(&version, data);
     data = maybe_apply_to_rrd_manifest::<v0_1_3__to__v0_1_4::Migration>(&version, data);
+    data = maybe_apply_to_rrd_manifest::<v0_1_4__to__v0_1_5::Migration>(&version, data);
     data
 }

@@ -6300,13 +6300,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
-                        name: "play_state",
-                        display_name: "Play state",
-                        component_type: "rerun.blueprint.components.PlayState".into(),
-                        docstring_md: "If the time is currently paused, playing, or following.\n\nDefaults to either playing or following, depending on the data source.",
-                        flags: ArchetypeFieldFlags::UI_EDITABLE,
-                    },
-                    ArchetypeFieldReflection {
                         name: "loop_mode",
                         display_name: "Loop mode",
                         component_type: "rerun.blueprint.components.LoopMode".into(),

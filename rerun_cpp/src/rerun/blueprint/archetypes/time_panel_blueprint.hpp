@@ -8,7 +8,6 @@
 #include "../../blueprint/components/fps.hpp"
 #include "../../blueprint/components/loop_mode.hpp"
 #include "../../blueprint/components/panel_state.hpp"
-#include "../../blueprint/components/play_state.hpp"
 #include "../../blueprint/components/playback_speed.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
@@ -38,11 +37,6 @@ namespace rerun::blueprint::archetypes {
 
         /// Frames per second. Only applicable for sequence timelines.
         std::optional<ComponentBatch> fps;
-
-        /// If the time is currently paused, playing, or following.
-        ///
-        /// Defaults to either playing or following, depending on the data source.
-        std::optional<ComponentBatch> play_state;
 
         /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
         ///
@@ -76,11 +70,6 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_fps = ComponentDescriptor(
             ArchetypeName, "TimePanelBlueprint:fps",
             Loggable<rerun::blueprint::components::Fps>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `play_state` field.
-        static constexpr auto Descriptor_play_state = ComponentDescriptor(
-            ArchetypeName, "TimePanelBlueprint:play_state",
-            Loggable<rerun::blueprint::components::PlayState>::ComponentType
         );
         /// `ComponentDescriptor` for the `loop_mode` field.
         static constexpr auto Descriptor_loop_mode = ComponentDescriptor(
@@ -138,17 +127,6 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// If the time is currently paused, playing, or following.
-        ///
-        /// Defaults to either playing or following, depending on the data source.
-        TimePanelBlueprint with_play_state(
-            const rerun::blueprint::components::PlayState& _play_state
-        ) && {
-            play_state =
-                ComponentBatch::from_loggable(_play_state, Descriptor_play_state).value_or_throw();
-            return std::move(*this);
-        }
-
         /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
         ///
         /// Defaults to off.
@@ -179,13 +157,7 @@ namespace rerun::blueprint::archetypes {
         /// The specified `lengths` must sum to the total length of the component batch.
         Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
             return detail::partition_batches(
-                       {&state,
-                        &timeline,
-                        &playback_speed,
-                        &fps,
-                        &play_state,
-                        &loop_mode,
-                        &time_selection},
+                       {&state, &timeline, &playback_speed, &fps, &loop_mode, &time_selection},
                        lengths_
             )
                 .value_or_throw();
@@ -196,13 +168,9 @@ namespace rerun::blueprint::archetypes {
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
         Collection<ComponentColumn> columns() {
-            return detail::partition_batches_of_unit_length({&state,
-                                                             &timeline,
-                                                             &playback_speed,
-                                                             &fps,
-                                                             &play_state,
-                                                             &loop_mode,
-                                                             &time_selection})
+            return detail::partition_batches_of_unit_length(
+                       {&state, &timeline, &playback_speed, &fps, &loop_mode, &time_selection}
+            )
                 .value_or_throw();
         }
     };
@@ -226,7 +194,6 @@ namespace rerun {
                  &archetype.timeline,
                  &archetype.playback_speed,
                  &archetype.fps,
-                 &archetype.play_state,
                  &archetype.loop_mode,
                  &archetype.time_selection}
             );

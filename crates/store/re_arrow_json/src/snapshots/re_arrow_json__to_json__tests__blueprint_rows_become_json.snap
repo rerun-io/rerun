@@ -34,7 +34,7 @@ expression: "serde_json::to_string_pretty(&read(&example_blueprint())).unwrap()"
   "/time_panel": {
     "TimePanelBlueprint": {
       "fps": 30.0,
-      "play_state": "Paused"
+      "loop_mode": "Selection"
     }
   },
   "/view/00000000-0000-4000-8000-000000000003": {

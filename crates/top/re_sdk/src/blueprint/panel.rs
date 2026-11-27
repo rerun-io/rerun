@@ -4,9 +4,7 @@ use std::ops::RangeInclusive;
 
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_sdk_types::blueprint::archetypes::{PanelBlueprint, TimePanelBlueprint};
-use re_sdk_types::blueprint::components::{
-    Fps, LoopMode, PanelState, PlayState, PlaybackSpeed, TimelineName,
-};
+use re_sdk_types::blueprint::components::{Fps, LoopMode, PanelState, PlaybackSpeed, TimelineName};
 use re_sdk_types::encodings::Float64;
 
 use crate::RecordingStreamResult;
@@ -90,7 +88,6 @@ pub struct TimePanel {
     timeline: Option<String>,
     playback_speed: Option<f64>,
     fps: Option<f64>,
-    play_state: Option<PlayState>,
     loop_mode: Option<LoopMode>,
     time_selection: Option<AbsoluteTimeRange>,
 }
@@ -125,12 +122,6 @@ impl TimePanel {
         self
     }
 
-    /// Set the play state (paused, playing, or following).
-    pub fn with_play_state(mut self, play_state: impl Into<PlayState>) -> Self {
-        self.play_state = Some(play_state.into());
-        self
-    }
-
     /// Set the loop mode.
     pub fn with_loop_mode(mut self, loop_mode: impl Into<LoopMode>) -> Self {
         self.loop_mode = Some(loop_mode.into());
@@ -162,9 +153,6 @@ impl TimePanel {
         }
         if let Some(fps) = self.fps {
             arch = arch.with_fps(Fps(Float64(fps)));
-        }
-        if let Some(play_state) = self.play_state {
-            arch = arch.with_play_state(play_state);
         }
         if let Some(loop_mode) = self.loop_mode {
             arch = arch.with_loop_mode(loop_mode);
