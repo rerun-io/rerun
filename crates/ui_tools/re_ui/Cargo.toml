@@ -54,6 +54,7 @@ crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
+egui_table.workspace = true
 egui = { workspace = true, features = [
   "experimental", # The theme API, for `TextEditTheme`
 ] }
