@@ -84,3 +84,55 @@ impl<F: FnMut(&mut egui::Ui, usize, usize)> TableDelegate for EmbeddedTable<'_, 
             });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use egui_kittest::{Harness, kittest::Queryable as _};
+
+    use super::*;
+
+    #[test]
+    fn embedded_table_scrolls_with_parent() {
+        let mut harness = Harness::builder()
+            .with_context_setup(crate::apply_style_and_install_loaders)
+            .with_size(egui::vec2(220.0, 140.0))
+            .with_max_steps(12)
+            .build_ui(|ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    embedded_table_ui(
+                        ui,
+                        "table",
+                        TableStyle::Dense,
+                        &[("Coordinates", 120.0)],
+                        30,
+                        |ui, row, _| {
+                            ui.label(format!("Row {row}"));
+                        },
+                    );
+                    ui.label("After table");
+                });
+            });
+        harness.run();
+
+        let first_row = harness.get_by_label("Row 0").rect();
+        assert!(harness.query_by_label("Row 29").is_none());
+
+        harness.hover_at(first_row.center());
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(0.0, -2_000.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Unknown,
+        });
+        harness.run();
+
+        assert!(harness.query_by_label("Row 0").is_none());
+        let last_row = harness.get_by_label("Row 29").rect();
+        let after_table = harness.get_by_label("After table").rect();
+        assert!(
+            last_row.bottom() <= after_table.top() && after_table.bottom() <= 140.0,
+            "The last row and following label should both be visible: {last_row:?}, {after_table:?}",
+        );
+    }
+}
