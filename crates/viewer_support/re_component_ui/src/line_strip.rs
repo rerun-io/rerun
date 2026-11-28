@@ -1,6 +1,6 @@
 use re_format::{format_f32, format_uint};
 use re_sdk_types::components::{LineStrip2D, LineStrip3D};
-use re_ui::UiExt as _;
+use re_ui::{TableStyle, embedded_table_ui};
 use re_viewer_context::{AppContext, MaybeMutRef, UiLayout};
 
 use crate::DEFAULT_NUMBER_WIDTH;
@@ -21,50 +21,27 @@ fn multiline_view_line_strip_3d(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip3D>,
 ) -> egui::Response {
-    use egui_extras::Column;
-
-    let tokens = ui.tokens();
-    let table_style = re_ui::TableStyle::Dense;
-
     // TODO(andreas): Editing this would be nice!
-    let value = value.as_ref();
+    let positions = &value.as_ref().0;
 
-    // TODO(andreas): Is it really a good idea to always have the full table here?
-    // Can we use the ui stack to know where we are and do the right thing instead?
-    UiLayout::SelectionPanel
-        .table(ui)
-        .resizable(true)
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
-        .header(tokens.deprecated_table_header_height(), |mut header| {
-            re_ui::DesignTokens::setup_table_header(&mut header);
-            header.col(|ui| {
-                ui.label("x");
-            });
-            header.col(|ui| {
-                ui.label("y");
-            });
-            header.col(|ui| {
-                ui.label("z");
-            });
-        })
-        .body(|mut body| {
-            tokens.setup_table_body(&mut body, table_style);
-            let row_height = tokens.table_row_height(table_style);
-            body.rows(row_height, value.0.len(), |mut row| {
-                if let Some(pos) = value.0.get(row.index()) {
-                    row.col(|ui| {
-                        ui.label(format_f32(pos.x()));
-                    });
-                    row.col(|ui| {
-                        ui.label(format_f32(pos.y()));
-                    });
-                    row.col(|ui| {
-                        ui.label(format_f32(pos.z()));
-                    });
-                }
-            });
-        });
+    embedded_table_ui(
+        ui,
+        "line_strip_3d",
+        TableStyle::Dense,
+        &[
+            ("x", DEFAULT_NUMBER_WIDTH),
+            ("y", DEFAULT_NUMBER_WIDTH),
+            ("z", DEFAULT_NUMBER_WIDTH),
+        ],
+        positions.len(),
+        |ui, row, column| {
+            if let Some(pos) = positions.get(row)
+                && let Some(&coordinate) = [pos.x(), pos.y(), pos.z()].get(column)
+            {
+                ui.label(format_f32(coordinate));
+            }
+        },
+    );
 
     // Placeholder response.
     ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover())
@@ -86,44 +63,23 @@ fn multiline_view_line_strip_2d(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip2D>,
 ) -> egui::Response {
-    use egui_extras::Column;
-
-    let tokens = ui.tokens();
-    let table_style = re_ui::TableStyle::Dense;
-
     // TODO(andreas): Editing this would be nice!
-    let value = value.as_ref();
+    let positions = &value.as_ref().0;
 
-    // TODO(andreas): Is it really a good idea to always have the full table here?
-    // Can we use the ui stack to know where we are and do the right thing instead?
-    UiLayout::SelectionPanel
-        .table(ui)
-        .resizable(true)
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
-        .header(tokens.deprecated_table_header_height(), |mut header| {
-            re_ui::DesignTokens::setup_table_header(&mut header);
-            header.col(|ui| {
-                ui.label("x");
-            });
-            header.col(|ui| {
-                ui.label("y");
-            });
-        })
-        .body(|mut body| {
-            tokens.setup_table_body(&mut body, table_style);
-            let row_height = tokens.table_row_height(table_style);
-            body.rows(row_height, value.0.len(), |mut row| {
-                if let Some(pos) = value.0.get(row.index()) {
-                    row.col(|ui| {
-                        ui.label(format_f32(pos.x()));
-                    });
-                    row.col(|ui| {
-                        ui.label(format_f32(pos.y()));
-                    });
-                }
-            });
-        });
+    embedded_table_ui(
+        ui,
+        "line_strip_2d",
+        TableStyle::Dense,
+        &[("x", DEFAULT_NUMBER_WIDTH), ("y", DEFAULT_NUMBER_WIDTH)],
+        positions.len(),
+        |ui, row, column| {
+            if let Some(pos) = positions.get(row)
+                && let Some(&coordinate) = [pos.x(), pos.y()].get(column)
+            {
+                ui.label(format_f32(coordinate));
+            }
+        },
+    );
 
     // Placeholder response.
     ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover())

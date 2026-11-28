@@ -1,6 +1,6 @@
 use re_format::{format_lat_lon, format_uint};
 use re_sdk_types::components::GeoLineString;
-use re_ui::UiExt as _;
+use re_ui::{TableStyle, UiExt as _, embedded_table_ui};
 use re_viewer_context::{AppContext, MaybeMutRef, UiLayout};
 
 fn singleline_view_geo_line_string(
@@ -19,51 +19,35 @@ fn multiline_view_geo_line_string(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, GeoLineString>,
 ) -> egui::Response {
-    use egui_extras::Column;
-
-    let table_style = re_ui::TableStyle::Dense;
-
-    let tokens = ui.tokens();
-
     // TODO(andreas): Editing this would be nice!
-    let value = value.as_ref();
+    let positions = &value.as_ref().0;
 
-    UiLayout::SelectionPanel
-        .table(ui)
-        .resizable(true)
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .columns(Column::initial(100.0).clip(true), 2)
-        .header(tokens.deprecated_table_header_height(), |mut header| {
-            re_ui::DesignTokens::setup_table_header(&mut header);
-            header.col(|ui| {
-                ui.label("Latitude");
+    embedded_table_ui(
+        ui,
+        "geo_line_string",
+        TableStyle::Dense,
+        &[("Latitude", 100.0), ("Longitude", 100.0)],
+        positions.len(),
+        |ui, row, column| {
+            let Some(pos) = positions.get(row) else {
+                return;
+            };
+            let (coordinate, help) = match column {
+                0 => (
+                    pos.x(),
+                    "Latitude according to [EPSG:4326](https://epsg.io/4326)",
+                ),
+                1 => (
+                    pos.y(),
+                    "Longitude according to [EPSG:4326](https://epsg.io/4326)",
+                ),
+                _ => return,
+            };
+            ui.label(format_lat_lon(coordinate)).on_hover_ui(|ui| {
+                ui.markdown_ui(help);
             });
-            header.col(|ui| {
-                ui.label("Longitude");
-            });
-        })
-        .body(|mut body| {
-            tokens.setup_table_body(&mut body, table_style);
-            let row_height = tokens.table_row_height(table_style);
-            body.rows(row_height, value.0.len(), |mut row| {
-                if let Some(pos) = value.0.get(row.index()) {
-                    row.col(|ui| {
-                        ui.label(format_lat_lon(pos.x())).on_hover_ui(|ui| {
-                            ui.markdown_ui(
-                                "Latitude according to [EPSG:4326](https://epsg.io/4326)",
-                            );
-                        });
-                    });
-                    row.col(|ui| {
-                        ui.label(format_lat_lon(pos.y())).on_hover_ui(|ui| {
-                            ui.markdown_ui(
-                                "Longitude according to [EPSG:4326](https://epsg.io/4326)",
-                            );
-                        });
-                    });
-                }
-            });
-        });
+        },
+    );
 
     // Placeholder response.
     ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover())
