@@ -702,6 +702,10 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"views/spatial2d_pixel_centers" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 
 # --------------------------------------------------------------------------------------------------
 
