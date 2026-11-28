@@ -19,6 +19,10 @@ pub fn run_native_app(
         );
     }
 
+    // Must happen before the window is created, which is when GNOME looks for the desktop entry.
+    #[cfg(target_os = "linux")]
+    crate::linux_desktop_entry::install_if_missing();
+
     let native_options = eframe_options(force_wgpu_backend);
 
     let window_title = "Rerun";

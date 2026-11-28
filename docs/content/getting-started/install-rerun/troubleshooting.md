@@ -59,6 +59,11 @@ Discoverable for scripts/zombie_todos.py:
 TODO(#1250): fix above if ticket is outdated.
 -->
 
+To show its icon in the GNOME dock and Alt-Tab, the Viewer creates a hidden `rerun.desktop` entry in `~/.local/share/applications` and an icon in `~/.local/share/icons/hicolor/512x512/apps/rerun.png` (or under `$XDG_DATA_HOME` if set).
+It never overwrites a `rerun.desktop` it did not create itself.
+On the very first launch the dock may show a generic icon for a few seconds before switching; from then on the icon shows immediately.
+Set `RERUN_DESKTOP_ENTRY=0` to disable this, and delete the two files to undo it.
+
 ### Building from source on Linux
 
 You only need these packages if you build Rerun from source, for example with `cargo install rerun-cli` or as a dependency of your Rust project.
