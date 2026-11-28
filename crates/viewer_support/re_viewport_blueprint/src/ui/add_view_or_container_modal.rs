@@ -13,6 +13,7 @@ const CARD_HEIGHT: f32 = 76.0;
 const CARD_SPACING: f32 = 8.0;
 const ICON_SIZE: egui::Vec2 = egui::Vec2::splat(20.0);
 const ICON_TITLE_GAP: f32 = 10.0;
+const TITLE_TAG_GAP: f32 = 4.0;
 
 /// Text looks smaller than its bounding box, so centered content appears to sit too high.
 const OPTICAL_TOP_PADDING: i8 = 2;
@@ -80,7 +81,7 @@ fn modal_ui(
             }
         };
 
-        let response = card_ui(ui, icon_for_container_kind(&kind), title, enabled)
+        let response = card_ui(ui, icon_for_container_kind(&kind), title, None, enabled)
             .on_disabled_hover_text(format!(
                 "Nested {title} containers in containers of the same type are disallowed and automatically simplified \
                 away as they are not useful."
@@ -102,8 +103,14 @@ fn modal_ui(
 
     card_grid_ui(ui, "views", view_classes, |ui, view_class| {
         let class = ctx.view_class_registry().get_class_or_log_error(view_class);
+        let experimental = ctx
+            .reflection()
+            .views
+            .get(&view_class)
+            .is_some_and(|view| view.experimental);
+        let tag = experimental.then(|| ui.experimental_tag_atom());
 
-        if card_ui(ui, class.icon(), class.display_name(), true).clicked() {
+        if card_ui(ui, class.icon(), class.display_name(), tag, true).clicked() {
             let view = ViewBlueprint::new_for_user_request(ctx, view_class);
             viewport.add_views(std::iter::once(view), target_container, None);
             viewport.mark_user_interaction(ctx);
@@ -143,14 +150,30 @@ fn card_grid_ui<T>(
 }
 
 /// Show a button that fills its grid cell, with an icon above a title.
-fn card_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, enabled: bool) -> egui::Response {
+///
+/// A `tag`, such as [`re_ui::UiExt::experimental_tag_atom`], goes below the title.
+fn card_ui(
+    ui: &mut egui::Ui,
+    icon: &re_ui::Icon,
+    title: &str,
+    tag: Option<egui::ContainerAtom<'static>>,
+    enabled: bool,
+) -> egui::Response {
     // The button only styles its top-level atoms, so the nested icon has to be tinted here.
     let icon = icon
         .as_image()
         .tint(re_ui::Variant::Secondary.visuals(ui.tokens()).text)
         .atom_size(ICON_SIZE);
 
-    let content = egui::ContainerAtom::new((icon, title))
+    let mut label = egui::Atoms::new(title);
+    if let Some(tag) = tag {
+        label.push_right(tag);
+    }
+    let label = egui::ContainerAtom::new(label)
+        .direction(egui::Direction::TopDown)
+        .gap(TITLE_TAG_GAP);
+
+    let content = egui::ContainerAtom::new((icon, label))
         .direction(egui::Direction::TopDown)
         .gap(ICON_TITLE_GAP)
         .wrap_mode(egui::TextWrapMode::Truncate)

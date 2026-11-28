@@ -10,7 +10,7 @@ order: 973
 
 ### Assets
 
-[Assets](../query-and-transform/catalog/catalog-object-model.md#assets) are static data registered on a dataset and shared by its segments, such as a robot mesh that every episode refers to.
+[Assets](../catalog/catalog-object-model.md#assets) are static data registered on a dataset and shared by its segments, such as a robot mesh that every episode refers to.
 
 When you open a segment that has an asset the viewer downloads the asset, and caches it so other segments in the dataset don't
 have to download the same asset again.
@@ -112,7 +112,7 @@ When both the relative and absolute excess cross a threshold, the output warns a
 
 The analysis requires a chunk index; run `rerun rrd migrate` first on files written before those existed.
 
-[Docs here.](../logging-and-ingestion/chunks-and-rrd/optimize-chunks.md)
+[Docs here.](../ingest/optimize-chunks.md)
 
 ### Keyframe markers are kept out of the video chunks
 
@@ -230,7 +230,7 @@ As before, `video_reference` points at the entity holding the video, and default
 Frames of a `VideoStream` are looked up on the active timeline in the viewer, so the same stream can be shown at different timestamps in several views.
 
 Available from 0.37.1.
-[Docs here.](../logging-and-ingestion/media/video.md)
+[Docs here.](../log/media/video.md)
 
 ## Breaking changes
 
@@ -305,7 +305,7 @@ const auto rec = rerun::RecordingStream("rerun_example_my_app", "run-1");
 const auto rec = rerun::RecordingStream("rerun_example_my_app", "run-1", rerun::StoreKind::Recording, false);
 ```
 
-[Docs here.](../query-and-transform/catalog/properties-and-segments.md)
+[Docs here.](../catalog/properties-and-segments.md)
 
 ### `rerun-sdk[datafusion]` and `rerun-sdk[dataplatform]` extras removed
 

@@ -21,25 +21,25 @@ Pass a file to open it directly:
 rerun path/to/recording.rrd
 ```
 
-Supports `.rrd`, `.mcap`, and [more](./logging-and-ingestion/import/open-any-file.md).
+Supports `.rrd`, `.mcap`, and [more](./ingest/open-any-file.md).
 Also available in-browser at [rerun.io/viewer](https://rerun.io/viewer).
 
 
 ## Scale across many recordings
 
-Rerun's catalog organizes recordings as queryable [**segments**](./query-and-transform/catalog/catalog-object-model.md).
-To query across recordings, log (or convert) data to an `.rrd`, start a local catalog server (or connect to [Rerun Hub](./hub.md), our commercial managed offering for production deployments), register the `.rrd` as a segment, then visualize and query across recordings. The Viewer can also open an `.rrd` in its built-in catalog without a separate server. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+Rerun's catalog organizes recordings as queryable [**segments**](./catalog/catalog-object-model.md).
+To query across recordings, log (or convert) data to an `.rrd`, start a local catalog server (or connect to [Rerun Hub](./catalog/hub.md), our commercial managed offering for production deployments), register the `.rrd` as a segment, then visualize and query across recordings. The Viewer can also open an `.rrd` in its built-in catalog without a separate server. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ### Log
 
-Save data to an `.rrd`, see the [logging tutorial](./logging-and-ingestion/tutorial.md) for more details.
-If you already have data in another format see [Import existing data](./logging-and-ingestion/import.md) for various examples converting to `.rrd`.
+Save data to an `.rrd`, see the [logging tutorial](./log/tutorial.md) for more details.
+If you already have data in another format see [Ingest](./ingest.md) for various examples converting to `.rrd`.
 
 snippet: tutorials/getting_started_log
 ### Start a catalog server
 
 Start a local catalog on port `51234` with `rerun server`, then connect from your code.
-If you use [Rerun Hub](./hub.md), connect to it instead (see [Run the examples on Hub](./hub.md#run-the-examples-on-hub)).
+If you use [Rerun Hub](./catalog/hub.md), connect to it instead (see [Run the examples on Hub](./catalog/hub.md#run-the-examples-on-hub)).
 
 ```bash
 rerun server

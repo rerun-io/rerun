@@ -111,7 +111,7 @@ pub fn iter_external_importers() -> impl ExactSizeIterator<Item = PathBuf> {
 ///
 /// Refer to our `external_importer` example for more information.
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview) on
+/// Checkout our [guide](https://www.rerun.io/docs/ingest/importers/overview) on
 /// how to implement external importers.
 pub struct ExternalImporter;
 

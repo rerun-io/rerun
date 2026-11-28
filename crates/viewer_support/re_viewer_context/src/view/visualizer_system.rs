@@ -388,8 +388,4 @@ impl VisualizerCollection {
     ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn VisualizerSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
-
-    pub fn contains_visualizer_type(&self, name: ViewSystemIdentifier) -> bool {
-        self.systems.contains_key(&name)
-    }
 }

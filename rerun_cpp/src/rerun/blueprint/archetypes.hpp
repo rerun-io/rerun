@@ -49,3 +49,4 @@
 #include "blueprint/archetypes/visible_time_ranges.hpp"
 #include "blueprint/archetypes/visual_bounds2d.hpp"
 #include "blueprint/archetypes/visualizer_instruction.hpp"
+#include "blueprint/archetypes/web_view_content.hpp"

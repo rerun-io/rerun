@@ -120,7 +120,6 @@ impl TestContextExt for TestContext {
                                 &query_range,
                                 ctx.visualizable_entities_per_visualizer,
                                 ctx.indicated_entities_per_visualizer,
-                                ctx.app_options(),
                             );
 
                             query_results.insert(*view_id, std::sync::Arc::new(data_query_result));

@@ -45,7 +45,6 @@ def main() -> None:
                 timeline="custom",
                 time_selection=rrb.components.AbsoluteTimeRange(10, 25),
                 loop_mode="selection",
-                play_state="playing",
             ),
             auto_views=args.auto_views,
         )

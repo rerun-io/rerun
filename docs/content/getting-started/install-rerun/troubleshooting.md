@@ -202,7 +202,7 @@ Give overlapping entities different draw orders, for example via the `draw_order
 
 If an entity's transform frame is not connected to the view's origin, the view can't place it.
 The view then reports an error for that entity and doesn't draw it.
-Use the transform debugging panel to look for disconnected frames, see [Debugging transform trees](../../logging-and-ingestion/data-model/transforms.md#debugging-transform-trees).
+Use the transform debugging panel to look for disconnected frames, see [Debugging transform trees](../../log/data-model/transforms.md#debugging-transform-trees).
 
 For more reasons why data may be missing, see [Some of my data is not shown](../../viewer/performance/missing-data.md).
 
@@ -238,7 +238,7 @@ rerun rrd merge --continue-on-error my_recording.rrd -o my_recording_fixed.rrd
 ```
 
 Use `rerun rrd verify` to check a file.
-See [Work with `.rrd` files](../../logging-and-ingestion/chunks-and-rrd/manipulate-rrd-files.md) for more ways to inspect and change `.rrd` files.
+See [Work with `.rrd` files](../../log/chunks-and-rrd/manipulate-rrd-files.md) for more ways to inspect and change `.rrd` files.
 
 ## The web Viewer only shows the welcome page
 
@@ -269,4 +269,4 @@ This can be configured from the viewer's option menu. Alternatively, you can als
 * for the web viewer pass `&video_decoder=prefer_software` as a url parameter
 * for the native viewer & for starting the web viewer via command line (`--web-viewer` argument), pass `--video-decoder=prefer_software`
 
-For more information about video decoding, see also the reference page on [video](../../logging-and-ingestion/media/video.md).
+For more information about video decoding, see also the reference page on [video](../../log/media/video.md).

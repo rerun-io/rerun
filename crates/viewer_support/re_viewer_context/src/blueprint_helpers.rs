@@ -139,46 +139,6 @@ pub trait BlueprintContext {
         self.save_serialized_blueprint_component(entity_path, serialized);
     }
 
-    fn save_static_blueprint_component(
-        &self,
-        entity_path: EntityPath,
-        component_descr: &ComponentDescriptor,
-        component_batch: &dyn ComponentBatch,
-    ) {
-        let Some(serialized) = component_batch.serialized(component_descr.clone()) else {
-            re_log::warn!("could not serialize components with descriptor `{component_descr}`");
-            return;
-        };
-
-        self.save_serialized_static_blueprint_component(entity_path, serialized);
-    }
-
-    fn save_serialized_static_blueprint_component(
-        &self,
-        entity_path: EntityPath,
-        component_batch: SerializedComponentBatch,
-    ) {
-        let blueprint = self.current_blueprint();
-        let row_id = static_write_row_id(blueprint);
-
-        let chunk = match Chunk::builder(entity_path)
-            .with_serialized_batch(row_id, TimePoint::STATIC, component_batch)
-            .build()
-        {
-            Ok(chunk) => chunk,
-            Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint components: {err}");
-                return;
-            }
-        };
-
-        self.command_sender()
-            .send_system(SystemCommand::AppendToStore {
-                store_id: blueprint.store_id().clone(),
-                chunks: vec![chunk],
-            });
-    }
-
     fn save_serialized_blueprint_component(
         &self,
         entity_path: EntityPath,
@@ -282,7 +242,7 @@ pub trait BlueprintContext {
     ) -> Option<ArrayRef> {
         self.current_blueprint()
             .latest_at(self.blueprint_query(), entity_path, [component])
-            .get(component)?
+            .get_if_loaded(component)?
             .component_batch_raw(component)
             .filter(|a| !a.is_empty())
     }
@@ -298,7 +258,7 @@ pub trait BlueprintContext {
     ) -> Option<ArrayRef> {
         self.default_blueprint()?
             .latest_at(self.blueprint_query(), entity_path, [component])
-            .get(component)?
+            .get_if_loaded(component)?
             .component_batch_raw(component)
             .filter(|a| !a.is_empty())
     }
@@ -329,7 +289,7 @@ pub trait BlueprintContext {
 
         let Some(datatype) = blueprint
             .latest_at(self.blueprint_query(), &entity_path, [component])
-            .get(component)
+            .get_if_loaded(component)
             .and_then(|unit| {
                 unit.component_batch_raw(component)
                     .map(|array| array.data_type().clone())
@@ -374,7 +334,7 @@ pub trait BlueprintContext {
 
         let Some(datatype) = blueprint
             .latest_at(self.blueprint_query(), &entity_path, [component])
-            .get(component)
+            .get_if_loaded(component)
             .and_then(|unit| {
                 unit.component_batch_raw(component)
                     .map(|array| array.data_type().clone())

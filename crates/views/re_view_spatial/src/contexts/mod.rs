@@ -26,7 +26,5 @@ pub fn register_spatial_contexts(
     system_registry.register_context_system::<TransformTreeContext>()?;
     system_registry.register_context_system::<EntityDepthOffsets>()?;
 
-    re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle();
-
     Ok(())
 }

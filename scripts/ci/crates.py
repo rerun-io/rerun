@@ -77,9 +77,6 @@ def cargo(
     dry_run: bool = False,
     capture: bool = False,
 ) -> Any:
-    if env is None:
-        env = {}
-
     if cargo_version is None:
         cmd = [CARGO_PATH, *args.split()]
     else:

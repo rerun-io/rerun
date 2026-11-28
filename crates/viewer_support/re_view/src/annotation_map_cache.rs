@@ -43,11 +43,7 @@ impl CacheEntryAccess<AnnotationMapCacheAccessor<'_>, Arc<AnnotationMap>> for An
     fn compute(&mut self, key: &AnnotationMapCacheAccessor<'_>) -> Arc<AnnotationMap> {
         self.maps
             .entry(key.query.clone())
-            .or_insert_with(|| {
-                let mut annotation_map = AnnotationMap::default();
-                annotation_map.load(key.recording, key.query);
-                Arc::new(annotation_map)
-            })
+            .or_insert_with(|| Arc::new(AnnotationMap::load(key.recording, key.query)))
             .clone()
     }
 }

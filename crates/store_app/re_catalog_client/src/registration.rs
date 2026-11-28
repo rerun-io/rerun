@@ -9,6 +9,7 @@ use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_protos::protocol_level::ProtocolLevel;
 
 use re_redap_client::{
     ApiError, ApiErrorKind, ApiResponseStream, ApiResult, ConnectionHandle, TaskCompletion,
@@ -358,6 +359,23 @@ pub fn check_segment_id_override(connection: &re_redap_client::Connection) -> Ap
     }
 }
 
+/// Fails unless the server registers the store a data source names in its `store_id`.
+///
+/// A server that predates the field ignores it and picks the store itself, so the check must run
+/// before submitting.
+fn check_server_level_for_store_id(connection: &re_redap_client::Connection) -> ApiResult<()> {
+    if connection.server_protocol_level() >= ProtocolLevel::REGISTER_STORE_ID {
+        Ok(())
+    } else {
+        // TODO(RR-6283): name the Rerun Hub version once it implements `store_id`.
+        Err(ApiError::unimplemented(
+            connection.origin(),
+            "this server does not support choosing which store of a file to register; \
+             it requires Rerun 0.45 or later, and Rerun Hub does not support it yet",
+        ))
+    }
+}
+
 impl CatalogClient {
     /// Unregisters segments and layers from the dataset.
     ///
@@ -388,10 +406,12 @@ impl CatalogClient {
 
     /// Initiate asynchronous registration of the provided data sources with a dataset.
     ///
-    /// Fails without contacting the dataset if a source sets
-    /// [`DataSource::segment_id_override`] and the server does not advertise
-    /// [`re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE`], since such a server would
-    /// silently register the source under its recording id instead.
+    /// # Server requirements
+    ///
+    /// Checked before anything is submitted:
+    /// * [`DataSource::segment_id_override`] needs the capability
+    ///   [`re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE`].
+    /// * [`DataSource::store_id`] needs protocol level [`ProtocolLevel::REGISTER_STORE_ID`].
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn register_with_dataset(
         &self,
@@ -406,6 +426,9 @@ impl CatalogClient {
             .any(|ds| ds.segment_id_override.is_some())
         {
             check_segment_id_override(&connection)?;
+        }
+        if data_sources.iter().any(|ds| ds.store_id.is_some()) {
+            check_server_level_for_store_id(&connection)?;
         }
 
         let (trace_id, descriptors) = connection

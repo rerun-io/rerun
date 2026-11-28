@@ -12,7 +12,7 @@ use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, StoreSyntaxHighlighting as _, StoreViewContext, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewContext, VisualizerCollection, blueprint_timeline,
+    SystemCommandSender as _, UiLayout, ViewContext, VisualizerCollection,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -63,7 +63,17 @@ pub fn view_components_defaults_section_ui(
 
     // TODO(andreas): Components in `active_defaults` should be sorted by field order within each archetype.
     // Right now, they're just sorted by descriptor, which is not the same.
-    let active_defaults = active_defaults(&blueprint_store_view_ctx, blueprint_query, view);
+    let active_defaults: BTreeMap<_, _> = ctx
+        .query_result
+        .view_defaults
+        .components
+        .iter()
+        .filter_map(|(&component, chunk)| {
+            let data = chunk.component_batch_raw(component)?;
+            // Clearing a default writes an empty batch.
+            (!data.is_empty()).then_some((component, data))
+        })
+        .collect();
     let visualizers = ctx.new_visualizer_collection();
     let visualized_components_by_archetype =
         visualized_components_by_archetype(&visualizers, ctx.viewer_ctx.app_options());
@@ -247,35 +257,6 @@ fn visualized_components_by_archetype(
     }
 
     visualized_components_by_visualizer
-}
-
-fn active_defaults(
-    store_view_ctx: &StoreViewContext<'_>,
-    blueprint_query: &LatestAtQuery,
-    view: &ViewBlueprint,
-) -> BTreeMap<ComponentIdentifier, ArrayRef> {
-    // Cleared components should act as unset, so we filter out everything that's empty,
-    // even if they are listed in `all_components`.
-    let engine = store_view_ctx.db.storage_engine();
-
-    engine
-        .store()
-        .all_components_on_timeline(Some(&blueprint_timeline()), &view.defaults_path)
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|component| {
-            let data = engine
-                .cache()
-                .latest_at(
-                    re_chunk_store::ChunkTrackingMode::Report,
-                    blueprint_query,
-                    &view.defaults_path,
-                    [component],
-                )
-                .component_batch_raw(component)?;
-            (!data.is_empty()).then_some((component, data))
-        })
-        .collect()
 }
 
 fn components_to_show_in_add_menu(

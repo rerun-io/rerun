@@ -70,6 +70,7 @@ impl Points2DVisualizer {
                 data.radii,
                 Points2D::descriptor_radii().component,
             );
+
             let colors = process_color_slice(
                 ctx,
                 Points2D::descriptor_colors().component,
@@ -125,12 +126,21 @@ impl Points2DVisualizer {
                 }
             }
 
-            view_data.add_bounds(
+            let bounds = view_data.add_bounds(
                 entity_path.hash(),
                 robust_bounds,
                 world_from_obj,
                 SpaceKind::TwoD,
             );
+            bounds
+                .max_point_radii
+                .update_from_radii(data.radii.iter().copied());
+
+            if data.radii.is_empty() {
+                let fallback_radius: Radius =
+                    typed_fallback_for(ctx, Points2D::descriptor_radii().component);
+                bounds.max_point_radii.update(fallback_radius);
+            }
 
             if let Some(annotations) = ent_context.annotations {
                 load_keypoint_connections(
@@ -386,7 +396,7 @@ mod tests {
         // colors:     R/G/B         omitted           []         omitted            blue
         // class IDs:  omitted       3                 omitted    []                 3
         // Explicit annotation mappings must ignore the recorded colors and labels, including resets.
-        // Their output follows only the ID batches and the annotation context at the cursor.
+        // Their output follows only the ID batches and the selected annotation context.
         ctx.log_entity("points", |builder| {
             builder.with_archetype_auto_row(
                 [(timeline, 1)],
@@ -664,9 +674,8 @@ mod tests {
         );
     }
 
-    /// Explicit annotation mappings exclude recorded events across the range and use annotation metadata at the cursor.
     #[test]
-    fn color_resolution_uses_only_annotation_context_across_range() {
+    fn range_uses_annotation_colors_and_labels_from_its_start() {
         let mut test_context = TestContext::new_with_view_class::<crate::SpatialView2D>();
         setup_entities(&mut test_context);
 
@@ -681,7 +690,7 @@ mod tests {
         test_context.set_time(5);
         assert_labels(
             &collect_labels(&test_context, view_id),
-            &[("three-updated", LATE_ANN); 3],
+            &[("three", ANN); 3],
         );
     }
 }

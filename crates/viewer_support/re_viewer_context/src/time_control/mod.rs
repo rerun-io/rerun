@@ -332,25 +332,6 @@ impl TimeControl {
         this
     }
 
-    /// Like [`Self::from_blueprint`], but applies `fallback_play_state` when the
-    /// blueprint does not specify one.
-    ///
-    /// Use this for the initial construction of a [`TimeControl`] for a recording,
-    /// where the caller has computed a data-source-derived default that should
-    /// only kick in if the user's blueprint hasn't already pinned the value.
-    pub fn from_blueprint_with_fallback_play_state(
-        blueprint_ctx: &impl BlueprintContext,
-        db: Option<&EntityDb>,
-        fallback_play_state: PlayState,
-    ) -> Self {
-        let mut this = Self::default();
-        this.update_from_blueprint(blueprint_ctx, db);
-        if blueprint_ctx.play_state().is_none() {
-            this.set_play_state(db, fallback_play_state, Some(blueprint_ctx));
-        }
-        this
-    }
-
     /// Read from the time panel blueprint and update the state from that.
     ///
     /// If `db` is some this will also make sure we are on a valid timeline.
@@ -375,18 +356,12 @@ impl TimeControl {
             self.select_valid_timeline(db);
         }
 
-        if let Some(new_play_state) = blueprint_ctx.play_state()
-            && new_play_state != self.play_state()
-        {
-            self.set_play_state(db, new_play_state, Some(blueprint_ctx));
-        }
-
         if let Some(new_loop_mode) = blueprint_ctx.loop_mode() {
             self.loop_mode = new_loop_mode;
 
             if self.loop_mode != LoopMode::Off {
                 if self.play_state() == PlayState::Following {
-                    self.set_play_state(db, PlayState::Playing, Some(blueprint_ctx));
+                    self.set_play_state(db, PlayState::Playing);
                 }
 
                 // It makes no sense with looping and follow.
@@ -533,7 +508,7 @@ impl TimeControl {
                             if more_data_is_streaming_in && dt > 0.0 {
                                 // then let's wait for it without pausing!
                             } else {
-                                self.pause(blueprint_ctx);
+                                self.pause();
                             }
                             NeedsRepaint::No
                         } else {
@@ -657,30 +632,14 @@ impl TimeControl {
     }
 
     /// Updates the current play-state.
-    ///
-    /// If `blueprint_ctx` is specified this writes to the related
-    /// blueprint.
-    pub fn set_play_state(
-        &mut self,
-        db: Option<&EntityDb>,
-        play_state: PlayState,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-    ) {
-        if let Some(blueprint_ctx) = blueprint_ctx
-            && Some(play_state) != blueprint_ctx.play_state()
-        {
-            blueprint_ctx.set_play_state(play_state);
-        }
-
+    pub fn set_play_state(&mut self, db: Option<&EntityDb>, play_state: PlayState) {
         match play_state {
             PlayState::Paused => {
                 self.playing = false;
                 // Clear `following` so a subsequent first-time TimeState insertion
                 // (see `update`'s Paused branch) lands at `full_range.min()` rather
-                // than `full_range.max()`. Without this, a Paused-from-blueprint
-                // transition out of the default `following: true` would place the
-                // cursor at the very end of the recording, and a subsequent drag
-                // would route through `exit_follow_mode` and resume playback.
+                // than `full_range.max()`, and a later drag does not route through
+                // `exit_follow_mode`, which resumes playback.
                 self.following = false;
             }
             PlayState::Playing => {
@@ -721,12 +680,9 @@ impl TimeControl {
         }
     }
 
-    fn pause(&mut self, blueprint_ctx: Option<&impl BlueprintContext>) {
+    fn pause(&mut self) {
         self.playing = false;
         self.following = false;
-        if let Some(blueprint_ctx) = blueprint_ctx {
-            blueprint_ctx.set_play_state(PlayState::Paused);
-        }
         if let Some(state) = self.states.get_mut(self.timeline.name()) {
             state.last_paused_time = Some(state.time);
         }

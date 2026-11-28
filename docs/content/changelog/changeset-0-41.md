@@ -16,7 +16,7 @@ For example, `std_msgs/msg/String` appears as text, while `sensor_msgs/msg/Tempe
 
 Currently supported: `std_msgs/msg/String`, `sensor_msgs/msg/Temperature`, `sensor_msgs/msg/FluidPressure`, `sensor_msgs/msg/RelativeHumidity`, `sensor_msgs/msg/Illuminance`, and `sensor_msgs/msg/MagneticField`.
 Other ROS 2 messages still need import-time conversion to be visualized automatically.
-See [Supported Message Formats](../logging-and-ingestion/import/mcap/message-formats.md#visualizing-ros-2-messages-without-conversion) for details.
+See [Supported Message Formats](../ingest/mcap/message-formats.md#visualizing-ros-2-messages-without-conversion) for details.
 
 <picture>
   <img src="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/full.png" alt="Rerun Viewer plotting a ROS Temperature message as a line with a variance band, with a MeasurementsSeries visualizer in the selection panel">

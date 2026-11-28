@@ -110,6 +110,7 @@ pub struct ClientMeta {
     /// * 0, `baseline`: also when `ClientMeta` is unset.
     /// * 1, `manifest_key_store_id`.
     /// * 2, `chunk_segment_from_request`.
+    /// * 3, `register_store_id`.
     #[prost(uint32, tag = "1")]
     pub protocol_level: u32,
 }
@@ -780,7 +781,11 @@ pub struct DataSource {
     /// registered.
     /// Must be unset when `prefix` is true.
     ///
-    /// TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
+    /// Clients must only set it for a server at protocol level 3, `register_store_id`, or above: see
+    /// `WhoAmIResponse.protocol_level`. A server below that level returns UNIMPLEMENTED or, when it
+    /// predates this field, ignores it.
+    ///
+    /// TODO(RR-6283): Rerun Hub does not implement it yet.
     #[prost(message, optional, tag = "8")]
     pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
     /// The segment to register this data source as.

@@ -21,9 +21,6 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         archetype.fps = ComponentBatch::empty<rerun::blueprint::components::Fps>(Descriptor_fps)
                             .value_or_throw();
-        archetype.play_state =
-            ComponentBatch::empty<rerun::blueprint::components::PlayState>(Descriptor_play_state)
-                .value_or_throw();
         archetype.loop_mode =
             ComponentBatch::empty<rerun::blueprint::components::LoopMode>(Descriptor_loop_mode)
                 .value_or_throw();

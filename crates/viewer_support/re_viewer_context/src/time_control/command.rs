@@ -292,7 +292,7 @@ impl TimeControl {
                     self.loop_mode = *loop_mode;
                     if self.loop_mode != LoopMode::Off {
                         if self.play_state() == PlayState::Following {
-                            self.set_play_state(Some(db), PlayState::Playing, blueprint_ctx);
+                            self.set_play_state(Some(db), PlayState::Playing);
                         }
 
                         // It makes no sense with looping and follow.
@@ -306,7 +306,7 @@ impl TimeControl {
                 if self.play_state() == *play_state {
                     NeedsRepaint::No
                 } else {
-                    self.set_play_state(Some(db), *play_state, blueprint_ctx);
+                    self.set_play_state(Some(db), *play_state);
 
                     if self.following {
                         if let Some(blueprint_ctx) = blueprint_ctx {
@@ -320,7 +320,7 @@ impl TimeControl {
             }
             TimeControlCommand::Pause => {
                 if self.playing {
-                    self.pause(blueprint_ctx);
+                    self.pause();
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
@@ -328,28 +328,28 @@ impl TimeControl {
             }
 
             TimeControlCommand::TogglePlayPause => {
-                self.toggle_play_pause(db, blueprint_ctx);
+                self.toggle_play_pause(db);
 
                 NeedsRepaint::Yes
             }
             TimeControlCommand::StepTimeBack => {
-                self.step_time_back(db, blueprint_ctx);
+                self.step_time_back(db);
 
                 NeedsRepaint::Yes
             }
             TimeControlCommand::StepTimeForward => {
-                self.step_time_fwd(db, blueprint_ctx);
+                self.step_time_fwd(db);
 
                 NeedsRepaint::Yes
             }
             TimeControlCommand::Move { direction, speed } => {
-                self.move_time(db, blueprint_ctx, *direction, *speed);
+                self.move_time(db, *direction, *speed);
                 NeedsRepaint::Yes
             }
             TimeControlCommand::MoveBeginning => {
                 if let Some(full_range) = self.time_range(db) {
                     // Jumping anywhere but the end leaves follow mode.
-                    self.exit_follow_mode(db, blueprint_ctx);
+                    self.exit_follow_mode(db);
 
                     self.states
                         .entry(*self.timeline_name())
@@ -486,7 +486,7 @@ impl TimeControl {
                     .or_insert_with(|| TimeState::new(clamped_time));
                 state.time = clamped_time;
 
-                self.exit_follow_mode(db, blueprint_ctx);
+                self.exit_follow_mode(db);
                 self.just_interacted = true;
 
                 if repaint {
@@ -504,7 +504,7 @@ impl TimeControl {
                 // `state.time` to `range.min` when the cursor sits past the
                 // current data range, which is exactly the case we're trying
                 // to preserve. Set the time *after* that runs.
-                self.exit_follow_mode(db, blueprint_ctx);
+                self.exit_follow_mode(db);
 
                 let state = self
                     .states
@@ -546,15 +546,15 @@ impl TimeControl {
         }
     }
 
-    fn step_time_back(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
+    fn step_time_back(&mut self, db: &EntityDb) {
         re_tracing::profile_function!();
-        self.pause(blueprint_ctx);
+        self.pause();
         self.step_time_back_no_pause(db);
     }
 
-    fn step_time_fwd(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
+    fn step_time_fwd(&mut self, db: &EntityDb) {
         re_tracing::profile_function!();
-        self.pause(blueprint_ctx);
+        self.pause();
         self.step_time_fwd_no_pause(db);
     }
 
@@ -633,14 +633,8 @@ impl TimeControl {
     }
 
     /// Move time by arrow keys. Preserves play/pause state, but exits follow mode.
-    fn move_time(
-        &mut self,
-        db: &EntityDb,
-        blueprint_ctx: Option<&impl BlueprintContext>,
-        direction: MoveDirection,
-        speed: MoveSpeed,
-    ) {
-        self.exit_follow_mode(db, blueprint_ctx);
+    fn move_time(&mut self, db: &EntityDb, direction: MoveDirection, speed: MoveSpeed) {
+        self.exit_follow_mode(db);
 
         match self.time_type() {
             Some(TimeType::Sequence) => {
@@ -702,17 +696,17 @@ impl TimeControl {
     }
 
     /// If following, switch to playing. Otherwise keep the current play state.
-    fn exit_follow_mode(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
+    fn exit_follow_mode(&mut self, db: &EntityDb) {
         if self.following {
-            self.set_play_state(Some(db), PlayState::Playing, blueprint_ctx);
+            self.set_play_state(Some(db), PlayState::Playing);
         }
     }
 
-    fn toggle_play_pause(&mut self, db: &EntityDb, blueprint_ctx: Option<&impl BlueprintContext>) {
+    fn toggle_play_pause(&mut self, db: &EntityDb) {
         if self.playing {
-            self.pause(blueprint_ctx);
+            self.pause();
         } else {
-            self.set_play_state(Some(db), PlayState::Playing, blueprint_ctx);
+            self.set_play_state(Some(db), PlayState::Playing);
         }
     }
 }

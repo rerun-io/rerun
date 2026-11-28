@@ -152,14 +152,10 @@ fn create_time_control_for<'cfgs>(
             PlayState::Playing
         };
 
-        // Apply the data-source-derived default only if the blueprint did not
-        // already specify a `play_state`. Otherwise we'd clobber the user's
-        // setting (and write the clobbered value back to the blueprint).
-        TimeControl::from_blueprint_with_fallback_play_state(
-            blueprint_ctx,
-            Some(entity_db),
-            play_state,
-        )
+        let mut time_control = TimeControl::default();
+        time_control.update_from_blueprint(blueprint_ctx, Some(entity_db));
+        time_control.set_play_state(Some(entity_db), play_state);
+        time_control
     }
 
     configs

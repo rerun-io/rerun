@@ -180,9 +180,7 @@ impl PreviewState {
         #[expect(clippy::iter_over_hash_type)] // Each preview is updated independently.
         for preview in self.active_previews.values_mut() {
             preview.play_override = None;
-            preview
-                .time_control
-                .set_play_state(None, play_state, None::<&AppBlueprintCtx<'_>>);
+            preview.time_control.set_play_state(None, play_state);
         }
     }
 

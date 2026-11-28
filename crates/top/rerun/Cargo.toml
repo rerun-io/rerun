@@ -49,7 +49,7 @@ clap = ["dep:clap"]
 
 ## Support for using Rerun's importers directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview>
+## See our `log_file` example and <https://www.rerun.io/docs/ingest/importers/overview>
 ## for more information.
 importers = ["dep:comfy-table", "dep:mcap", "dep:memmap2", "dep:re_mcap", "re_sdk?/importers"]
 
@@ -85,6 +85,12 @@ audio = ["re_viewer?/audio"]
 ## Support the map view.
 ## This adds a lot of extra dependencies.
 map_view = ["re_viewer?/map_view"]
+
+## Support the web view, which shows web pages.
+##
+## Only the web can show pages so far.
+## The app must create a `re_viewer::WebViewRuntime` early in `main`.
+webview = ["re_viewer?/webview"]
 
 ## Add support for math type conversions using [`mint`](https://crates.io/crates/mint/).
 ## Only relevant if feature `sdk` is enabled.

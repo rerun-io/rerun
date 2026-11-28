@@ -218,7 +218,6 @@ impl SeriesPointsSystem {
             util::float64_cast_rules([archetypes::Scalars::descriptor_scalars().component]);
         let mut results = range_with_blueprint_resolved_data_polymorphic(
             ctx,
-            None,
             &query,
             data_result,
             std::iter::chain(
@@ -242,7 +241,6 @@ impl SeriesPointsSystem {
         // we specified when calling range_with_blueprint_resolved_data.
         results.merge_bootstrapped_data(re_view::latest_at_with_blueprint_resolved_data(
             ctx,
-            None,
             &re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min()),
             data_result,
             archetypes::SeriesPoints::optional_components()

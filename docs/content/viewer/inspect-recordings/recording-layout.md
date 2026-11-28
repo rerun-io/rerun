@@ -23,11 +23,11 @@ A [table blueprint](../browse-datasets/table-layout.md) configures dataset and c
 
 ## Which recording blueprint applies?
 
-For live streams and directly imported recordings, the Viewer associates recording blueprints with the [application ID](../../logging-and-ingestion/data-model/recordings.md#application-ids).
+For live streams and directly imported recordings, the Viewer associates recording blueprints with the [application ID](../../log/data-model/recordings.md#application-ids).
 Recordings with the same application ID can share a layout.
 A catalog dataset can have several registered recording blueprints, including a default used when a segment is opened.
 The Viewer catalog can register embedded recording blueprints when it opens an `.rrd`.
-See [catalog blueprints](../../query-and-transform/catalog/catalog-object-model.md#blueprints).
+See [catalog blueprints](../../catalog/catalog-object-model.md#blueprints).
 
 ## Heuristic, default, and current recording blueprints
 
@@ -73,7 +73,7 @@ A recording blueprint without a name property is listed as `<unnamed>`.
 
 In the list, the "…" button of the current recording blueprint has **Export .rbl…**, which saves it to a file, and **Revert changes**, which reverts local changes to the recording blueprint.
 
-See [Blueprints](../../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register blueprints on a dataset.
+See [Blueprints](../../catalog/catalog-object-model.md#blueprints) for how to register blueprints on a dataset.
 
 
 <span id="reset-behavior"></span>
@@ -98,7 +98,7 @@ See [Why is my blueprint ignored?](blueprint-ignored.md).
 
 ## How a recording blueprint is stored
 
-Under the hood, recording blueprints are data. They are structured using the same [Entity Component System](../../logging-and-ingestion/data-model/entity-component.md) as your recordings, but with blueprint-specific archetypes and a separate blueprint timeline. This architecture provides several advantages:
+Under the hood, recording blueprints are data. They are structured using the same [Entity Component System](../../log/data-model/entity-component.md) as your recordings, but with blueprint-specific archetypes and a separate blueprint timeline. This architecture provides several advantages:
 
 -   **Anything you modify in the Viewer can be saved and shared** as a blueprint file
 -   **Recording blueprints can be produced programmatically** using just the Rerun SDK without depending on the Viewer; see [Configure a recording layout from code](configure-from-code.md)

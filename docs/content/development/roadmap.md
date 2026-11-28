@@ -15,7 +15,7 @@ This page gives a high-level overview of ongoing and planned work.
 - Performance improvements
 - UX & DX improvements
 - Supporting more data types
-- [Rerun Hub](../hub.md) features (commercial) <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+- [Rerun Hub](../catalog/hub.md) features (commercial) <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
     - Get in touch on hi@rerun.io if you're interested in becoming a design partner
 
 ## Roadmap of major feature areas
@@ -38,14 +38,14 @@ This page gives a high-level overview of ongoing and planned work.
 - Interactive applications built with Rerun, such as UI for tweaking configs or custom data annotation tools
     - Today you can [react to Viewer events](../viewer/extend/callbacks.md) in the web Viewer, in notebooks, and from Rust, but the native Viewer has no user widgets or callbacks for Python
 - Official ROS 2 bridge
-    - Today you can [import ROS 2 bags in MCAP format](../logging-and-ingestion/import/mcap/working-with-mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../logging-and-ingestion/integrations/ros2-nav-turtlebot.md)
+    - Today you can [import ROS 2 bags in MCAP format](../ingest/mcap/working-with-mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../log/integrations/ros2-nav-turtlebot.md)
 - Extensibility of all parts of the stack
 
 ### Recently shipped
 - Configurable data interpretation, for example MCAP files with custom messages: see [Lenses](../query-and-transform/lenses.md) and [component mappings](../viewer/view-concepts/component-mappings.md)
 - Callbacks for Viewer events: see [React to events in the Viewer](../viewer/extend/callbacks.md)
 - Driving the Viewer from code: `rerun.experimental.ViewerClient` in Python and the `WebViewer` API in JavaScript
-- Data format stability: the `.rrd` framing is stable, and recordings from Rerun 0.23 and later are migrated automatically on load (see [RRD format stability](../logging-and-ingestion/chunks-and-rrd/rrd-format.md#stability))
+- Data format stability: the `.rrd` framing is stable, and recordings from Rerun 0.23 and later are migrated automatically on load (see [RRD format stability](../log/chunks-and-rrd/rrd-format.md#stability))
 
 ## Missing features
 
@@ -63,7 +63,9 @@ This section lists features that users often ask for, with the best workaround w
     - [#2497](https://github.com/rerun-io/rerun/issues/2497)
 - Linking or highlighting different entities across views. Only the same entity path and instance link today.
     - [#8866](https://github.com/rerun-io/rerun/issues/8866), [#4379](https://github.com/rerun-io/rerun/issues/4379)
-- Setting the initial time cursor in a blueprint (`TimePanel` sets timeline, play state, and time selection, but not the cursor). Workaround: the `#when=` fragment of a [Viewer URL](../viewer/extend/urls.md), or `set_time` on `rerun.experimental.ViewerClient`.
+- Setting the initial time cursor or play state in a blueprint.
+  `TimePanel` sets the timeline and time selection, but not the cursor or play state.
+  Workaround: use the `#when=` fragment of a [Viewer URL](../viewer/extend/urls.md), or `set_time` on `rerun.experimental.ViewerClient`.
 - A scrollable container for many views. Container kinds are only tabs, horizontal, vertical, and grid. Workaround: put views in tabs.
     - [#6627](https://github.com/rerun-io/rerun/issues/6627)
 - Hiding entities by default at log time: `EntityBehavior` only has an effect in the blueprint. Workaround: set `EntityBehavior(visible=False)` as an override in your blueprint.
@@ -114,7 +116,7 @@ This section lists features that users often ask for, with the best workaround w
 ### Logging and SDK
 - Resolving world poses from the transform tree in the SDK. Workaround: compose the transforms in your own code.
 - Reusing one asset across many entities. Workaround: log the asset once and draw copies with `InstancePoses3D` on the same entity.
-    - Related: [assets](../query-and-transform/catalog/catalog-object-model.md#assets) let all segments of a dataset share static data, such as a mesh.
+    - Related: [assets](../catalog/catalog-object-model.md#assets) let all segments of a dataset share static data, such as a mesh.
 - Automatic deduplication of unchanged values. Workaround: only log a value when it changes; views that show the latest value, such as 3D and 2D views, show it until a new one arrives. Time series plots interpolate linearly between samples, so log the last unchanged sample too if you need a flat line.
     - [#3745](https://github.com/rerun-io/rerun/issues/3745)
 - An SDK for `no_std` targets and microcontrollers. Workaround: send data to a host computer and log it from there.
@@ -128,7 +130,7 @@ This section lists features that users often ask for, with the best workaround w
     - [#5520](https://github.com/rerun-io/rerun/issues/5520)
 
 ### Files and formats
-- Importing rosbag2 `.db3` (SQLite) files. Workaround: convert them to MCAP with `ros2 bag convert`, then [import the MCAP](../logging-and-ingestion/import/mcap/working-with-mcap.md).
+- Importing rosbag2 `.db3` (SQLite) files. Workaround: convert them to MCAP with `ros2 bag convert`, then [import the MCAP](../ingest/mcap/working-with-mcap.md).
 - Exporting a `VideoStream` or point clouds from the Viewer. (`AssetVideo` and other blobs have a **Save blob…** button in the selection panel.) Workaround: read the data with the [dataframe API](../query-and-transform/dataframes/dataframe-queries.md) and export it yourself.
     - [#12747](https://github.com/rerun-io/rerun/issues/12747) (video)
 

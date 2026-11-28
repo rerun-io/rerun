@@ -68,8 +68,8 @@ fn main() -> anyhow::Result<()> {
         // * `get_required` returns an error if the chunk is missing.
         // * `get` returns an option.
         let points = results.get_required(MyPoints::descriptor_points().component)?;
-        let colors = results.get(MyPoints::descriptor_colors().component);
-        let labels = results.get(MyPoints::descriptor_labels().component);
+        let colors = results.get_if_loaded(MyPoints::descriptor_colors().component);
+        let labels = results.get_if_loaded(MyPoints::descriptor_labels().component);
 
         // You can always use the standard deserialization path:
         let points = points

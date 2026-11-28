@@ -83,24 +83,18 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`RangeResults::missing_virtual`] field.
+/// [`RangeResults::missing_chunks`] tells which chunks to load.
 #[derive(Debug, PartialEq)]
 pub struct RangeResults {
     /// The query that yielded these results.
     pub query: RangeQuery,
 
-    /// The relevant *virtual* chunks that were found for this query.
-    ///
-    /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
-    /// results of this query cannot accurately be computed.
-    ///
-    /// Note, these are NOT necessarily _root_ chunks.
-    /// Use [`ChunkStore::find_root_chunks`] to get those.
+    /// See [`Self::missing_chunks`].
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing_virtual: Vec<ChunkId>,
+    pub(crate) missing_virtual: Vec<ChunkId>,
 
     /// Results for each individual component.
     ///
@@ -110,16 +104,26 @@ pub struct RangeResults {
 }
 
 impl RangeResults {
-    /// Returns true if these are partial results.
+    /// Returns true if the query found chunks that are relevant to it, but not loaded.
     ///
-    /// Partial results happen when some of the chunks required to accurately compute the query are
-    /// currently missing/offloaded.
-    /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
+    /// The results are then partial: they hold the data of the chunks that are loaded.
+    /// It is the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing_virtual`
-    pub fn is_partial(&self) -> bool {
+    /// [missing chunk IDs]: `Self::missing_chunks`
+    pub fn any_missing_chunks(&self) -> bool {
         !self.missing_virtual.is_empty()
+    }
+
+    /// The relevant *virtual* chunks that were found for this query.
+    ///
+    /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
+    /// results of this query cannot accurately be computed.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
+    pub fn missing_chunks(&self) -> &[ChunkId] {
+        &self.missing_virtual
     }
 
     /// Returns true if the results are *completely* empty.
@@ -486,7 +490,7 @@ mod tests {
                 );
                 results
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -507,7 +511,7 @@ mod tests {
                 results.missing_virtual = vec![chunk1.id(), chunk3.id()];
                 results
             };
-            assert_eq!(true, results.is_partial());
+            assert_eq!(true, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -527,7 +531,7 @@ mod tests {
                 results.missing_virtual = vec![chunk1.id(), chunk2.id(), chunk3.id()];
                 results
             };
-            assert_eq!(true, results.is_partial());
+            assert_eq!(true, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -562,7 +566,7 @@ mod tests {
                 );
                 results
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
     }

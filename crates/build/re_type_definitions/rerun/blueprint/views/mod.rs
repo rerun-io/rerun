@@ -26,6 +26,8 @@ mod text_document;
 mod text_log;
 #[path = "time_series.def.rs"]
 mod time_series;
+#[path = "web.def.rs"]
+mod web;
 
 pub use self::audio::*;
 pub use self::bar_chart::*;
@@ -40,3 +42,4 @@ pub use self::tensor::*;
 pub use self::text_document::*;
 pub use self::text_log::*;
 pub use self::time_series::*;
+pub use self::web::*;

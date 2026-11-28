@@ -7,7 +7,7 @@ description: Query image columns from a catalog server and decode the image fram
 This example shows how to query image frames from a catalog server.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 The dependencies in this example require `rerun-sdk[all]`.
 

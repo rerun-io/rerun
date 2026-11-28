@@ -1,9 +1,19 @@
-use parking_lot::{ArcRwLockReadGuard, RwLockReadGuard};
-use re_chunk_store::{ChunkStore, ChunkStoreHandle};
+use std::collections::BTreeMap;
 
-use crate::{QueryCache, QueryCacheHandle};
+use arrow::array::ArrayRef;
+use parking_lot::{ArcRwLockReadGuard, RwLockReadGuard};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery};
+use re_log_types::EntityPath;
+use re_types_core::ComponentDescriptor;
+
+use crate::{ComponentState, QueryCache, QueryCacheHandle};
 
 // ---
+
+/// A component's latest value may be in a chunk that is not loaded.
+#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[error("its latest value may be in a chunk that is not loaded yet")]
+pub struct LatestValueNotLoaded;
 
 // TODO(cmc): This whole business should really be defined elsewhere, but for now this the best we
 // have, and it's really not worth adding yet another crate just for this.
@@ -165,6 +175,55 @@ impl StorageEngineReadGuard<'_> {
     #[inline]
     pub fn cache(&self) -> &QueryCache {
         &self.cache
+    }
+
+    /// The latest value of every component of every entity at `query`, in entity path order.
+    ///
+    /// `Clear`s are applied, as in [`QueryCache::latest_at`]: a value they shadow is left out.
+    /// So is a component with no value at `query`, unless a chunk that may hold its value,
+    /// or a `Clear` that may shadow it, is not loaded.
+    pub fn latest_at_all(
+        &self,
+        query: &LatestAtQuery,
+    ) -> Vec<(
+        EntityPath,
+        ComponentDescriptor,
+        Result<ArrayRef, LatestValueNotLoaded>,
+    )> {
+        re_tracing::profile_function!();
+
+        let mut descriptors_per_entity: BTreeMap<&EntityPath, Vec<&ComponentDescriptor>> =
+            BTreeMap::new();
+        for (entity_path, entry) in self.schema().all_column_metadata() {
+            descriptors_per_entity
+                .entry(entity_path)
+                .or_default()
+                .push(&entry.descriptor);
+        }
+
+        let mut values = Vec::new();
+        for (entity_path, descriptors) in descriptors_per_entity {
+            let results = self.cache.latest_at(
+                ChunkTrackingMode::Report,
+                query,
+                entity_path,
+                descriptors.iter().map(|descriptor| descriptor.component),
+            );
+            for descriptor in descriptors {
+                let value = match results.get(descriptor.component) {
+                    ComponentState::Loaded(unit) => {
+                        let Some(batch) = unit.component_batch_raw(descriptor.component) else {
+                            continue;
+                        };
+                        Ok(batch)
+                    }
+                    ComponentState::Absent => continue,
+                    ComponentState::NotLoaded => Err(LatestValueNotLoaded),
+                };
+                values.push((entity_path.clone(), descriptor.clone(), value));
+            }
+        }
+        values
     }
 }
 

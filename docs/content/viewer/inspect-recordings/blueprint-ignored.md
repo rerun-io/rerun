@@ -6,7 +6,7 @@ description: Troubleshoot a sent or loaded recording blueprint
 
 Check these common causes:
 
--   **Different application ID.** For directly streamed or imported recordings, a recording blueprint applies to recordings with the same [application ID](../../logging-and-ingestion/data-model/recordings.md#application-ids).
+-   **Different application ID.** For directly streamed or imported recordings, a recording blueprint applies to recordings with the same [application ID](../../log/data-model/recordings.md#application-ids).
     `rr.send_blueprint` uses the application ID of the recording stream it is sent on, so send it on the same stream as your data.
 -   **`make_active=False`.** `rr.send_blueprint(…, make_active=False, make_default=True)` only sets the default recording blueprint.
     It becomes active only if no other recording blueprint is active, or when the user resets the recording blueprint.

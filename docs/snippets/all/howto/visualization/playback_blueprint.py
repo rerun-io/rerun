@@ -17,7 +17,6 @@ rr.send_blueprint(
             timeline="frame",
             playback_speed=2.0,
             fps=30.0,
-            play_state="playing",
             loop_mode="all",
         ),
     )

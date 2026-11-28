@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, EntityPath, LatestAtQuery, RangeQuery, RowId,
     UnitChunkShared,
@@ -8,7 +8,7 @@ use re_chunk::{
 use re_chunk_store::{ChunkTrackingMode, TimeInt};
 use re_log_types::AbsoluteTimeRange;
 
-use crate::{LatestAtResults, QueryCache};
+use crate::{ComponentState, LatestAtResults, QueryCache};
 
 pub type LatestAllQuery = LatestAtQuery;
 
@@ -21,18 +21,15 @@ pub struct LatestAllResults {
     /// The query that yielded these results.
     pub query: LatestAllQuery,
 
-    /// The relevant *virtual* chunks that were found for this query.
-    ///
-    /// Until these chunks have been fetched and inserted into the appropriate [`re_chunk_store::ChunkStore`], the
-    /// results of this query cannot accurately be computed.
-    ///
-    /// Note, these are NOT necessarily _root_ chunks.
-    /// Use [`re_chunk_store::ChunkStore::find_root_chunks`] to get those.
+    /// See [`Self::missing_chunks`].
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing_virtual: Vec<ChunkId>,
+    missing_virtual: Vec<ChunkId>,
+
+    /// The components whose value is unknown until [`Self::missing_virtual`] is loaded.
+    not_loaded: IntSet<ComponentIdentifier>,
 
     /// Results for each individual component.
     ///
@@ -41,6 +38,38 @@ pub struct LatestAllResults {
 }
 
 impl LatestAllResults {
+    /// What the query knows about the specified component.
+    pub fn get(
+        &self,
+        component: ComponentIdentifier,
+    ) -> ComponentState<&LatestAllComponentResults> {
+        if let Some(hits) = self.components.get(&component) {
+            ComponentState::Loaded(hits)
+        } else if self.not_loaded.contains(&component) {
+            ComponentState::NotLoaded
+        } else {
+            ComponentState::Absent
+        }
+    }
+
+    /// Returns true if any component of the query is waiting for a chunk to load.
+    ///
+    /// This is about the whole query. Use [`Self::get`] to learn about one component.
+    pub fn any_missing_chunks(&self) -> bool {
+        !self.missing_virtual.is_empty()
+    }
+
+    /// The relevant *virtual* chunks that were found for this query.
+    ///
+    /// Until these chunks have been fetched and inserted into the appropriate
+    /// [`re_chunk_store::ChunkStore`], the results of this query cannot accurately be computed.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`re_chunk_store::ChunkStore::find_root_chunks`] to get those.
+    pub fn missing_chunks(&self) -> &[ChunkId] {
+        &self.missing_virtual
+    }
+
     /// Total number of hits across all components.
     ///
     /// If we have two components, and one has a single hit and another has four hits, this will return `5`.
@@ -59,6 +88,7 @@ impl LatestAllResults {
             entity_path: self.entity_path.clone(),
             query: self.query.clone(),
             missing_virtual: self.missing_virtual.clone(),
+            not_loaded: self.not_loaded.clone(),
             min_index: (TimeInt::MAX, RowId::MAX),
             max_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
@@ -91,6 +121,7 @@ impl LatestAllResults {
             entity_path,
             query,
             missing_virtual,
+            not_loaded,
             components,
         } = self;
 
@@ -98,6 +129,7 @@ impl LatestAllResults {
             entity_path,
             query,
             missing_virtual,
+            not_loaded,
             min_index: (TimeInt::MAX, RowId::MAX),
             max_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
@@ -249,6 +281,7 @@ impl QueryCache {
         let LatestAtResults {
             components,
             missing_virtual,
+            not_loaded,
             ..
         } = self.latest_at(tracking_mode, query, entity_path, components);
 
@@ -256,6 +289,7 @@ impl QueryCache {
             entity_path: entity_path.clone(),
             query: query.clone(),
             missing_virtual,
+            not_loaded,
             components: Default::default(),
         };
 

@@ -10,6 +10,7 @@ mod filters;
 mod header_tooltip;
 mod no_cards_ui;
 mod pending_upserts;
+mod prepared_views;
 mod preview_renderer;
 mod re_table;
 mod re_table_utils;

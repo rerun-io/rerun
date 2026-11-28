@@ -104,7 +104,6 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
 
                 let results = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     latest_at,
                     data_result,
                     [

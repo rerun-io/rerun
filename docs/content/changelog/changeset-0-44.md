@@ -11,7 +11,7 @@ order: 930
 It requires a server running Rerun 0.44 or Rerun Hub 0.21 or later.
 **IMPORTANT**: once a dataset has such segment, it can no longer be queried by SDKs and viewers older than 0.44.
 
-See [How can I register a recording under another segment ID?](../query-and-transform/catalog/layers.md#how-can-i-register-a-recording-under-another-segment-id) for an example.
+See [How can I register a recording under another segment ID?](../catalog/layers.md#how-can-i-register-a-recording-under-another-segment-id) for an example.
 
 ## New features
 
@@ -50,7 +50,7 @@ Previous releases shipped an early version of the panel behind an experimental s
 
 When you open a recording from the catalog, a new dropdown in the top bar lets you switch between the blueprints registered for its dataset and the heuristic blueprint.
 This is the first step towards better blueprint management for datasets, with more improvements coming in future releases.
-See [Blueprints](../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register blueprints on a dataset.
+See [Blueprints](../catalog/catalog-object-model.md#blueprints) for how to register blueprints on a dataset.
 
 <img width="507" src="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/full.png" alt="Blueprint dropdown listing the heuristic blueprint and the dataset's blueprints">
 
@@ -115,13 +115,13 @@ Like with URDF, every body becomes a named frame, and the new `rerun.mjcf.MjcfTr
 Hinge and slide joints are supported.
 A body with several joints gets an intermediate frame after each joint but its last, named `{body}::{joint}`, so that every joint can be animated on its own.
 
-See [Loading MJCF models](../logging-and-ingestion/import/mjcf.md).
+See [Loading MJCF models](../ingest/mjcf.md).
 
 ### Stream dataset selections as Arrow batches
 
 Use `DatasetSelection.read_arrow()` to stream dataset selections as PyArrow record batches and process them incrementally.
 Unlike `reader()`, which returns a lazy DataFusion `DataFrame`, `read_arrow()` starts the query and returns a stream of Arrow record batches.
-See the [streaming example](../query-and-transform/catalog/get-data-out.md#streaming-arrow-batches).
+See the [streaming example](../catalog/get-data-out.md#streaming-arrow-batches).
 
 ### Query annotated time spans
 

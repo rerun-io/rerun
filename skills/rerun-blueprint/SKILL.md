@@ -295,7 +295,8 @@ To bake a finished blueprint in instead, pass `default_blueprint=` to `rr.init` 
 - A `DataframeView` shows "Unknown timeline" without a query:
   `query=rrb.archetypes.DataframeQuery(timeline="<timeline>", apply_latest_at=True)`.
 - A view back blank? The importer may not have finished (bump the settle) or the
-  cursor sits before the data (add `rrb.TimePanel(play_state=rrb.components.PlayState.Following)`).
+  cursor sits before the data.
+  Call `viewer_set_time_cursor` with `play_state: "PLAY_STATE_FOLLOWING"` to follow the latest data.
 - `rrb` views and `ViewerClient` (`rerun.experimental`) are unstable. Check
   `help()` if a constructor argument is rejected.
 

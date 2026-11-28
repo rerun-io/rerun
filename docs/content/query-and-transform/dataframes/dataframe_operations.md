@@ -10,7 +10,7 @@ DataFusion executes lazily, so processing data in DataFusion is usually faster t
 You can still convert to dataframes for other tools (pandas, polars, pyarrow).
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 The dependencies in this example are contained in `rerun-sdk[all]`.
 

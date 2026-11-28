@@ -64,7 +64,6 @@ fn query_result_hash(c: &mut Criterion) {
                 let latest_query = LatestAtQuery::latest(*timeline.name());
                 let latest = latest_at_with_blueprint_resolved_data(
                     &ctx,
-                    None,
                     &latest_query,
                     &data_result,
                     TextLog::all_component_identifiers(),
@@ -78,7 +77,6 @@ fn query_result_hash(c: &mut Criterion) {
                 .keep_extra_timelines(true);
             let range = range_with_blueprint_resolved_data(
                 &ctx,
-                None,
                 &range_query,
                 &data_result,
                 TextLog::all_component_identifiers(),

@@ -8,7 +8,7 @@ keywords: ROS 2, MCAP, Protobuf, custom messages, selector
 Remapping makes a visualizer read an existing component or nested field that was not logged for that visualizer.
 The recording blueprint setting is called a **component mapping**.
 For example, plot a custom numeric field as a time series without changing the recording.
-The MCAP importer can expose custom ROS 2 and Protobuf fields using [schema reflection](../../logging-and-ingestion/import/mcap/message-formats.md#schema-reflection).
+The MCAP importer can expose custom ROS 2 and Protobuf fields using [schema reflection](../../ingest/mcap/message-formats.md#schema-reflection).
 
 ## What remapping is
 
@@ -145,7 +145,7 @@ snippet: howto/component_mapping[selector_mapping]
 
 - [Plot any scalar](../view-types/time-series.md#plot-any-scalar)
 - [Visualize any component as state](../view-types/state-timeline.md#visualize-any-component-as-state)
-- [Visualize custom message scalars from an MCAP](../../logging-and-ingestion/import/mcap/message-formats.md#example-time-series-plot-for-custom-message-scalars)
+- [Visualize custom message scalars from an MCAP](../../ingest/mcap/message-formats.md#example-time-series-plot-for-custom-message-scalars)
 
 ## Lens or remapping?
 

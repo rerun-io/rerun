@@ -1,10 +1,9 @@
 ---
 source: crates/tests/re_redap_tests/src/tests/entries_table.rs
-assertion_line: 34
 expression: schema.format_snapshot()
 ---
 top-level metadata: [
-    sorbet:version: "0.1.4"
+    sorbet:version: "0.1.5"
 ]
 created_at: non-null Timestamp(ns)
 entry_kind: non-null UInt8 [

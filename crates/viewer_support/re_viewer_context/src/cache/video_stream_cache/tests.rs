@@ -658,3 +658,57 @@ fn video_stream_cache_empty_row_is_clear() {
     assert!(samples[1].is_clear());
     assert!(samples[2].sample().is_some());
 }
+
+/// A codec in a chunk that is not loaded is still loading, but a cleared codec is missing.
+#[test]
+fn video_entry_tells_unloaded_codec_from_cleared() {
+    let timeline = Timeline::new_sequence("frame");
+    let codec_chunk = Arc::new(
+        ChunkBuilder::new(ChunkId::new(), "vid".into())
+            .with_archetype(
+                RowId::new(),
+                TimePoint::from_iter([(timeline, 0)]),
+                &VideoStream::new(VideoCodec::H264),
+            )
+            .build()
+            .unwrap(),
+    );
+    let clear_chunk = ChunkBuilder::new(ChunkId::new(), "vid".into())
+        .with_archetype(
+            RowId::new(),
+            TimePoint::from_iter([(timeline, 1)]),
+            &re_sdk_types::archetypes::Clear::flat(),
+        )
+        .build()
+        .unwrap();
+
+    let mut cache = VideoStreamCache::default();
+    let mut store = re_entity_db::EntityDb::new(StoreId::random(
+        re_log_types::StoreKind::Recording,
+        "test_app",
+    ));
+    let mut video_entry_err = |store: &re_entity_db::EntityDb| {
+        cache
+            .video_entry(
+                store,
+                &"vid".into(),
+                *timeline.name(),
+                DecodeSettings::default(),
+                ChunkTrackingMode::Report,
+            )
+            .err()
+    };
+
+    test_player::load_into_rrd_manifest(&mut store, std::slice::from_ref(&codec_chunk));
+    assert_matches!(
+        video_entry_err(&store),
+        Some(VideoStreamProcessingError::UnloadedCodec)
+    );
+
+    store.add_chunk(&codec_chunk).unwrap();
+    store.add_chunk(&Arc::new(clear_chunk)).unwrap();
+    assert_matches!(
+        video_entry_err(&store),
+        Some(VideoStreamProcessingError::MissingCodec { .. })
+    );
+}

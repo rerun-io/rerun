@@ -132,8 +132,8 @@ type Row = BTreeMap<ComponentIdentifier, (ComponentDescriptor, ArrayRef)>;
 
 /// The chunks that replace everything in `store` with `json`, written at `timepoint`.
 ///
-/// The JSON is in the form the crate docs describe and [`crate::json_from_store`] reads. A field
-/// or entity it leaves out is cleared.
+/// The JSON is in the form the crate docs describe and [`crate::json_from_components`] reads.
+/// A field or entity it leaves out is cleared.
 ///
 /// `store` is only read, for what to clear.
 pub fn chunks_from_json(
@@ -749,8 +749,10 @@ mod tests {
             blueprint.add_chunk(&Arc::new(chunk)).unwrap();
         }
         let query = LatestAtQuery::latest(TimelineName::from_static_str("blueprint"));
-        let read_back =
-            crate::json_from_store(blueprint.storage_engine().store(), &query, &reflection);
+        let read_back = crate::json_from_components(
+            &reflection,
+            blueprint.storage_engine().latest_at_all(&query),
+        );
         assert_eq!(read_back, json);
 
         let error = chunks_from_json(

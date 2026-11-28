@@ -246,6 +246,7 @@ fn component_not_found_error(
 }
 
 /// Queries for the given `components` using range semantics with blueprint support.
+/// All rows use the annotations in effect at the start of the range.
 ///
 /// Data will be resolved, in order of priority:
 /// - Data overrides from the blueprint
@@ -259,7 +260,6 @@ fn component_not_found_error(
 /// [`crate::BlueprintResolvedResults`].
 pub fn range_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
-    annotation_context: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -267,7 +267,6 @@ pub fn range_with_blueprint_resolved_data<'a>(
 ) -> BlueprintResolvedRangeResults<'a> {
     range_with_blueprint_resolved_data_polymorphic(
         ctx,
-        annotation_context,
         range_query,
         data_result,
         components,
@@ -290,7 +289,6 @@ pub fn range_with_blueprint_resolved_data<'a>(
 /// to the target's nominal datatype.
 pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
     ctx: &'a ViewContext<'a>,
-    annotation_context: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -304,6 +302,13 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
         .view_class_registry()
         .visualizer_query_info(visualizer_instruction.visualizer_type);
     let annotation_query = query_info.and_then(|info| info.annotation_context.as_ref());
+    let annotation_map = annotation_query.map(|_| {
+        let range_start = LatestAtQuery::new(range_query.timeline, range_query.range.min);
+        crate::AnnotationMapCache::for_query(ctx.viewer_ctx, &range_start)
+    });
+    let annotation_context = annotation_map
+        .as_ref()
+        .and_then(|map| map.find(&data_result.entity_path));
     let visualizer_constraints = query_info.map(|info| &info.constraints);
 
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
@@ -371,7 +376,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
             checked_source.set_error(component_not_found_error(
                 source,
                 &data_result.entity_path,
-                &store_results.missing_virtual,
+                store_results.missing_chunks(),
                 ctx.recording(),
                 &engine,
                 Some(range_query.timeline),
@@ -416,7 +421,6 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
         target_entity_path: &data_result.entity_path,
         instruction_id: Some(visualizer_instruction.id),
         archetype_name: None,
-        // TODO(andreas): Rather strange to have a latest-at query in here.
         query: LatestAtQuery::new(range_query.timeline, range_query.range.min),
         annotation_context: None,
     };
@@ -449,7 +453,6 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
 /// [`crate::BlueprintResolvedResults`].
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
-    annotation_context: Option<&re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -457,7 +460,6 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 ) -> BlueprintResolvedLatestAtResults<'a> {
     latest_at_with_blueprint_resolved_data_polymorphic(
         ctx,
-        annotation_context,
         latest_at_query,
         data_result,
         components,
@@ -474,7 +476,6 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 /// Callers must keep them fixed for a given query, or separately invalidate caches when the rules change.
 pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
     ctx: &'a ViewContext<'a>,
-    annotation_context: Option<&re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -489,6 +490,11 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
             .visualizer_query_info(instruction.visualizer_type)
     });
     let annotation_query = query_info.and_then(|info| info.annotation_context.as_ref());
+    let annotation_map = annotation_query
+        .map(|_| crate::AnnotationMapCache::for_query(ctx.viewer_ctx, latest_at_query));
+    let annotation_context = annotation_map
+        .as_ref()
+        .and_then(|map| map.find(&data_result.entity_path));
     let visualizer_constraints = query_info.map(|info| &info.constraints);
 
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
@@ -562,7 +568,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
             checked_source.set_error(component_not_found_error(
                 source,
                 &data_result.entity_path,
-                &store_results.missing_virtual,
+                store_results.missing_chunks(),
                 ctx.viewer_ctx.recording(),
                 &engine,
                 latest_at_query.timeline(),
@@ -715,7 +721,7 @@ fn query_overrides_at_path(
         );
 
         // If we successfully find a non-empty override, add it to our results.
-        if let Some(value) = component_override_result.get(component) {
+        if let Some(value) = component_override_result.get_if_loaded(component) {
             let index = value.index(ctx.blueprint_query.timeline().as_ref());
 
             // NOTE: This can never happen, but I'd rather it happens than an unwrap.
@@ -754,7 +760,6 @@ pub trait DataResultQuery {
         view_query: &ViewQuery<'_>,
         components: impl IntoIterator<Item = ComponentIdentifier>,
         visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
-        annotation_context: Option<&re_viewer_context::Annotations>,
     ) -> BlueprintResolvedResults<'a>;
 
     /// Queries for all components of an archetype, taking into account:
@@ -765,14 +770,12 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
         visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
-        annotation_context: Option<&re_viewer_context::Annotations>,
     ) -> BlueprintResolvedResults<'a> {
         self.query_components_with_history(
             ctx,
             view_query,
             A::all_component_identifiers(),
             visualizer_instruction,
-            annotation_context,
         )
     }
 }
@@ -786,7 +789,6 @@ impl DataResultQuery for DataResult {
     ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
-            None,
             latest_at_query,
             self,
             A::all_component_identifiers(),
@@ -803,7 +805,6 @@ impl DataResultQuery for DataResult {
     ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
-            None,
             latest_at_query,
             self,
             std::iter::once(component),
@@ -817,7 +818,6 @@ impl DataResultQuery for DataResult {
         view_query: &ViewQuery<'_>,
         components: impl IntoIterator<Item = ComponentIdentifier>,
         visualizer_instruction: &'a re_viewer_context::VisualizerInstruction,
-        annotation_context: Option<&re_viewer_context::Annotations>,
     ) -> BlueprintResolvedResults<'a> {
         match self.query_range() {
             QueryRange::TimeRange(time_range) => {
@@ -830,7 +830,6 @@ impl DataResultQuery for DataResult {
                 );
                 let results = range_with_blueprint_resolved_data(
                     ctx,
-                    annotation_context,
                     &range_query,
                     self,
                     components,
@@ -842,7 +841,6 @@ impl DataResultQuery for DataResult {
                 let latest_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
                 let results = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    annotation_context,
                     &latest_query,
                     self,
                     components,
@@ -876,9 +874,9 @@ mod tests {
         Component as _, ComponentDescriptor, ComponentIdentifier, ViewClassIdentifier,
     };
     use re_viewer_context::{
-        Annotations, DataQueryResult, DataResult, QueryRange, SingleRequiredComponentConstraint,
-        ViewContext, ViewId, ViewSystemIdentifier, VisualizerComponentMappings,
-        VisualizerComponentSource, VisualizerInstruction,
+        DataQueryResult, DataResult, QueryRange, SingleRequiredComponentConstraint, ViewContext,
+        ViewId, ViewSystemIdentifier, VisualizerComponentMappings, VisualizerComponentSource,
+        VisualizerInstruction,
     };
 
     use super::{
@@ -960,7 +958,6 @@ mod tests {
                 let data_result = test_data_result(entity);
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &LatestAtQuery::new_static(),
                     &data_result,
                     [target],
@@ -1007,7 +1004,6 @@ mod tests {
             let latest_query = LatestAtQuery::new(TimelineName::log_tick(), 0);
             let latest_results = latest_at_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &latest_query,
                 &data_result,
                 [target],
@@ -1033,7 +1029,6 @@ mod tests {
                 RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::new(0, 0));
             let range_results = range_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &range_query,
                 &data_result,
                 [target],
@@ -1058,7 +1053,6 @@ mod tests {
         });
     }
 
-    /// Selects which annotation identifier is logged by [`static_annotation_data`].
     #[derive(Default)]
     struct AnnotationTestVisualizer;
 
@@ -1167,11 +1161,12 @@ mod tests {
         Keypoint,
     }
 
-    /// Builds a static `Points3D` fixture for testing annotation-context component resolution.
-    fn static_annotation_data(
+    /// Logs a static point with optional IDs and color, but no `AnnotationContext`.
+    /// Tests that need class definitions must log them separately.
+    fn static_point_fixture(
         annotation_ids: StaticAnnotationIds,
         with_recorded_color: bool,
-    ) -> StaticAnnotationData {
+    ) -> StaticPointFixture {
         let mut test_context = TestContext::new();
         test_context.register_view_class::<AnnotationTestView>();
         let entity_path = EntityPath::from("entity");
@@ -1217,24 +1212,21 @@ mod tests {
             }
         });
 
-        let annotations = Arc::new(Annotations::missing());
         let data_result = test_data_result(entity_path);
 
-        StaticAnnotationData {
+        StaticPointFixture {
             test_context,
             data_result,
-            annotations: Some(annotations),
         }
     }
 
     /// Owns the test data needed to run equivalent latest-at and range annotation queries.
-    struct StaticAnnotationData {
+    struct StaticPointFixture {
         test_context: TestContext,
         data_result: DataResult,
-        annotations: Option<Arc<Annotations>>,
     }
 
-    impl StaticAnnotationData {
+    impl StaticPointFixture {
         /// Runs latest-at and range queries for `target` so tests can compare their component sources.
         fn annotation_outcomes(
             &self,
@@ -1245,7 +1237,6 @@ mod tests {
                 let instruction = test_instruction(mappings);
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    self.annotations.as_deref(),
                     &LatestAtQuery::new_static(),
                     &self.data_result,
                     [target],
@@ -1253,7 +1244,6 @@ mod tests {
                 );
                 let range = range_with_blueprint_resolved_data(
                     ctx,
-                    self.annotations.as_deref(),
                     &RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING),
                     &self.data_result,
                     [target],
@@ -1306,7 +1296,7 @@ mod tests {
     #[test]
     fn missing_annotation_context_preserves_generated_colors() {
         for ids in [StaticAnnotationIds::Class, StaticAnnotationIds::Keypoint] {
-            let mut data = static_annotation_data(ids, false);
+            let mut data = static_point_fixture(ids, false);
             let target = Points3D::descriptor_colors().component;
             let expected = data.annotation_outcomes(target, Default::default());
             assert!(
@@ -1322,18 +1312,60 @@ mod tests {
                     .is_some_and(|colors| !colors.is_empty())
             );
 
-            data.annotations = None;
+            data.test_context.log_entity("/", |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::AnnotationContext::new(components::AnnotationContext::default()),
+                )
+            });
             let actual = data.annotation_outcomes(target, Default::default());
             assert_eq!(actual.latest_colors, expected.latest_colors);
             assert_eq!(actual.range_colors, expected.range_colors);
         }
     }
 
+    /// A point with a class ID but no logged color inherits its parent's class color at the query time.
+    /// A later change to that color must not affect an earlier query, even when the cursor is at the later frame.
+    #[test]
+    fn inherited_annotation_colors_follow_the_latest_at_query() {
+        let mut data = static_point_fixture(StaticAnnotationIds::Class, false);
+        let early = Color::from_rgb(255, 0, 0);
+        let late = Color::from_rgb(0, 255, 0);
+        for (frame, color) in [(1, early), (5, late)] {
+            data.test_context.log_entity("/", |builder| {
+                builder.with_archetype_auto_row(
+                    [build_frame_nr(frame)],
+                    &archetypes::AnnotationContext::new([(42, "class", color.0)]),
+                )
+            });
+        }
+        data.test_context.set_active_timeline("frame_nr");
+        data.test_context.set_time(5);
+        run_with_test_view_context(&data.test_context, |ctx| {
+            let instruction = test_instruction(Default::default());
+            let target = Points3D::descriptor_colors().component;
+            for (query, expected) in [
+                (LatestAtQuery::new("frame_nr".into(), 2), early),
+                (ctx.current_query(), late),
+            ] {
+                let result = latest_at_with_blueprint_resolved_data(
+                    ctx,
+                    &query,
+                    &data.data_result,
+                    [target],
+                    Some(&instruction),
+                );
+                assert_eq!(result.get_mono::<Color>(target), Some(expected));
+            }
+        });
+    }
+
     /// Static IDs must materialize annotation colors in both latest-at and range queries when no colors are recorded.
     #[test]
     fn static_queries_resolve_annotations_without_recorded_colors() {
         for ids in [StaticAnnotationIds::Class, StaticAnnotationIds::Keypoint] {
-            let data = static_annotation_data(ids, false);
+            let data = static_point_fixture(ids, false);
             let outcomes = data.annotation_outcomes(
                 Points3D::descriptor_colors().component,
                 VisualizerComponentMappings::default(),
@@ -1358,7 +1390,7 @@ mod tests {
     fn recorded_colors_win_unless_annotations_are_explicitly_selected() {
         let color = Points3D::descriptor_colors().component;
         for ids in [StaticAnnotationIds::Class, StaticAnnotationIds::Keypoint] {
-            let data = static_annotation_data(ids, true);
+            let data = static_point_fixture(ids, true);
             let automatic = data.annotation_outcomes(color, VisualizerComponentMappings::default());
             for source in [automatic.latest_source, automatic.range_source] {
                 assert_eq!(source, VisualizerComponentSource::simple_map(color));
@@ -1373,7 +1405,7 @@ mod tests {
                     VisualizerComponentSource::AnnotationContext,
                 )]),
             );
-            let without_recorded = static_annotation_data(ids, false)
+            let without_recorded = static_point_fixture(ids, false)
                 .annotation_outcomes(color, VisualizerComponentMappings::default());
             for source in [explicit.latest_source, explicit.range_source] {
                 assert_eq!(source, VisualizerComponentSource::AnnotationContext);
@@ -1388,7 +1420,7 @@ mod tests {
     /// A recorded color does not prevent an unrecorded label from independently selecting annotation context.
     #[test]
     fn selected_annotation_context_uses_defaults_for_missing_values() {
-        let data = static_annotation_data(StaticAnnotationIds::Class, true);
+        let data = static_point_fixture(StaticAnnotationIds::Class, true);
         let automatic = data.annotation_outcomes(
             Points3D::descriptor_labels().component,
             VisualizerComponentMappings::default(),
@@ -1403,7 +1435,7 @@ mod tests {
     #[test]
     fn annotation_context_only_resolves_when_annotation_ids_are_present() {
         let color = Points3D::descriptor_colors().component;
-        let data = static_annotation_data(StaticAnnotationIds::None, true);
+        let data = static_point_fixture(StaticAnnotationIds::None, true);
         let automatic = data.annotation_outcomes(color, VisualizerComponentMappings::default());
         for source in [automatic.latest_source, automatic.range_source] {
             assert_eq!(source, VisualizerComponentSource::simple_map(color));
@@ -1506,7 +1538,6 @@ mod tests {
                 let instruction = test_instruction(mappings);
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &LatestAtQuery::new_static(),
                     &data_result,
                     [a, b],
@@ -1516,7 +1547,6 @@ mod tests {
 
                 let range = range_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &range_query,
                     &data_result,
                     [a, b],
@@ -1565,7 +1595,6 @@ mod tests {
         run_with_test_view_context(&test_context, move |ctx| {
             let latest = latest_at_with_blueprint_resolved_data_polymorphic(
                 ctx,
-                None,
                 &LatestAtQuery::new_static(),
                 &data_result,
                 [component],
@@ -1579,7 +1608,6 @@ mod tests {
 
             let range = range_with_blueprint_resolved_data_polymorphic(
                 ctx,
-                None,
                 &RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING),
                 &data_result,
                 [component],
@@ -1598,7 +1626,6 @@ mod tests {
             // Cast rules are excluded from cache identity; callers must invalidate when they change.
             let uncast = range_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING),
                 &data_result,
                 [component],
@@ -1607,7 +1634,6 @@ mod tests {
             assert_eq!(range.query_result_hash(), uncast.query_result_hash());
             let latest_uncast = latest_at_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &LatestAtQuery::new_static(),
                 &data_result,
                 [component],
@@ -1680,7 +1706,6 @@ mod tests {
                 let query = LatestAtQuery::new("frame_nr".into(), time);
                 latest_at_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &query,
                     &data_result,
                     [target],
@@ -1723,14 +1748,7 @@ mod tests {
         run_with_test_view_context(&test_context, |ctx| {
             let query = RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::EVERYTHING);
             let resolve = |query: &RangeQuery| {
-                range_with_blueprint_resolved_data(
-                    ctx,
-                    None,
-                    query,
-                    &data_result,
-                    [target],
-                    &instruction,
-                )
+                range_with_blueprint_resolved_data(ctx, query, &data_result, [target], &instruction)
             };
             let first = resolve(&query);
             let second = resolve(&query);
@@ -1759,7 +1777,6 @@ mod tests {
                 .insert("unused".into(), VisualizerComponentSource::Default);
             let unrelated_mapping = range_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &query,
                 &data_result,
                 [target],
@@ -1790,7 +1807,6 @@ mod tests {
             run_with_test_view_context(test_context, |ctx| {
                 range_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &RangeQuery::new("frame_nr".into(), AbsoluteTimeRange::EVERYTHING),
                     &data_result,
                     [component],
@@ -1849,7 +1865,6 @@ mod tests {
             let query = RangeQuery::new(TimelineName::log_tick(), AbsoluteTimeRange::EVERYTHING);
             let mut results = range_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &query,
                 &data_result,
                 [component],
@@ -1959,7 +1974,6 @@ mod tests {
                 );
                 let latest_results = latest_at_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &ctx.current_query(),
                     &data_result,
                     [target_a, target_b],
@@ -1967,7 +1981,6 @@ mod tests {
                 );
                 let range_results = range_with_blueprint_resolved_data(
                     ctx,
-                    None,
                     &range_query,
                     &data_result,
                     [target_a, target_b],

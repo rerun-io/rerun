@@ -16,13 +16,13 @@ use re_sdk_types::blueprint::archetypes::{
     TimePanelBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint, VisualizerInstruction,
 };
 use re_sdk_types::blueprint::components::{
-    ActiveTab, ContainerKind, Eye3DKind, IncludedContent, PanelState, PlayState, QueryExpression,
+    ActiveTab, ContainerKind, Eye3DKind, IncludedContent, LoopMode, PanelState, QueryExpression,
     RootContainer, ViewMaximized, VisualizerInstructionId,
 };
 use re_sdk_types::components::Color;
 use re_sdk_types::encodings::{TimeInt, TimeRange, TimeRangeBoundary, Uuid};
 
-use crate::{chunks_from_json, json_from_store};
+use crate::{chunks_from_json, json_from_components};
 
 pub fn empty_blueprint() -> EntityDb {
     EntityDb::new(StoreId::random(StoreKind::Blueprint, "test"))
@@ -156,7 +156,7 @@ pub fn example_blueprint() -> EntityDb {
             Box::new(
                 TimePanelBlueprint::update_fields()
                     .with_fps(30.0)
-                    .with_play_state(PlayState::Paused),
+                    .with_loop_mode(LoopMode::Selection),
             ),
         ),
         (
@@ -192,10 +192,9 @@ pub fn example_blueprint() -> EntityDb {
 
 pub fn read(blueprint: &EntityDb) -> Value {
     let query = LatestAtQuery::latest(TimelineName::from_static_str("blueprint"));
-    json_from_store(
-        blueprint.storage_engine().store(),
-        &query,
+    json_from_components(
         re_sdk_types::reflection::reflection(),
+        blueprint.storage_engine().latest_at_all(&query),
     )
 }
 

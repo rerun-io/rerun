@@ -153,8 +153,7 @@ pub(crate) fn annotations(
     entity_path: &re_entity_db::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
-    let mut annotation_map = re_viewer_context::AnnotationMap::default();
-    annotation_map.load(ctx.db, &ctx.query());
+    let annotation_map = re_viewer_context::AnnotationMap::load(ctx.db, &ctx.query());
     annotation_map.find(entity_path).map_or_else(
         || std::sync::Arc::new(re_viewer_context::Annotations::missing_ref().clone()),
         |annotations| std::sync::Arc::new(annotations.clone()),

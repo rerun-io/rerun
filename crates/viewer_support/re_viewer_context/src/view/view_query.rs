@@ -487,7 +487,7 @@ impl DataResult {
         ctx.store_context
             .blueprint
             .latest_at(ctx.blueprint_query, &self.override_base_path, [component])
-            .get(component)
+            .get_if_loaded(component)
             .is_some()
     }
 

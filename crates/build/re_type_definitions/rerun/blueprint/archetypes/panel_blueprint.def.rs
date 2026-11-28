@@ -35,12 +35,6 @@ pub struct TimePanelBlueprint {
     #[rerun(optional)]
     pub fps: Option<rerun::blueprint::components::Fps>,
 
-    /// If the time is currently paused, playing, or following.
-    ///
-    /// Defaults to either playing or following, depending on the data source.
-    #[rerun(optional)]
-    pub play_state: Option<rerun::blueprint::components::PlayState>,
-
     /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
     ///
     /// Defaults to off.

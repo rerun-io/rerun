@@ -51,6 +51,7 @@ from .archetypes import (
     TimeAxis as TimeAxis,
     VisibleTimeRanges as VisibleTimeRanges,
     VisualBounds2D as VisualBounds2D,
+    WebViewContent as WebViewContent,
 )
 from .components import (
     BackgroundKind as BackgroundKind,
@@ -80,5 +81,6 @@ from .views import (
     TextDocumentView as TextDocumentView,
     TextLogView as TextLogView,
     TimeSeriesView as TimeSeriesView,
+    WebView as WebView,
 )
 from .visualizers import VisualizableArchetype as VisualizableArchetype, Visualizer as Visualizer

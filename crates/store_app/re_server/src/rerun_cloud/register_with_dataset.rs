@@ -120,13 +120,6 @@ async fn validate_sources(
             ));
         }
 
-        if store_id.is_some() {
-            return Err(tonic::Status::unimplemented(format!(
-                "registering a single recording from a multi-recording file is not supported yet: \
-                 leave `store_id` unset\nURL: {storage_url}"
-            )));
-        }
-
         match kind {
             ext::DataSourceKind::Rrd => {}
         }
@@ -145,6 +138,7 @@ async fn validate_sources(
                 store_kind,
                 &storage_url,
                 layer_info,
+                store_id,
                 segment_id_override,
                 &mut seen,
             )?);
@@ -156,6 +150,7 @@ async fn validate_sources(
                 store_kind,
                 &storage_url,
                 layer_info,
+                store_id,
                 segment_id_override,
                 &mut seen,
             )
@@ -173,6 +168,7 @@ fn validate_memory_source(
     expected_store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
+    requested_store_id: Option<StoreId>,
     segment_id_override: Option<SegmentId>,
     seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<ValidatedSource> {
@@ -185,6 +181,14 @@ fn validate_memory_source(
         return Err(tonic::Status::invalid_argument(format!(
             "memory store has kind {:?}, expected {expected_store_kind:?}",
             store_id.kind()
+        )));
+    }
+    if let Some(requested_store_id) = requested_store_id
+        && requested_store_id != store_id
+    {
+        return Err(tonic::Status::invalid_argument(format!(
+            "memory store is {store_id:?}, not the requested {requested_store_id:?}\n\
+             URL: {storage_url}"
         )));
     }
     let segment_id =
@@ -200,14 +204,19 @@ fn validate_memory_source(
     })
 }
 
-/// Returns one source per store of the dataset's kind in the file, in store id order.
+/// Returns one source per store the file registers.
 ///
-/// A file with no such store is silently skipped. A file registers every store of the dataset's
-/// kind, so a segment id override requires the file to hold exactly one.
+/// With `requested_store_id`, that is this store, which the file must hold and which must be of
+/// the dataset's kind.
+///
+/// Without it, that is every store of the dataset's kind in the file, in store id order. A file
+/// with no such store is silently skipped, and a segment id override requires the file to hold
+/// exactly one.
 async fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
+    requested_store_id: Option<StoreId>,
     segment_id_override: Option<SegmentId>,
     seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<Vec<ValidatedSource>> {
@@ -228,11 +237,27 @@ async fn validate_file_source(
         )));
     }
 
-    let store_ids: Vec<StoreId> = load_store_ids(&rrd_path)
-        .await?
-        .into_iter()
-        .filter(|store_id| store_id.kind() == store_kind)
-        .collect();
+    let store_ids = load_store_ids(&rrd_path).await?;
+    let store_ids: Vec<StoreId> = if let Some(store_id) = requested_store_id {
+        if store_id.kind() != store_kind {
+            return Err(tonic::Status::invalid_argument(format!(
+                "cannot register store {store_id:?} of kind {} in a dataset of kind {store_kind}\n\
+                 URL: {storage_url}",
+                store_id.kind(),
+            )));
+        }
+        if !store_ids.contains(&store_id) {
+            return Err(tonic::Status::invalid_argument(format!(
+                "store {store_id:?} not found in the RRD\nURL: {storage_url}"
+            )));
+        }
+        vec![store_id]
+    } else {
+        store_ids
+            .into_iter()
+            .filter(|store_id| store_id.kind() == store_kind)
+            .collect()
+    };
 
     if let Some(segment_id) = &segment_id_override
         && store_ids.len() > 1

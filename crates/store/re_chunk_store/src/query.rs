@@ -718,7 +718,7 @@ impl std::fmt::Display for QueryResults {
 
         let chunk_ids = chunks.iter().map(|c| c.id().to_string()).join(",");
 
-        if self.is_partial() {
+        if self.any_missing_chunks() {
             let missing_ids = missing_virtual.iter().map(|id| id.to_string()).join(",");
             f.write_fmt(format_args!("chunks:[{chunk_ids}] missing:[{missing_ids}]"))
         } else {
@@ -810,15 +810,14 @@ impl QueryResults {
 }
 
 impl QueryResults {
-    /// Returns true if these are partial results.
+    /// Returns true if the query found chunks that are relevant to it, but not loaded.
     ///
-    /// Partial results happen when some of the chunks required to accurately compute the query are
-    /// currently missing/offloaded.
-    /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
+    /// The results are then partial.
+    /// It is the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
     /// [missing chunk IDs]: `Self::missing_virtual`
-    pub fn is_partial(&self) -> bool {
+    pub fn any_missing_chunks(&self) -> bool {
         !self.missing_virtual.is_empty()
     }
 
@@ -860,7 +859,7 @@ impl QueryResults {
     /// [missing chunk IDs]: `Self::missing_virtual`
     #[track_caller]
     pub fn into_iter_verbose(self) -> impl Iterator<Item = Arc<Chunk>> {
-        if self.is_partial() {
+        if self.any_missing_chunks() {
             let location = std::panic::Location::caller();
             re_log::debug_warn_once!(
                 "{}:{}: iterating partial query results: some data has been silently discarded",
@@ -1548,7 +1547,7 @@ mod tests {
                 chunks: vec![chunk3.clone()],
                 missing_virtual: vec![],
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
 
             let results = store.range_relevant_chunks(
@@ -1561,7 +1560,7 @@ mod tests {
                 chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
                 missing_virtual: vec![],
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
 
             assert!(store.take_tracked_chunk_ids().missing_virtual.is_empty());
@@ -1591,7 +1590,7 @@ mod tests {
                 chunks: vec![chunk3.clone()],
                 missing_virtual: vec![],
             };
-            assert_eq!(false, results_latest_at.is_partial());
+            assert_eq!(false, results_latest_at.any_missing_chunks());
             assert_eq!(expected, results_latest_at);
 
             let results_range = store.range_relevant_chunks(
@@ -1604,7 +1603,7 @@ mod tests {
                 chunks: vec![chunk3.clone()],
                 missing_virtual: vec![chunk1.id(), chunk2.id()],
             };
-            assert_eq!(true, results_range.is_partial());
+            assert_eq!(true, results_range.any_missing_chunks());
             assert_eq!(expected, results_range);
 
             assert_eq!(
@@ -1635,7 +1634,7 @@ mod tests {
                 chunks: vec![],
                 missing_virtual: vec![chunk3.id()],
             };
-            assert_eq!(true, results_latest_at.is_partial());
+            assert_eq!(true, results_latest_at.any_missing_chunks());
             assert_eq!(expected, results_latest_at);
 
             let results_range = store.range_relevant_chunks(
@@ -1648,7 +1647,7 @@ mod tests {
                 chunks: vec![],
                 missing_virtual: vec![chunk1.id(), chunk2.id(), chunk3.id()],
             };
-            assert_eq!(true, results_range.is_partial());
+            assert_eq!(true, results_range.any_missing_chunks());
             assert_eq!(expected, results_range);
 
             assert_eq!(
@@ -1681,7 +1680,7 @@ mod tests {
                 chunks: vec![chunk3.clone()],
                 missing_virtual: vec![],
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
 
             let results = store.range_relevant_chunks(
@@ -1694,7 +1693,7 @@ mod tests {
                 chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
                 missing_virtual: vec![],
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
 
             assert!(store.take_tracked_chunk_ids().missing_virtual.is_empty());
@@ -1774,7 +1773,7 @@ mod tests {
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
 
             let results = store.range_relevant_chunks(
                 ChunkTrackingMode::Report,
@@ -1782,7 +1781,7 @@ mod tests {
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
         }
     }
 

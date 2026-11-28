@@ -2,7 +2,7 @@ use re_chunk::{EntityPath, TimelineName};
 use re_log::ResultExt as _;
 use re_log_types::AbsoluteTimeRange;
 use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
-use re_sdk_types::blueprint::components::{LoopMode, PlayState};
+use re_sdk_types::blueprint::components::LoopMode;
 
 use crate::blueprint_helpers::BlueprintContext;
 
@@ -26,9 +26,6 @@ pub(super) trait TimeBlueprintExt {
 
     fn set_fps(&self, fps: f64);
     fn fps(&self) -> Option<f64>;
-
-    fn set_play_state(&self, play_state: PlayState);
-    fn play_state(&self) -> Option<PlayState>;
 
     fn set_loop_mode(&self, loop_mode: LoopMode);
     fn loop_mode(&self) -> Option<LoopMode>;
@@ -104,26 +101,6 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             )?;
 
         Some(**fps)
-    }
-
-    fn set_play_state(&self, play_state: PlayState) {
-        self.save_static_blueprint_component(
-            time_panel_blueprint_entity_path(),
-            &TimePanelBlueprint::descriptor_play_state(),
-            &play_state,
-        );
-    }
-
-    fn play_state(&self) -> Option<PlayState> {
-        let (_, play_state) = self
-            .current_blueprint()
-            .latest_at_component_quiet::<PlayState>(
-                &time_panel_blueprint_entity_path(),
-                self.blueprint_query(),
-                TimePanelBlueprint::descriptor_play_state().component,
-            )?;
-
-        Some(play_state)
     }
 
     fn set_loop_mode(&self, loop_mode: LoopMode) {

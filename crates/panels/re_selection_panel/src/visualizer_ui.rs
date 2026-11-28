@@ -15,7 +15,7 @@ use re_ui::{
     ComboItem, DesignTokens, OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item,
 };
 use re_view::{
-    AnnotationMapCache, SourceMappingContext, SourceSelectorContext, raw_default_or_fallback,
+    SourceMappingContext, SourceSelectorContext, raw_default_or_fallback,
     raw_default_without_fallback, save_component_mapping, source_selector_ui,
     visualizers_for_entity,
 };
@@ -351,8 +351,6 @@ fn visualizer_components(
             }
         };
 
-        let annotation_map = AnnotationMapCache::for_query(ctx.viewer_ctx, &query_ctx.query);
-        let annotations = annotation_map.find(&data_result.entity_path);
         let add_children = |ui: &mut egui::Ui| {
             let raw_default = raw_default();
             let mapping_ctx = SourceMappingContext {
@@ -363,7 +361,6 @@ fn visualizer_components(
                 instruction,
                 source,
                 raw_default: &raw_default,
-                annotations,
             };
             // Source component (if available).
             source_selector_ui(

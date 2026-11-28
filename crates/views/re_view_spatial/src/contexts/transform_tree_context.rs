@@ -236,7 +236,6 @@ impl ViewContextSystem for TransformTreeContext {
                 .map(|data_result| {
                     latest_at_with_blueprint_resolved_data(
                         ctx,
-                        None,
                         &latest_at_query,
                         data_result,
                         [transform_frame_id_component],
@@ -675,7 +674,6 @@ impl EntityTransformIdMapping {
 
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &latest_at_query,
                 origin_data_result,
                 [transform_frame_id_component],

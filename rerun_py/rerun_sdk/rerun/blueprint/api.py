@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from .components.absolute_time_range import AbsoluteTimeRange
     from .components.container_kind import ContainerKindLike
     from .components.loop_mode import LoopModeLike
-    from .components.play_state import PlayStateLike
 
 ViewContentsLike = Utf8ArrayLike | ViewContents
 
@@ -506,7 +505,6 @@ class TimePanel(Panel):
         timeline: Utf8Like | None = None,
         playback_speed: float | None = None,
         fps: float | None = None,
-        play_state: PlayStateLike | None = None,
         loop_mode: LoopModeLike | None = None,
         time_selection: AbsoluteTimeRange | None = None,
     ) -> None:
@@ -529,9 +527,6 @@ class TimePanel(Panel):
         fps:
             Frames per second. Only applicable for sequence timelines.
 
-        play_state:
-            If the time is currently paused, playing, or following.
-
         loop_mode:
             How the time should loop.
 
@@ -547,7 +542,6 @@ class TimePanel(Panel):
         self.timeline = timeline
         self.playback_speed = playback_speed
         self.fps = fps
-        self.play_state = play_state
         self.loop_mode = loop_mode
         self.time_selection = time_selection
 
@@ -563,13 +557,6 @@ class TimePanel(Panel):
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
-
-        if self.play_state is not None:
-            static_arch = TimePanelBlueprint(
-                play_state=self.play_state,
-            )
-
-            stream.log(self.blueprint_path(), static_arch, static=True)
 
 
 ContainerLike = Container | View

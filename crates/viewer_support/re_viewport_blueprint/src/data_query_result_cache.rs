@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, EntityPathHash, ResolvedEntityPathFilter, StoreId
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
 use re_viewer_context::{
-    ActiveStoreContext, AppCache, AppCaches, AppOptions, Cache, DataQueryResult, DataResultNode,
+    ActiveStoreContext, AppCache, AppCaches, Cache, DataQueryResult, DataResultNode,
     IndicatedEntities, PerVisualizerType, QueryRange, ViewClassRegistry, ViewId, ViewStates,
     VisualizableEntities,
 };
@@ -35,7 +35,6 @@ pub fn query_results_for_views<'a>(
     view_states: &ViewStates,
     visualizable_entities_per_visualizer: &PerVisualizerType<&VisualizableEntities>,
     indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
-    app_options: &AppOptions,
 ) -> HashMap<ViewId, Arc<DataQueryResult>> {
     re_tracing::profile_function!();
 
@@ -92,7 +91,6 @@ pub fn query_results_for_views<'a>(
                         view,
                         &query_range,
                         &overrides_and_defaults,
-                        app_options,
                     )
                 {
                     entry.used_this_frame = true;
@@ -130,7 +128,6 @@ pub fn query_results_for_views<'a>(
                     &query_range,
                     visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer,
-                    app_options,
                 );
 
                 (
@@ -141,7 +138,6 @@ pub fn query_results_for_views<'a>(
                         entity_path_filter: view.contents.entity_path_filter().clone(),
                         query_range,
                         overrides_and_defaults,
-                        app_options: app_options.clone(),
                         result: Arc::new(result),
                         used_this_frame: true,
                     },
@@ -290,7 +286,6 @@ struct Entry {
     entity_path_filter: ResolvedEntityPathFilter,
     query_range: QueryRange,
     overrides_and_defaults: OverridesAndDefaults,
-    app_options: AppOptions,
     result: Arc<DataQueryResult>,
     used_this_frame: bool,
 }
@@ -302,14 +297,12 @@ impl Entry {
         view: &ViewBlueprint,
         query_range: &QueryRange,
         overrides_and_defaults: &OverridesAndDefaults,
-        app_options: &AppOptions,
     ) -> bool {
         self.active_timeline.as_ref() == active_timeline
             && self.class_identifier == view.class_identifier()
             && &self.entity_path_filter == view.contents.entity_path_filter()
             && &self.query_range == query_range
             && &self.overrides_and_defaults == overrides_and_defaults
-            && &self.app_options == app_options
     }
 }
 
@@ -362,7 +355,7 @@ mod tests {
     use re_log_types::{StoreKind, TimeInt, TimePoint};
     use re_types_core::reflection::Reflection;
     use re_viewer_context::{
-        FallbackProviderRegistry, IdentifiedViewSystem as _, StoreCache, TimeControl,
+        AppOptions, FallbackProviderRegistry, IdentifiedViewSystem as _, StoreCache, TimeControl,
         ViewClass as _, VisualizableReason, blueprint_timeline,
     };
 
@@ -439,7 +432,6 @@ mod tests {
         views: [ViewBlueprint; 2],
         view_states: ViewStates,
         visualizable_entities: PerVisualizerType<VisualizableEntities>,
-        app_options: AppOptions,
     }
 
     impl Setup {
@@ -474,7 +466,6 @@ mod tests {
                 ],
                 view_states: ViewStates::default(),
                 visualizable_entities,
-                app_options: AppOptions::test(),
             }
         }
 
@@ -507,7 +498,6 @@ mod tests {
                 &self.view_states,
                 &self.visualizable_entities.as_ref(),
                 &PerVisualizerType::default(),
-                &self.app_options,
             );
             self.views.each_ref().map(|view| {
                 results
@@ -588,20 +578,6 @@ mod tests {
         setup.app_caches.begin_frame();
         assert_eq!(
             rebuilt(&second, &setup.run(&recording, &latest())),
-            [true, true]
-        );
-    }
-
-    /// Changing any of the app options rebuilds every result.
-    #[test]
-    fn app_options_change_rebuilds() {
-        let mut setup = Setup::new();
-        let recording = recording_with(&["first"]);
-        let before = setup.run(&recording, &latest());
-
-        setup.app_options.show_metrics = !setup.app_options.show_metrics;
-        assert_eq!(
-            rebuilt(&before, &setup.run(&recording, &latest())),
             [true, true]
         );
     }

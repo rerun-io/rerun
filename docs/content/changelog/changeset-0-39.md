@@ -59,7 +59,7 @@ See [`PixelFormat`](../reference/types/encodings/pixel_format.md).
 Rerun can now load PLY files containing meshes and 2D point clouds, in addition to 3D point clouds and Gaussian splats.
 PLY loading also uses the faster `ply-rs-bw` 4 API.
 
-[Opening files in Rerun](../logging-and-ingestion/import/open-any-file.md)
+[Opening files in Rerun](../ingest/open-any-file.md)
 [PLY and STL example](https://github.com/rerun-io/rerun/tree/main/examples/rust/ply_stl_tetrahedrons)
 
 ### Smoother plot lines
@@ -203,7 +203,7 @@ Which segments an asset applies to can be changed afterwards with `add_segments_
 
 Use `assets_for_segment` to get a list of assets that apply to a segment.
 
-See [assets](../query-and-transform/catalog/catalog-object-model.md#assets) for what an asset is.
+See [assets](../catalog/catalog-object-model.md#assets) for what an asset is.
 
 ### String literals in lens selectors
 

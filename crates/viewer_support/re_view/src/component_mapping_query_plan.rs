@@ -139,7 +139,7 @@ pub fn annotation_context_resolves(
 /// This only affects automatically determined sources; explicit overrides are validated by the plan.
 pub fn has_non_empty_override(overrides: &LatestAtResults, component: ComponentIdentifier) -> bool {
     overrides
-        .get(component)
+        .get_if_loaded(component)
         .and_then(|chunk| chunk.non_empty_component_batch_raw(component))
         .is_some()
 }

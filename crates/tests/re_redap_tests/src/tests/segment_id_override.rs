@@ -310,7 +310,8 @@ async fn find_chunks_per_segment_layer(
     per_segment_layer
 }
 
-async fn rrd_manifest(
+/// The manifest of `segment_id`, merged over its layers.
+pub async fn rrd_manifest(
     service: &impl RerunCloudService,
     dataset_name: &str,
     segment_id: &SegmentId,

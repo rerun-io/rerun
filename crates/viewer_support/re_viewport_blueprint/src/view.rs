@@ -495,6 +495,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn view_defaults_include_components_without_visualizers() {
+        let mut test_ctx = TestContext::new();
+        test_ctx.register_view_class::<ViewClassPlaceholder>();
+        let view = ViewBlueprint::new_with_root_wildcard(ViewClassPlaceholder::identifier());
+        let label = MyLabel("default label".to_owned());
+        let chunk = Chunk::builder(ViewBlueprint::defaults_path(view.id))
+            .with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &MyPoints::default().with_labels([label.clone()]),
+            )
+            .build()
+            .unwrap();
+        test_ctx
+            .active_blueprint()
+            .add_chunk(&Arc::new(chunk))
+            .unwrap();
+
+        let result = update_overrides(&test_ctx, &view, &PerVisualizerType::default());
+        assert_eq!(
+            result
+                .view_defaults
+                .component_mono::<MyLabel>(MyPoints::descriptor_labels().component),
+            Some(label),
+        );
+    }
+
+    #[test]
     fn test_visible_interactive_overrides() {
         let mut test_ctx = TestContext::new();
         let mut visualizable_entities = PerVisualizerType::<VisualizableEntities>::default();
@@ -724,7 +752,6 @@ mod tests {
                 &query_range,
                 visualizable_entities,
                 ctx.indicated_entities_per_visualizer,
-                ctx.app_options(),
             ));
         });
 

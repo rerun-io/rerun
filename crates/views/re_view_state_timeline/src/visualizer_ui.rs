@@ -66,7 +66,6 @@ pub fn state_config_editor(
     // Query current state configuration.
     let query_result = re_view::latest_at_with_blueprint_resolved_data(
         ctx,
-        None,
         &ctx.current_query(),
         data_result,
         [

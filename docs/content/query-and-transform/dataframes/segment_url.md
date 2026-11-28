@@ -8,7 +8,7 @@ The [`segment_url`](https://ref.rerun.io/docs/python/stable/utilities_datafusion
 The generated URLs can optionally seek to a timestamp, select a time range, or select an entity path.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 A URL names the dataset by its ID.
 The local `rerun server` keeps catalog metadata in memory, so it assigns new dataset IDs each time it starts, and URLs generated against it stop working once it restarts.

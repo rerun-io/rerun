@@ -177,6 +177,14 @@ rerun-cli = "cargo run --package rerun-cli --no-default-features --"
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,rerun/perf_telemetry_tracy --"
 
+# Compile and run the rerun viewer, with a web view that shows pages natively with CEF.
+#
+# The first build downloads CEF (about 1 GB), and on macOS and Windows needs CMake and Ninja.
+# This adds CEF to `Cargo.lock`. Don't commit that.
+#
+# You can also give an argument for what to view (e.g. an .rrd file).
+rerun-webview-cef = "cargo build --package rerun-cli --package re_view_web --no-default-features --features base,webview,egui_webview/cef && ./target/debug/rerun"
+
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features release_no_web_viewer"
 

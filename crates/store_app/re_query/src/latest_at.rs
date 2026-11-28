@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use arrow::array::ArrayRef as ArrowArrayRef;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, UnitChunkShared};
@@ -82,6 +82,11 @@ impl QueryCache {
         // than the indexed of the returned data, then we know for sure that the `Clear` shadows
         // the data.
         let mut max_clear_index = (TimeInt::MIN, RowId::ZERO);
+
+        // Set if a `Clear` that could apply is in a chunk that is not loaded.
+        // We then know neither its index nor whether it is recursive, so it may shadow
+        // temporal data that `max_clear_index` does not.
+        let mut has_virtual_clear = false;
         {
             let potential_clears = self.might_require_clearing.read();
 
@@ -153,7 +158,7 @@ impl QueryCache {
                         // Because we don't know, we must assume the worst: it's both recursive and shadowing.
                         // Indicate that we're missing this tombstone, and treat the data as incomplete until we know more.
 
-                        max_clear_index = (TimeInt::MAX, RowId::MAX);
+                        has_virtual_clear = true;
                         results.missing_virtual.extend(missing);
                     }
 
@@ -187,17 +192,29 @@ impl QueryCache {
                     "should never have partial latest-at results"
                 );
             }
+            if !missing.is_empty() {
+                results.not_loaded.insert(component);
+            }
             results.missing_virtual.extend(missing);
 
-            if let Some(cached) = cached {
+            if let Some(cached) = cached
+                && let Some(index) = cached.index(query.timeline().as_ref())
+            {
+                let is_cleared =
+                    compare_indices(index, max_clear_index) != std::cmp::Ordering::Greater;
+                // We take a `Clear` that is not loaded to be temporal, so that it leaves static
+                // data alone.
+                let may_be_cleared = has_virtual_clear && !index.0.is_static();
+
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
-                if let Some(index) = cached.index(query.timeline().as_ref())
-                    && (component == archetypes::Clear::descriptor_is_recursive().component
-                        || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater)
+                if component == archetypes::Clear::descriptor_is_recursive().component
+                    || (!is_cleared && !may_be_cleared)
                 {
                     results.add(component, index, cached);
+                } else if !is_cleared {
+                    results.not_loaded.insert(component);
                 }
             }
         }
@@ -232,6 +249,23 @@ impl QueryCache {
 
 // --- Results ---
 
+/// What a query knows about one component of an entity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComponentState<T> {
+    /// The latest value at the query time.
+    Loaded(T),
+
+    /// There is no value at the query time: nothing was logged this early, or it was cleared.
+    Absent,
+
+    /// Unknown until more chunks are loaded: one that may hold the value, or a `Clear` that may
+    /// shadow it.
+    ///
+    /// A query with [`ChunkTrackingMode::Ignore`] never reports this, since it does not look for
+    /// missing chunks. It reports [`Self::Absent`] instead.
+    NotLoaded,
+}
+
 /// Results for a latest-at query.
 ///
 /// Use [`LatestAtResults::get`] and/or [`LatestAtResults::get_required`] in order to access
@@ -239,7 +273,8 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`LatestAtResults::missing_virtual`] field.
+/// [`LatestAtResults::get`] tells which components that affects, and
+/// [`LatestAtResults::missing_chunks`] which chunks to load.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LatestAtResults {
     /// The associated [`EntityPath`].
@@ -248,18 +283,15 @@ pub struct LatestAtResults {
     /// The query that yielded these results.
     pub query: LatestAtQuery,
 
-    /// The relevant *virtual* chunks that were found for this query.
-    ///
-    /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
-    /// results of this query cannot accurately be computed.
-    ///
-    /// Note, these are NOT necessarily _root_ chunks.
-    /// Use [`ChunkStore::find_root_chunks`] to get those.
+    /// See [`Self::missing_chunks`].
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing_virtual: Vec<ChunkId>,
+    pub(crate) missing_virtual: Vec<ChunkId>,
+
+    /// The components whose value is unknown until [`Self::missing_virtual`] is loaded.
+    pub(crate) not_loaded: IntSet<ComponentIdentifier>,
 
     /// The first index of all the results.
     pub min_index: (TimeInt, RowId),
@@ -288,6 +320,7 @@ impl LatestAtResults {
             entity_path,
             query,
             missing_virtual: Default::default(),
+            not_loaded: Default::default(),
             min_index: (TimeInt::MAX, RowId::MAX),
             max_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
@@ -296,16 +329,27 @@ impl LatestAtResults {
 }
 
 impl LatestAtResults {
-    /// Returns true if these are partial results.
+    /// Returns true if the query found chunks that are relevant to it, but not loaded.
     ///
-    /// Partial results happen when some of the chunks required to accurately compute the query are
-    /// currently missing/offloaded.
-    /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
+    /// This is about the whole query. Use [`Self::get`] to learn about one component.
+    ///
+    /// It is the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing_virtual`
-    pub fn is_partial(&self) -> bool {
+    /// [missing chunk IDs]: `Self::missing_chunks`
+    pub fn any_missing_chunks(&self) -> bool {
         !self.missing_virtual.is_empty()
+    }
+
+    /// The relevant *virtual* chunks that were found for this query.
+    ///
+    /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
+    /// results of this query cannot accurately be computed.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
+    pub fn missing_chunks(&self) -> &[ChunkId] {
+        &self.missing_virtual
     }
 
     /// Returns true if the results are *completely* empty.
@@ -316,6 +360,7 @@ impl LatestAtResults {
             entity_path: _,
             query: _,
             missing_virtual,
+            not_loaded: _,
             min_index: _,
             max_index: _,
             components,
@@ -323,8 +368,22 @@ impl LatestAtResults {
         missing_virtual.is_empty() && components.values().all(|chunks| chunks.is_empty())
     }
 
-    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
-    pub fn get(&self, component: ComponentIdentifier) -> Option<&UnitChunkShared> {
+    /// What the query knows about the specified [`Component`].
+    pub fn get(&self, component: ComponentIdentifier) -> ComponentState<&UnitChunkShared> {
+        if let Some(unit) = self.components.get(&component) {
+            ComponentState::Loaded(unit)
+        } else if self.not_loaded.contains(&component) {
+            ComponentState::NotLoaded
+        } else {
+            ComponentState::Absent
+        }
+    }
+
+    /// Returns the [`UnitChunkShared`] for the specified [`Component`], if it is loaded.
+    ///
+    /// `None` does not tell a component that is not loaded from one that is absent.
+    /// Use [`Self::get`] where that matters.
+    pub fn get_if_loaded(&self, component: ComponentIdentifier) -> Option<&UnitChunkShared> {
         self.components.get(&component)
     }
 
@@ -734,7 +793,7 @@ impl LatestAtCache {
         }
 
         let results = store.latest_at_relevant_chunks(report_mode, query, entity_path, component);
-        if results.is_partial() {
+        if results.any_missing_chunks() {
             // Contrary to range results, partial latest-at results cannot ever be correct on their own,
             // therefore we must give up the current query entirely.
             // TODO(RR-3762): return latest physical chunk, while still reporting missing virtual chunks
@@ -818,7 +877,7 @@ mod tests {
         ChunkDeletionReason, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
         ChunkStoreSubscriber as _,
     };
-    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_sdk_types::archetypes::Clear;
@@ -913,7 +972,7 @@ mod tests {
                 );
                 results
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -943,9 +1002,10 @@ mod tests {
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
                 results.missing_virtual = vec![chunk1.id(), chunk3.id()];
+                results.not_loaded = std::iter::once(component).collect();
                 results
             };
-            assert_eq!(true, results.is_partial());
+            assert_eq!(true, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -974,9 +1034,10 @@ mod tests {
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
                 results.missing_virtual = vec![chunk1.id(), chunk2.id(), chunk3.id()];
+                results.not_loaded = std::iter::once(component).collect();
                 results
             };
-            assert_eq!(true, results.is_partial());
+            assert_eq!(true, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -1007,7 +1068,7 @@ mod tests {
                 );
                 results
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
     }
@@ -1087,7 +1148,7 @@ mod tests {
                 );
                 results
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -1122,7 +1183,7 @@ mod tests {
                     [component],
                 );
                 let expected = LatestAtResults::empty(entity_child.clone(), query.clone());
-                assert_eq!(false, results.is_partial());
+                assert_eq!(false, results.any_missing_chunks());
                 assert_eq!(expected, results);
             } else {
                 // There is a physical tombstone present, but it doesn't affect `/parent/child`.
@@ -1141,7 +1202,7 @@ mod tests {
                     );
                     results
                 };
-                assert_eq!(false, results.is_partial());
+                assert_eq!(false, results.any_missing_chunks());
                 assert_eq!(expected, results);
             }
 
@@ -1176,9 +1237,10 @@ mod tests {
                 let expected = {
                     let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
                     results.missing_virtual = vec![tombstone.id()];
+                    results.not_loaded = std::iter::once(component).collect();
                     results
                 };
-                assert_eq!(true, results.is_partial());
+                assert_eq!(true, results.any_missing_chunks());
                 assert_eq!(expected, results);
             }
 
@@ -1217,7 +1279,7 @@ mod tests {
                     );
                     results
                 };
-                assert_eq!(false, results.is_partial());
+                assert_eq!(false, results.any_missing_chunks());
                 assert_eq!(expected, results);
             }
         }
@@ -1291,9 +1353,10 @@ mod tests {
             let expected = {
                 let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
                 results.missing_virtual = vec![chunk_parent_clear_flat.id()];
+                results.not_loaded = std::iter::once(component).collect();
                 results
             };
-            assert_eq!(true, results.is_partial());
+            assert_eq!(true, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
 
@@ -1322,9 +1385,155 @@ mod tests {
                 );
                 results
             };
-            assert_eq!(false, results.is_partial());
+            assert_eq!(false, results.any_missing_chunks());
             assert_eq!(expected, results);
         }
+    }
+
+    /// A chunk that is not loaded only affects the components it holds.
+    #[test]
+    fn partial_data_is_per_component() {
+        let store_id = StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let store = ChunkStoreHandle::new(ChunkStore::new(
+            store_id.clone(),
+            ChunkStoreConfig::ALL_DISABLED,
+        ));
+
+        let entity_path: EntityPath = "some_entity".into();
+        let timepoint = TimePoint::from_iter([(Timeline::new_sequence("frame"), 1)]);
+        let points = MyPoints::descriptor_points();
+        let colors = MyPoints::descriptor_colors();
+        let labels = MyPoints::descriptor_labels();
+
+        let mut next_chunk_id = next_chunk_id_generator(0x1337);
+        let points_chunk = create_chunk_with_point(
+            next_chunk_id(),
+            RowId::new(),
+            entity_path.clone(),
+            timepoint.clone(),
+            MyPoint::new(1.0, 1.0),
+        );
+        let colors_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+            .with_component_batch(
+                RowId::new(),
+                timepoint,
+                (colors.clone(), &[MyColor::from_rgb(1, 2, 3)]),
+            )
+            .build()
+            .unwrap();
+
+        let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            [&points_chunk, &colors_chunk].into_iter(),
+        )
+        .unwrap();
+        _ = store.write().insert_rrd_manifest(rrd_manifest);
+        store.write().insert_chunk(&Arc::new(colors_chunk)).unwrap();
+
+        let cache = QueryCache::new(store);
+        let query = LatestAtQuery::new("frame".into(), 3);
+        let components = [points.component, colors.component, labels.component];
+
+        let results = cache.latest_at(ChunkTrackingMode::Report, &query, &entity_path, components);
+        assert_eq!(results.missing_chunks(), [points_chunk.id()]);
+        assert_eq!(results.get(points.component), ComponentState::NotLoaded);
+        assert!(matches!(
+            results.get(colors.component),
+            ComponentState::Loaded(_)
+        ));
+        assert_eq!(results.get(labels.component), ComponentState::Absent);
+
+        let results = cache.latest_all(ChunkTrackingMode::Report, &query, &entity_path, components);
+        assert_eq!(results.missing_chunks(), [points_chunk.id()]);
+        assert!(matches!(
+            results.get(points.component),
+            ComponentState::NotLoaded
+        ));
+        assert!(matches!(
+            results.get(colors.component),
+            ComponentState::Loaded(_)
+        ));
+        assert!(matches!(
+            results.get(labels.component),
+            ComponentState::Absent
+        ));
+    }
+
+    /// A `Clear` that is not loaded leaves alone what a loaded `Clear` shadows, and static data.
+    #[test]
+    fn partial_clear_is_per_component() {
+        let entity_parent: EntityPath = "/parent".into();
+        let entity_child: EntityPath = "/parent/child".into();
+        let timeline = Timeline::new_sequence("frame");
+        let at = |frame| TimePoint::from_iter([(timeline, frame)]);
+        let points = MyPoints::descriptor_points();
+        let colors = MyPoints::descriptor_colors();
+        let labels = MyPoints::descriptor_labels();
+
+        let mut next_chunk_id = next_chunk_id_generator(0x1337);
+        let loaded = [
+            Chunk::builder_with_id(next_chunk_id(), entity_child.clone())
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    (colors.clone(), &[MyColor::from_rgb(1, 2, 3)]),
+                )
+                .build()
+                .unwrap(),
+            Chunk::builder_with_id(next_chunk_id(), entity_child.clone())
+                .with_component_batch(
+                    RowId::new(),
+                    at(1),
+                    (labels.clone(), &[MyLabel("cleared".to_owned())]),
+                )
+                .build()
+                .unwrap(),
+            Chunk::builder_with_id(next_chunk_id(), entity_child.clone())
+                .with_archetype(RowId::new(), at(2), &Clear::flat())
+                .build()
+                .unwrap(),
+            create_chunk_with_point(
+                next_chunk_id(),
+                RowId::new(),
+                entity_child.clone(),
+                at(3),
+                MyPoint::new(1.0, 1.0),
+            ),
+        ];
+        let clear_not_loaded = Chunk::builder_with_id(next_chunk_id(), entity_parent)
+            .with_archetype(RowId::new(), at(4), &Clear::recursive())
+            .build()
+            .unwrap();
+
+        let store_id = StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+            store_id.clone(),
+            std::iter::chain(&loaded, [&clear_not_loaded]),
+        )
+        .unwrap();
+        let store = ChunkStoreHandle::new(ChunkStore::new(
+            store_id,
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        ));
+        let mut cache = QueryCache::new(store.clone());
+        cache.on_events(&store.write().insert_rrd_manifest(rrd_manifest));
+        for chunk in loaded {
+            cache.on_events(&store.write().insert_chunk(&Arc::new(chunk)).unwrap());
+        }
+
+        let results = cache.latest_at(
+            ChunkTrackingMode::Report,
+            &LatestAtQuery::new(*timeline.name(), 5),
+            &entity_child,
+            [points.component, colors.component, labels.component],
+        );
+        assert_eq!(results.missing_chunks(), [clear_not_loaded.id()]);
+        assert_eq!(results.get(points.component), ComponentState::NotLoaded);
+        assert!(matches!(
+            results.get(colors.component),
+            ComponentState::Loaded(_)
+        ));
+        assert_eq!(results.get(labels.component), ComponentState::Absent);
     }
 
     fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {

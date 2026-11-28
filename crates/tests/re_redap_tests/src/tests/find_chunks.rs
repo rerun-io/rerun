@@ -329,7 +329,7 @@ fn resolve_like_full_store(
          over all chunks"
     );
 
-    actual.get(component).map(|chunk| {
+    actual.get_if_loaded(component).map(|chunk| {
         chunk
             .component_mono::<MyPoint>(component)
             .expect("resolved chunk must hold one row")

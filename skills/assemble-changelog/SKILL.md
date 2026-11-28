@@ -72,7 +72,7 @@ Drop the per-entry frontmatter.
 Relative doc links in entries were written as if from `changelog/` (e.g.
 `../reference/migration/...`), which is correct once merged — keep them as-is.
 
-Images and videos must live on `static.rerun.io` (upload with `scripts/upload_image.py`), never as
+Images and videos must live on `static.rerun.io` (upload with `pixi run upload-image`), never as
 GitHub attachments: attachments uploaded in the private monorepo cannot be shown on the website.
 
 Feature leads write their `## Highlights` entries per PR, so read the section as a whole and

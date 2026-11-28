@@ -38,13 +38,14 @@ docs/content/
   index.md                        # Entry point, redirects to getting-started
   getting-started/                # Quick start, install, project setup, how Rerun works
   agents.md                       # Using Rerun with coding agents: skills, MCP server, agent panel
-  logging-and-ingestion/          # Product area: tutorial, data model, sending data, sinks, video and audio, chunks and RRD files, importing
+  log/                            # Product area: tutorial, data model, sending data, sinks, video and audio, chunks and RRD files
   viewer/                         # Product area: Viewer UI, blueprints, view types, shared view concepts, performance, extending
-  query-and-transform/            # Product area: tutorial, catalog, dataframes, images and video, lenses
+  catalog/                        # Product area: catalog object model, Rerun Hub, the open-source server, datasets, layers, tables
+  ingest/                         # Product area: importing files, chunk processing, importers, MCAP, LeRobot, URDF, MJCF
+  query-and-transform/            # Product area: tutorial, dataframes, images and video, lenses
   train/                          # Product area: tutorial, dataloader, dataset export
   viewer/integrations/            # Notebooks, web embedding, and sharing recordings
-  logging-and-ingestion/integrations/ # ROS 2 and native loggers
-  hub/                            # Rerun Hub
+  log/integrations/               # ROS 2 and native loggers
   reference/
     cli.md                        # Auto-generated (pixi run man)
     types/                        # Auto-generated type docs (pixi run codegen)

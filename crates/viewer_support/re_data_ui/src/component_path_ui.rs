@@ -1,5 +1,6 @@
 use re_chunk_store::ChunkTrackingMode;
 use re_log_types::{ComponentPath, Instance};
+use re_query::ComponentState;
 use re_ui::UiExt as _;
 use re_viewer_context::{StoreViewContext, UiLayout};
 
@@ -24,19 +25,24 @@ impl DataUi for ComponentPath {
             [component],
         );
 
-        if let Some(hits) = results.components.get(&component) {
-            LatestAllInstanceResult {
-                entity_path,
-                component,
-                instance: Instance::ALL,
-                hits,
+        let is_not_loaded = match results.get(component) {
+            ComponentState::Loaded(hits) => {
+                LatestAllInstanceResult {
+                    entity_path,
+                    component,
+                    instance: Instance::ALL,
+                    hits,
+                }
+                .data_ui(ctx, ui, ui_layout);
+                return;
             }
-            .data_ui(ctx, ui, ui_layout);
-        } else if engine.store().entity_tree().subtree(&entity_path).is_some() {
-            let any_missing_chunks = !results.missing_virtual.is_empty();
+            ComponentState::Absent => false,
+            ComponentState::NotLoaded => true,
+        };
 
+        if engine.store().entity_tree().subtree(&entity_path).is_some() {
             // TODO(RR-3670): figure out how to handle missing chunks
-            if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
+            if is_not_loaded && ctx.db.can_fetch_chunks_from_redap() {
                 ui.loading_indicator("Fetching chunks from redap");
             } else if engine.store().entity_has_component_on_timeline(
                 Some(&ctx.timeline_name()),

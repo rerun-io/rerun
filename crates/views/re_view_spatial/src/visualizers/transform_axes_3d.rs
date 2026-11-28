@@ -180,7 +180,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             // overridden via blueprint anyways.
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
-                None,
                 &latest_at_query,
                 data_result,
                 [axis_length_identifier, show_frame_identifier],

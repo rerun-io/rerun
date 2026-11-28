@@ -128,7 +128,6 @@ pub fn current_state_value_kind(
         std::iter::once((state_component, state_cast_rule as ComponentCastRule)).collect();
     let result = re_view::latest_at_with_blueprint_resolved_data_polymorphic(
         ctx,
-        None,
         &ctx.current_query(),
         data_result,
         [state_component],
@@ -503,7 +502,6 @@ impl<'a> LaneGroupBuilder<'a> {
         // A state active at the left edge is part of the lane, so we have to bootstrap the state with a latest-at query.
         let mut range_results = re_view::range_with_blueprint_resolved_data_polymorphic(
             self.ctx,
-            None,
             &query,
             data_result,
             [state_component],
@@ -514,7 +512,6 @@ impl<'a> LaneGroupBuilder<'a> {
         range_results.merge_bootstrapped_data(
             re_view::latest_at_with_blueprint_resolved_data_polymorphic(
                 self.ctx,
-                None,
                 &bootstrap_query,
                 data_result,
                 [state_component],
@@ -535,7 +532,6 @@ impl<'a> LaneGroupBuilder<'a> {
             self.view_query.latest_at_query(),
             re_view::latest_at_with_blueprint_resolved_data_polymorphic(
                 self.ctx,
-                None,
                 &self.view_query.latest_at_query(),
                 data_result,
                 StateConfiguration::all_component_identifiers(),

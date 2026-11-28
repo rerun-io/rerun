@@ -28,6 +28,9 @@ fn main() -> std::process::ExitCode {
         re_log::setup_logging();
     }
 
+    #[cfg(feature = "native_viewer")]
+    let _webview_runtime = rerun::external::re_viewer::WebViewRuntime::new();
+
     let build_info = re_build_info::build_info!();
 
     let result = rerun::run(

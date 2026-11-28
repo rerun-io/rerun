@@ -1,6 +1,6 @@
 ---
 title: Developing Rerun
-order: 10
+order: 11
 description: How to build Rerun from source and contribute to the project
 ---
 

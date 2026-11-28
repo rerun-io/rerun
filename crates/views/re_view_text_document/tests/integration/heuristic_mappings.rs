@@ -149,7 +149,6 @@ fn assert_latest_text(
         };
         let latest = re_view::latest_at_with_blueprint_resolved_data(
             &ctx,
-            None,
             &LatestAtQuery::new(TimelineName::log_tick(), 2),
             result,
             [target],

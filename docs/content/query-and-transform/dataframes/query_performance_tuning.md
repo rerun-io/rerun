@@ -8,7 +8,7 @@ This page lists ways to keep queries on Rerun datasets fast.
 Since Rerun depends on [DataFusion](https://datafusion.apache.org/), some of these approaches are observations from our own usage.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 First, generate a DataFrame for comparison:
 

@@ -161,13 +161,13 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
             }
             VisualizerComponentSource::Override => {
                 self.overrides
-                    .get(component)
+                    .get_if_loaded(component)
                     .and_then(|chunk| chunk.row_id())
                     .hash(hasher);
             }
             VisualizerComponentSource::Default => {
                 self.view_defaults
-                    .get(component)
+                    .get_if_loaded(component)
                     .and_then(|chunk| chunk.row_id())
                     .hash(hasher);
             }
@@ -175,7 +175,7 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
                 (
                     self.annotation_context_row_id,
                     self.view_defaults
-                        .get(component)
+                        .get_if_loaded(component)
                         .and_then(|chunk| chunk.row_id()),
                     self.annotation_input_hash,
                 )
@@ -186,9 +186,9 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
 
     /// Are there any chunks that need to be fetched from a remote store?
     pub fn any_missing_chunks(&self) -> bool {
-        0 < self.overrides.missing_virtual.len()
-            + self.store_results.missing_virtual.len()
-            + self.view_defaults.missing_virtual.len()
+        self.overrides.any_missing_chunks()
+            || self.store_results.any_missing_chunks()
+            || self.view_defaults.any_missing_chunks()
     }
 
     /// Returns the [`UnitChunkShared`] for the given component, respecting overrides, store results, annotation context, and defaults.
@@ -225,7 +225,7 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
 
         let blueprint_unit_chunk = match source.source_kind() {
             ComponentSourceKind::SourceComponent => {
-                if let Some(unit_chunk) = self.store_results.get(component) {
+                if let Some(unit_chunk) = self.store_results.get_if_loaded(component) {
                     let unit_chunk = if force_preserve_store_row_ids {
                         Cow::Borrowed(unit_chunk)
                     } else {
@@ -239,8 +239,8 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
                 }
                 None
             }
-            ComponentSourceKind::Override => self.overrides.get(component),
-            ComponentSourceKind::Default => self.view_defaults.get(component),
+            ComponentSourceKind::Override => self.overrides.get_if_loaded(component),
+            ComponentSourceKind::Default => self.view_defaults.get_if_loaded(component),
             ComponentSourceKind::AnnotationContext => {
                 return Some((
                     source,
@@ -331,20 +331,20 @@ impl BlueprintResolvedRangeResults<'_> {
                     checked.recording_result_hash,
                     // View defaults may be used on gaps in the data!
                     self.view_defaults
-                        .get(component)
+                        .get_if_loaded(component)
                         .and_then(|chunk| chunk.row_id()),
                 )
                     .hash(hasher);
             }
             VisualizerComponentSource::Override => {
                 self.overrides
-                    .get(component)
+                    .get_if_loaded(component)
                     .and_then(|chunk| chunk.row_id())
                     .hash(hasher);
             }
             VisualizerComponentSource::Default => {
                 self.view_defaults
-                    .get(component)
+                    .get_if_loaded(component)
                     .and_then(|chunk| chunk.row_id())
                     .hash(hasher);
             }
@@ -352,7 +352,7 @@ impl BlueprintResolvedRangeResults<'_> {
                 (
                     self.annotation_context_row_id,
                     self.view_defaults
-                        .get(component)
+                        .get_if_loaded(component)
                         .and_then(|chunk| chunk.row_id()),
                     self.annotation_input_hash,
                 )
@@ -363,9 +363,9 @@ impl BlueprintResolvedRangeResults<'_> {
 
     /// Are there any chunks that need to be fetched from a remote store?
     pub fn any_missing_chunks(&self) -> bool {
-        0 < self.overrides.missing_virtual.len()
-            + self.store_results.missing_virtual.len()
-            + self.view_defaults.missing_virtual.len()
+        self.overrides.any_missing_chunks()
+            || self.store_results.any_missing_chunks()
+            || self.view_defaults.any_missing_chunks()
     }
 
     /// Returns the [`QueryContext`] for this result.
@@ -672,7 +672,7 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
             VisualizerComponentSource::SourceComponent { .. } => {
                 // NOTE: Because this is a range query, we always need the defaults to come first,
                 // since range queries don't have any state to bootstrap from.
-                let defaults = self.view_defaults.get(component).map(|unit| {
+                let defaults = self.view_defaults.get_if_loaded(component).map(|unit| {
                     // Because this is a default (blueprint data) we always re-index the data as static
                     // and zero the row IDs
                     Arc::unwrap_or_clone(unit.clone().into_chunk())
@@ -688,7 +688,7 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
             }
             VisualizerComponentSource::Override => {
                 self.overrides
-                    .get(component)
+                    .get_if_loaded(component)
                     .map_or(Cow::Owned(Vec::new()), |unit| {
                         // Because this is an override (blueprint data) we always re-index the data as static
                         // and zero the row IDs
@@ -700,7 +700,7 @@ impl BlueprintResolvedResultsExt<'_> for BlueprintResolvedRangeResults<'_> {
             }
             VisualizerComponentSource::Default => {
                 self.view_defaults
-                    .get(component)
+                    .get_if_loaded(component)
                     .map_or(Cow::Owned(Vec::new()), |unit| {
                         // Because this is a default (blueprint data) we always re-index the data as static
                         // and zero the row IDs

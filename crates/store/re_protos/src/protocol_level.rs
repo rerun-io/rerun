@@ -48,11 +48,19 @@ impl ProtocolLevel {
     /// * Server: nothing.
     pub const CHUNK_SEGMENT_FROM_REQUEST: Self = Self(2);
 
+    /// Level 3, `register_store_id`.
+    ///
+    /// * Client: nothing.
+    /// * Server: registers the store that `DataSource.store_id` names. A server below this level
+    ///   ignores the field or refuses it, so a client sets it only for a server at this level or
+    ///   above.
+    pub const REGISTER_STORE_ID: Self = Self(3);
+
     /// The level the clients of this build implement, sent in `ClientMeta.protocol_level`.
     ///
     /// Not the level of a server: each server defines the one it advertises, and raises it only
     /// once it implements the server part of that level.
-    pub const CURRENT: Self = Self::CHUNK_SEGMENT_FROM_REQUEST;
+    pub const CURRENT: Self = Self::REGISTER_STORE_ID;
 
     /// The level of the client that sent a request. A request without `ClientMeta` comes from a
     /// client at [`Self::BASELINE`].
@@ -73,6 +81,7 @@ impl ProtocolLevel {
     pub fn first_client_release(self) -> Option<&'static str> {
         match self.0 {
             1 | 2 => Some("0.44"),
+            3 => Some("0.45"),
             _ => None,
         }
     }

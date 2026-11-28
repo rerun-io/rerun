@@ -541,8 +541,8 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
-* [Quick start](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
-* [Tutorial](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
+* [Quick start](https://www.rerun.io/docs/log/tutorial)
+* [Tutorial](https://www.rerun.io/docs/log/tutorial)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
 * [Troubleshooting](https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting)
 
@@ -550,7 +550,7 @@ There are many different ways of sending data to the Rerun Viewer depending on w
 to achieve and whether the viewer is running in the same process as your code, in another process,
 or even as a separate web application.
 
-Checkout [SDK Operating Modes](https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes) for an
+Checkout [SDK Operating Modes](https://www.rerun.io/docs/log/sinks-and-modes/operating-modes) for an
 overview of what's possible and how.
 
 ## Supported Python Versions

@@ -15,7 +15,7 @@ Each rule can match one entity or an entire subtree, so you do not need to list 
 A view's `origin` is an entity path that filter rules can refer to as [`$origin`](#origin-substitution).
 
 In 2D and 3D views, the origin also gives the default [target frame](../../reference/types/views/spatial3d_view.md#spatial_information): the frame that the view shows all data in.
-Data gets to that frame through [transforms](../../logging-and-ingestion/data-model/transforms.md), which come from the entity hierarchy or from named transform frames.
+Data gets to that frame through [transforms](../../log/data-model/transforms.md), which come from the entity hierarchy or from named transform frames.
 
 You can now set the target frame directly, so the transforms in a view no longer depend on its origin.
 For this reason, the `origin` will be deprecated in an upcoming version.
@@ -23,7 +23,7 @@ For this reason, the `origin` will be deprecated in an upcoming version.
 ## Filter syntax
 
 Use `+` to include a path, `-` to exclude it, and `/**` to match a path and all its descendants.
-See [entity path filter syntax](../../logging-and-ingestion/data-model/entity-path.md#entity-path-filters) for how matching rules are combined.
+See [entity path filter syntax](../../log/data-model/entity-path.md#entity-path-filters) for how matching rules are combined.
 
 ## In the Viewer
 
@@ -59,7 +59,7 @@ rrb.Spatial3DView(origin="helix", contents=["+ $origin/**", "- $origin/structure
 
 ## Recording properties are excluded by default
 
-Every view's entity path filter implicitly excludes `__properties/**`, where [recording properties](../../query-and-transform/catalog/properties-and-segments.md) are stored.
+Every view's entity path filter implicitly excludes `__properties/**`, where [recording properties](../../catalog/properties-and-segments.md) are stored.
 So `+ /**` does not show them.
 To include them in a view, add the rule `+ __properties/**` to the view's contents explicitly.
 

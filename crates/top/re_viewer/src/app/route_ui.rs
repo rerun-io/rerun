@@ -307,7 +307,6 @@ impl AppCore {
                         view_states,
                         &visualizable_entities_per_visualizer,
                         &indicated_entities_per_visualizer,
-                        app_ctx.app_options,
                     )
                 };
 

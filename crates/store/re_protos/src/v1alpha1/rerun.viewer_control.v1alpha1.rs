@@ -274,7 +274,7 @@ pub mod viewer_control_request {
         /// a frame, and Transform3D connects child and parent frames independently of entity paths.
         /// Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
         /// per-instance poses and view-specific blueprint overrides; it is not the rendering result.
-        /// See <https://rerun.io/docs/logging-and-ingestion/data-model/transforms.>
+        /// See <https://rerun.io/docs/log/data-model/transforms.>
         ///
         /// Choose the representation before diagnosing connectivity:
         /// 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
@@ -310,7 +310,7 @@ pub mod viewer_control_request {
         /// An asset holds static data shared by the dataset's segments, such as a robot's meshes. The
         /// viewer shows it as part of every segment it applies to, so an entity missing from
         /// `GetDatasetSchema` may be in an asset. See
-        /// <<https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>.>
+        /// <<https://rerun.io/docs/catalog/catalog-object-model#assets>.>
         ///
         /// Only assets the server is done registering are described.
         ///

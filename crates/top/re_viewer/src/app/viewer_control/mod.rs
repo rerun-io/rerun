@@ -1108,10 +1108,9 @@ impl AppCore {
         let query = self
             .stores
             .blueprint_query_for_viewer(&self.state.app_options, Some(blueprint_db));
-        let mut json = re_arrow_json::json_from_store(
-            blueprint_db.storage_engine().store(),
-            &query,
+        let mut json = re_arrow_json::json_from_components(
             &self.registries.reflection.read(),
+            blueprint_db.storage_engine().latest_at_all(&query),
         );
         if let BlueprintTarget::Table(table) = target
             && json.as_object().is_some_and(serde_json::Map::is_empty)
@@ -2449,6 +2448,95 @@ mod tests {
         assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
         assert!(err.message.contains("CardLayout:title"), "{}", err.message);
         assert!(err.message.contains("\"task\""), "{}", err.message);
+    }
+
+    /// Views and containers removed the way the UI removes them disappear from both reads.
+    #[cfg(feature = "testing")]
+    #[tokio::test]
+    async fn removed_views_disappear_from_state_and_blueprint() -> anyhow::Result<()> {
+        use re_viewer_context::{ContainerId, GLOBAL_VIEW_ID, ViewId};
+        use serde_json::json;
+
+        let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
+        let crate::App {
+            store_hub,
+            core: app,
+        } = harness.state_mut();
+        let recording = StoreId::random(StoreKind::Recording, "test_app");
+        store_hub.entity_db_entry(&recording);
+        app.navigation.routes.replace(Route::LocalRecording {
+            recording_id: recording.clone(),
+        });
+        store_hub.ensure_active_blueprint_for_app(recording.application_id());
+        let blueprint_id = store_hub
+            .active_blueprint_id_for_app(recording.application_id())
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("missing active blueprint"))?;
+
+        let root = re_viewport_blueprint::ViewportBlueprint::from_db(
+            store_hub.entity_db_entry(&blueprint_id),
+            &re_viewer_context::BlueprintUndoState::default_query(),
+        )
+        .root_container;
+        let root_path = root.as_entity_path().to_string();
+        let nested = ContainerId::random().as_entity_path().to_string();
+        let view = ViewId::random();
+        let view_path = view.as_entity_path().to_string();
+        let settings = format!("{view_path}/ViewContents");
+        let shared = format!("{}/TimeAxis", GLOBAL_VIEW_ID.as_entity_path());
+        let target = BlueprintTarget::Recording(recording);
+        for (present, edit) in [
+            (
+                true,
+                json!({
+                    "/viewport": {"ViewportBlueprint": {"root_container": root.uuid()}},
+                    root_path.clone(): {"ContainerBlueprint": {"container_kind": "Tabs", "contents": [nested]}},
+                    nested.clone(): {"ContainerBlueprint": {"container_kind": "Tabs", "contents": [view_path]}},
+                    view_path.clone(): {"ViewBlueprint": {"class_identifier": "3D", "visible": false}},
+                    settings.clone(): {"ViewContents": {"query": ["+ /**"]}},
+                    shared.clone(): {"TimeAxis": {"link": "Independent"}},
+                }),
+            ),
+            (
+                false,
+                json!({
+                    root_path.clone(): {"ContainerBlueprint": {"contents": []}},
+                    nested.clone(): {"Clear": {"is_recursive": true}},
+                    view_path.clone(): {"Clear": {"is_recursive": true}},
+                }),
+            ),
+        ] {
+            let db = store_hub.entity_db_entry(&blueprint_id);
+            let timepoint = re_viewer_context::blueprint_timepoint_for_writes(db);
+            for chunk in re_arrow_json::partial_chunks_from_json(
+                &edit,
+                &timepoint,
+                re_sdk_types::reflection::reflection(),
+            )? {
+                db.add_chunk(&Arc::new(chunk))?;
+            }
+
+            let views = app.collect_viewer_state(store_hub).views;
+            let response = app
+                .collect_blueprint_json(store_hub, &target)
+                .map_err(|err| anyhow::anyhow!(err.message))?;
+            let json: serde_json::Value = serde_json::from_str(&response.json)?;
+            if present {
+                let [hidden] = views.as_slice() else {
+                    anyhow::bail!("expected one hidden view, got {views:?}");
+                };
+                assert_eq!(hidden.view_id, view.uuid().to_string());
+                assert!(!hidden.visible);
+            } else {
+                assert!(views.is_empty());
+            }
+            for path in [&nested, &view_path, &settings] {
+                assert_eq!(json.get(path).is_some(), present, "{path}");
+            }
+            assert!(json.get(&root_path).is_some());
+            assert!(json.get(&shared).is_some());
+        }
+        Ok(())
     }
 
     #[cfg(feature = "testing")]

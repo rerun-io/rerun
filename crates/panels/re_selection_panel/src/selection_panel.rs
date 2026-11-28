@@ -740,7 +740,6 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     let component = component_descr.component;
     let query_result = latest_at_with_blueprint_resolved_data(
         ctx,
-        None,
         &ctx.current_query(),
         data_result,
         [component],
@@ -793,7 +792,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             ui.markdown_ui(
                 "The coordinate frame this entity is associated with.
 
-To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/logging-and-ingestion/data-model/transforms) in the manual.",
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/log/data-model/transforms) in the manual.",
             );
         });
 
@@ -1167,7 +1166,7 @@ fn component_layers_ui(
         ui,
         "Layer",
         &sources.iter().map(ComponentSource::name).join(", "),
-        Some("https://rerun.io/docs/query-and-transform/catalog/layers".to_owned()),
+        Some("https://rerun.io/docs/catalog/layers".to_owned()),
         |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;

@@ -104,6 +104,30 @@ pub mod external {
     };
 }
 
+/// Keeps the runtime of the web view alive.
+#[must_use = "keep the runtime until the viewer has exited"]
+pub struct WebViewRuntime {
+    #[cfg(feature = "webview")]
+    _runtime: re_view_web::Runtime,
+}
+
+impl WebViewRuntime {
+    /// Initializes the web view.
+    ///
+    /// Call it early in `main`, after logging is set up but before parsing any arguments, and
+    /// keep the runtime until the viewer has exited.
+    /// A native backend can run helper processes from this executable: in such a process this
+    /// runs the helper and then exits the process.
+    #[expect(clippy::new_without_default, reason = "creating it has side effects")]
+    pub fn new() -> Self {
+        re_tracing::profile_function!();
+        Self {
+            #[cfg(feature = "webview")]
+            _runtime: re_view_web::Runtime::new(),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 // When compiling for native:
 

@@ -8,7 +8,7 @@ Real-world data is usually not time-aligned.
 This example fills data forward so that you can run compute at a fixed frequency.
 
 > [!NOTE]
-> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../catalog/hub.md) ([how to switch](../../catalog/hub.md#run-the-examples-on-hub)).
 
 The dependencies in this example require `rerun-sdk[all]`, and `pandas` because python datetimes only support microsecond precision.
 

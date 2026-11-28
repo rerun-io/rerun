@@ -41,11 +41,6 @@ pub struct TimePanelBlueprint {
     /// Frames per second. Only applicable for sequence timelines.
     pub fps: Option<SerializedComponentBatch>,
 
-    /// If the time is currently paused, playing, or following.
-    ///
-    /// Defaults to either playing or following, depending on the data source.
-    pub play_state: Option<SerializedComponentBatch>,
-
     /// How the time should loop. A selection loop only works if there is also a `time_selection` passed.
     ///
     /// Defaults to off.
@@ -112,20 +107,6 @@ impl TimePanelBlueprint {
         (*DESCRIPTOR).clone()
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::play_state`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::PlayState`].
-    #[inline]
-    pub fn descriptor_play_state() -> ComponentDescriptor {
-        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
-            std::sync::LazyLock::new(|| ComponentDescriptor {
-                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
-                component: "TimePanelBlueprint:play_state".into(),
-                component_type: Some("rerun.blueprint.components.PlayState".into()),
-            });
-        (*DESCRIPTOR).clone()
-    }
-
     /// Returns the [`ComponentDescriptor`] for [`Self::loop_mode`].
     ///
     /// The corresponding component is [`crate::blueprint::components::LoopMode`].
@@ -161,35 +142,33 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             TimePanelBlueprint::descriptor_state(),
             TimePanelBlueprint::descriptor_timeline(),
             TimePanelBlueprint::descriptor_playback_speed(),
             TimePanelBlueprint::descriptor_fps(),
-            TimePanelBlueprint::descriptor_play_state(),
             TimePanelBlueprint::descriptor_loop_mode(),
             TimePanelBlueprint::descriptor_time_selection(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             TimePanelBlueprint::descriptor_state(),
             TimePanelBlueprint::descriptor_timeline(),
             TimePanelBlueprint::descriptor_playback_speed(),
             TimePanelBlueprint::descriptor_fps(),
-            TimePanelBlueprint::descriptor_play_state(),
             TimePanelBlueprint::descriptor_loop_mode(),
             TimePanelBlueprint::descriptor_time_selection(),
         ]
     });
 
 impl TimePanelBlueprint {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 impl ::re_types_core::Archetype for TimePanelBlueprint {
@@ -249,11 +228,6 @@ impl ::re_types_core::Archetype for TimePanelBlueprint {
         let fps = arrays_by_descr
             .get(&Self::descriptor_fps())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fps()));
-        let play_state = arrays_by_descr
-            .get(&Self::descriptor_play_state())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_play_state())
-            });
         let loop_mode = arrays_by_descr
             .get(&Self::descriptor_loop_mode())
             .map(|array| {
@@ -269,7 +243,6 @@ impl ::re_types_core::Archetype for TimePanelBlueprint {
             timeline,
             playback_speed,
             fps,
-            play_state,
             loop_mode,
             time_selection,
         })
@@ -285,7 +258,6 @@ impl ::re_types_core::AsComponents for TimePanelBlueprint {
             self.timeline.clone(),
             self.playback_speed.clone(),
             self.fps.clone(),
-            self.play_state.clone(),
             self.loop_mode.clone(),
             self.time_selection.clone(),
         ]
@@ -306,7 +278,6 @@ impl TimePanelBlueprint {
             timeline: None,
             playback_speed: None,
             fps: None,
-            play_state: None,
             loop_mode: None,
             time_selection: None,
         }
@@ -338,10 +309,6 @@ impl TimePanelBlueprint {
             fps: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::Fps::arrow_empty(),
                 Self::descriptor_fps(),
-            )),
-            play_state: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::PlayState::arrow_empty(),
-                Self::descriptor_play_state(),
             )),
             loop_mode: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::LoopMode::arrow_empty(),
@@ -389,18 +356,6 @@ impl TimePanelBlueprint {
     #[inline]
     pub fn with_fps(mut self, fps: impl Into<crate::blueprint::components::Fps>) -> Self {
         self.fps = try_serialize_field(Self::descriptor_fps(), [fps]);
-        self
-    }
-
-    /// If the time is currently paused, playing, or following.
-    ///
-    /// Defaults to either playing or following, depending on the data source.
-    #[inline]
-    pub fn with_play_state(
-        mut self,
-        play_state: impl Into<crate::blueprint::components::PlayState>,
-    ) -> Self {
-        self.play_state = try_serialize_field(Self::descriptor_play_state(), [play_state]);
         self
     }
 

@@ -325,7 +325,7 @@ impl BlueprintResolvedLatestAtResults<'_> {
                     events,
                     annotations,
                     self.view_defaults
-                        .get(component)
+                        .get_if_loaded(component)
                         .and_then(|chunk| chunk.component_batch_raw(component))
                         .as_ref(),
                 )
@@ -382,7 +382,7 @@ impl BlueprintResolvedRangeResults<'_> {
             let component = target.descriptor().component;
             let default_batch = self
                 .view_defaults
-                .get(component)
+                .get_if_loaded(component)
                 .and_then(|chunk| chunk.component_batch_raw(component));
 
             // Since we're synthesizing chunks from individual events we end up with one chunk per row.

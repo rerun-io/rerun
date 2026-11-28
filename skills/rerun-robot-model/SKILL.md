@@ -57,7 +57,7 @@ Two things bite before FK ever runs:
 ### MJCF
 
 `MjcfTree.from_file_path` takes a `.mjcf` file or an `.xml` with a `<mujoco>` root, and resolves `<include>`s, `<default>` classes and `meshdir` like MuJoCo.
-Some geoms and elements are skipped; [Loading MJCF models](https://rerun.io/docs/logging-and-ingestion/import/mjcf) lists them.
+Some geoms and elements are skipped; [Loading MJCF models](https://rerun.io/docs/ingest/mjcf) lists them.
 
 ## The API
 
@@ -218,7 +218,7 @@ The frame names come from the model:
 - **URDF:** one frame per link, named after it.
 - **MJCF:** one frame per body, named after it (an unnamed one is `body_<id>`), and the root is `world`.
   A body can have several joints; each but the last gets an intermediate frame `{body}::{joint}`, so `upper_arm → forearm::yaw → forearm`.
-  See [Frames](https://rerun.io/docs/logging-and-ingestion/import/mjcf#frames).
+  See [Frames](https://rerun.io/docs/ingest/mjcf#frames).
 
 ## Resolving the transform forest (the part the data cannot always give you)
 
@@ -386,8 +386,8 @@ Without a catalog, the same split still pays: write the model RRD once and open 
 
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing` (FK two-lens pattern, two robots + scene URDFs, prefixes, recoloring, calibration offsets)
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf` (classic logging API: `log_to_recording`, per-joint `compute_transform`)
-- [Loading URDF models](https://rerun.io/docs/logging-and-ingestion/import/urdf) and [Loading MJCF models](https://rerun.io/docs/logging-and-ingestion/import/mjcf) (frame naming, geometry paths, the per-joint API)
-- [Catalog object model: assets](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
+- [Loading URDF models](https://rerun.io/docs/ingest/urdf) and [Loading MJCF models](https://rerun.io/docs/ingest/mjcf) (frame naming, geometry paths, the per-joint API)
+- [Catalog object model: assets](https://rerun.io/docs/catalog/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
 - `rerun-data-model` (the mapping table this skill consumes)
 - the importer skill for your joint-state source format (making the source readable)
 - `rerun-chunk-processing` (lens/stream, write/optimize mechanics)
