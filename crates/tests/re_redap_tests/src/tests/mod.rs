@@ -9,6 +9,7 @@ mod fetch_chunks;
 mod find_chunks;
 mod find_entries_filters;
 mod get_schemas;
+mod multi_store;
 mod protocol_level;
 mod query_dataset;
 mod query_filter;
@@ -252,6 +253,9 @@ define_redap_tests! {
     register_segment::register_with_dataset_if_duplicate_behavior_error,
     ; // OSS-only tests:
     find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
+    // TODO(RR-6283): the cloud server returns `Unimplemented` for a data source with a store id.
+    multi_store::register_store_by_id,
+    multi_store::register_store_by_id_rejects_unusable_store,
     // The cloud server registers only the first store of a file, so it accepts this.
     segment_id_override::register_multi_store_file_with_segment_id_override,
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.

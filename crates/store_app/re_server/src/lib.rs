@@ -29,7 +29,7 @@ pub use self::{
 /// Same as what `/WhoAmI` advertises, for a client that talks to the server in-process and never
 /// makes that call.
 pub const PROTOCOL_LEVEL: re_protos::protocol_level::ProtocolLevel =
-    re_protos::protocol_level::ProtocolLevel::CHUNK_SEGMENT_FROM_REQUEST;
+    re_protos::protocol_level::ProtocolLevel::REGISTER_STORE_ID;
 
 /// The capability names this build supports.
 ///

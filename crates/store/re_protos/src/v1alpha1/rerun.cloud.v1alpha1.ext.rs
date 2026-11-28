@@ -3083,6 +3083,9 @@ pub struct DataSource {
     /// `None` picks the first store of the dataset's kind (recording or blueprint) in the source.
     /// Must be `None` when `is_prefix` is `true`.
     ///
+    /// Servers below [`crate::protocol_level::ProtocolLevel::REGISTER_STORE_ID`] reject it or
+    /// ignore it.
+    ///
     /// Deserializes as `None` when absent, so serialized sources that predate it still load.
     #[serde(default)]
     pub store_id: Option<re_log_types::StoreId>,
@@ -3106,6 +3109,13 @@ impl DataSource {
     #[must_use]
     pub fn with_segment_id_override(mut self, segment_id: SegmentId) -> Self {
         self.segment_id_override = Some(segment_id);
+        self
+    }
+
+    /// Registers the store `store_id` out of this source.
+    #[must_use]
+    pub fn with_store_id(mut self, store_id: re_log_types::StoreId) -> Self {
+        self.store_id = Some(store_id);
         self
     }
 

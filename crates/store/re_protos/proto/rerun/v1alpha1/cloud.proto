@@ -564,6 +564,7 @@ message ClientMeta {
   // * 0, `baseline`: also when `ClientMeta` is unset.
   // * 1, `manifest_key_store_id`.
   // * 2, `chunk_segment_from_request`.
+  // * 3, `register_store_id`.
   uint32 protocol_level = 1;
 }
 
@@ -945,7 +946,11 @@ message DataSource {
   // registered.
   // Must be unset when `prefix` is true.
   //
-  // TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
+  // Clients must only set it for a server at protocol level 3, `register_store_id`, or above: see
+  // `WhoAmIResponse.protocol_level`. A server below that level returns UNIMPLEMENTED or, when it
+  // predates this field, ignores it.
+  //
+  // TODO(RR-6283): Rerun Hub does not implement it yet.
   optional rerun.common.v1alpha1.StoreId store_id = 8;
 
   // The segment to register this data source as.
